@@ -25,9 +25,10 @@ struct ChunkFileHeader
 	uint32_t dataSize;
 };
 
-void build(const char* file);
-
 void error(const char* message, ...);
 void fatal(const char* message, ...);
 	
+void initProject(const char* file, const char* path);
+void buildProject(const char* file);
+
 #endif

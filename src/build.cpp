@@ -7,8 +7,9 @@
 #include <numeric>
 #include <cassert>
 #include <string>
+#include <algorithm>
 
-#include "lz4/lz4.h"
+#include "lz4hc/lz4hc.h"
 #include "re2/re2.h"
 
 class Builder
@@ -104,8 +105,12 @@ private:
 	{
 		// LZ4 worst-case size calculation :-/
 		std::vector<char> cdata(data.size() + data.size() / 100 + 16);
+		
+		// Pad input data because the compressor can read past the array end sometimes
+		std::vector<char> paddedData(data.size() + 128);
+		std::copy(data.begin(), data.end(), paddedData.begin());
 
-		int csize = LZ4_compress(&data[0], &cdata[0], data.size());
+		int csize = LZ4_compressHC(const_cast<char*>(&paddedData[0]), &cdata[0], data.size());
 		assert(csize <= cdata.size());
 
 		cdata.resize(csize);
@@ -269,17 +274,16 @@ static RE2* constructOrRE(const std::vector<std::string>& list)
 	return r;
 }
 
-static void printStatistics(const Builder::Statistics& s)
+static void printStatistics(uint32_t fileCount, const Builder::Statistics& s)
 {
 	static uint64_t lastResultSize = 0;
+	
 	if (lastResultSize == s.resultSize) return;
 	lastResultSize = s.resultSize;
+	
+	int percent = s.fileCount * 100 / fileCount;
 
-	static int progress = 0;
-	char progressBar[] = "     ";
-	progressBar[progress++ % (sizeof(progressBar) - 1)] = '.';
-
-	printf("[%s] %d files, %d Mb in, %d Mb out\r", progressBar, s.fileCount, (int)(s.fileSize / 1024 / 1024), (int)(s.resultSize / 1024 / 1024));
+	printf("\r[%3d%%] %d files, %d Mb in, %d Mb out\r", percent, s.fileCount, (int)(s.fileSize / 1024 / 1024), (int)(s.resultSize / 1024 / 1024));
 	fflush(stdout);
 }
 
@@ -288,29 +292,45 @@ struct BuilderContext
 	Builder builder;
 	RE2* include;
 	RE2* exclude;
+	
+	std::vector<std::string> files;
 };
 
-static void builderAppend(Builder& builder, const char* path)
+static void builderAppend(BuilderContext& bc, const char* path)
 {
-	if (!builder.appendFile(path))
+	if (!bc.builder.appendFile(path))
 	{
 		error("Error reading file %s\n", path);
 	}
 
-	printStatistics(builder.getStatistics());
+	printStatistics(bc.files.size(), bc.builder.getStatistics());
+}
+
+static bool isFileAcceptable(BuilderContext& c, const char* path)
+{
+	if (c.include && !RE2::PartialMatch(path, *c.include))
+		return false;
+
+	if (c.exclude && RE2::PartialMatch(path, *c.exclude))
+		return false;
+
+	return true;
 }
 
 static void traverseBuilderAppend(void* context, const char* path)
 {
 	BuilderContext& c = *static_cast<BuilderContext*>(context);
+	
+	if (isFileAcceptable(c, path))
+		builderAppend(c, path);
+}
 
-	if (c.include && !RE2::PartialMatch(path, *c.include))
-		return;
-
-	if (c.exclude && RE2::PartialMatch(path, *c.exclude))
-		return;
-
-	builderAppend(c.builder, path);
+static void traverseFileAppend(void* context, const char* path)
+{
+	BuilderContext& c = *static_cast<BuilderContext*>(context);
+	
+	if (isFileAcceptable(c, path))
+		c.files.push_back(path);
 }
 
 static std::string replaceExtension(const char* path, const char* ext)
@@ -320,29 +340,54 @@ static std::string replaceExtension(const char* path, const char* ext)
 	return dot ? std::string(path, dot) + ext : std::string(path) + ext;
 }
 
-void build(const char* file)
+struct ReverseStringComparator
+{
+	bool operator()(const std::string& lhs, const std::string& rhs) const
+	{
+		return std::lexicographical_compare(lhs.rbegin(), lhs.rend(), rhs.rbegin(), rhs.rend());
+	}
+};
+
+void buildProject(const char* file)
 {
 	std::string path;
 	std::vector<std::string> includeSet, excludeSet, fileSet;
 
 	if (!parseInput(file, path, includeSet, excludeSet, fileSet))
-		fatal("Error opening rule file %s for reading\n", file);
+		fatal("Error opening project file %s for reading\n", file);
 
-	BuilderContext bc;
-	bc.include = constructOrRE(includeSet);
-	bc.exclude = constructOrRE(excludeSet);
+	std::string targetPath = replaceExtension(file, ".qgd");
+	std::string tempPath = targetPath + "_";
 
-	std::string data = replaceExtension(file, ".qgd");
+	{
+		BuilderContext bc;
+		bc.include = constructOrRE(includeSet);
+		bc.exclude = constructOrRE(excludeSet);
 
-	if (!bc.builder.start(data.c_str()))
-		fatal("Error opening data file %s for writing\n", data.c_str());
+		if (!bc.builder.start(tempPath.c_str()))
+			fatal("Error opening data file %s for writing\n", tempPath.c_str());
 
-	if (!path.empty())
-		traverseDirectory(path.c_str(), traverseBuilderAppend, &bc);
+		bc.files = fileSet;
 
-	for (size_t i = 0; i < fileSet.size(); ++i)
-		builderAppend(bc.builder, fileSet[i].c_str());
+		if (!path.empty())
+		{
+			printf("Scanning folder for files...");
+			fflush(stdout);
+			
+			traverseDirectory(path.c_str(), traverseFileAppend, &bc);
+		}
 
-	bc.builder.flush();
-	printStatistics(bc.builder.getStatistics());
+		// Groups files with same names together, groups files with same extensions together...
+		// Results in ~20% compression ratio improvement
+		std::sort(bc.files.begin(), bc.files.end(), ReverseStringComparator());
+
+		for (size_t i = 0; i < bc.files.size(); ++i)
+			builderAppend(bc, bc.files[i].c_str());
+
+		bc.builder.flush();
+		printStatistics(bc.files.size(), bc.builder.getStatistics());
+	}
+	
+	if (renameFile(tempPath.c_str(), targetPath.c_str()) != 0)
+		fatal("Error saving data file %s\n", targetPath.c_str());
 }

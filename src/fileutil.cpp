@@ -23,7 +23,7 @@ static bool processFile(const char* name)
 void traverseDirectory(const char* path, void (*callback)(void* context, const char* path), void* context)
 {
 	WIN32_FIND_DATAA data;
-	HANDLE h = FindFirstFileA((std::string(path) + "\\*").c_str(), &data);
+	HANDLE h = FindFirstFileA((std::string(path) + "/*").c_str(), &data);
 
 	if (h != INVALID_HANDLE_VALUE)
 	{
@@ -32,7 +32,7 @@ void traverseDirectory(const char* path, void (*callback)(void* context, const c
 			if (processFile(data.cFileName))
 			{
 				std::string fp = path;
-				fp += "\\";
+				fp += "/";
 				fp += data.cFileName;
 	
 				if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -65,4 +65,9 @@ void createPath(const char* path)
 	}
 
 	mkdir(p.c_str());
+}
+
+bool renameFile(const char* oldpath, const char* newpath)
+{
+	return MoveFileExA(oldpath, newpath, MOVEFILE_REPLACE_EXISTING);
 }

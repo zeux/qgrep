@@ -50,12 +50,19 @@ std::string getProjectPath(const char* name)
 
 int main(int argc, const char** argv)
 {
-	if (argc < 2)
+	if (argc > 3 && strcmp(argv[1], "init") == 0)
+	{
+		initProject(getProjectPath(argv[2]).c_str(), argv[3]);
+	}
+	else if (argc > 2 && strcmp(argv[1], "build") == 0)
+	{
+		buildProject(getProjectPath(argv[2]).c_str());
+	}
+	else
 	{
 		fatal("Usage:\n"
-				"qrep build <rulefile>\n");
+				"qrep init <project> <path>\n"
+				"qrep build <project>\n");
 	}
 
-	if (argc > 2 && strcmp(argv[1], "build") == 0)
-		build(getProjectPath(argv[2]).c_str());
 }
