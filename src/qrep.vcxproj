@@ -1,0 +1,128 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and '$(VisualStudioVersion)' == ''">$(VCTargetsPath11)</VCTargetsPath>
+  </PropertyGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{6827D800-E969-478D-BF86-2B821F084585}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>qrep</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\bin\$(Configuration)\</OutDir>
+    <IntDir>..\obj\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\$(Configuration)\</OutDir>
+    <IntDir>..\obj\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../extern;../extern/re2</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../extern;../extern/re2</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\extern\lz4\lz4.c" />
+    <ClCompile Include="..\extern\re2\re2\bitstate.cc" />
+    <ClCompile Include="..\extern\re2\re2\compile.cc" />
+    <ClCompile Include="..\extern\re2\re2\dfa.cc" />
+    <ClCompile Include="..\extern\re2\re2\nfa.cc" />
+    <ClCompile Include="..\extern\re2\re2\onepass.cc" />
+    <ClCompile Include="..\extern\re2\re2\parse.cc" />
+    <ClCompile Include="..\extern\re2\re2\perl_groups.cc" />
+    <ClCompile Include="..\extern\re2\re2\prog.cc" />
+    <ClCompile Include="..\extern\re2\re2\re2.cc" />
+    <ClCompile Include="..\extern\re2\re2\regexp.cc" />
+    <ClCompile Include="..\extern\re2\re2\simplify.cc" />
+    <ClCompile Include="..\extern\re2\re2\tostring.cc" />
+    <ClCompile Include="..\extern\re2\re2\unicode_casefold.cc" />
+    <ClCompile Include="..\extern\re2\re2\unicode_groups.cc" />
+    <ClCompile Include="..\extern\re2\util\hash.cc" />
+    <ClCompile Include="..\extern\re2\util\rune.cc" />
+    <ClCompile Include="..\extern\re2\util\stringpiece.cc" />
+    <ClCompile Include="..\extern\re2\util\stringprintf.cc" />
+    <ClCompile Include="..\extern\re2\util\strutil.cc" />
+    <ClCompile Include="build.cpp" />
+    <ClCompile Include="fileutil.cpp" />
+    <ClCompile Include="qrep.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\extern\lz4\lz4.h" />
+    <ClInclude Include="..\extern\re2\re2\prog.h" />
+    <ClInclude Include="..\extern\re2\re2\re2.h" />
+    <ClInclude Include="..\extern\re2\re2\regexp.h" />
+    <ClInclude Include="..\extern\re2\re2\unicode_casefold.h" />
+    <ClInclude Include="..\extern\re2\re2\unicode_groups.h" />
+    <ClInclude Include="..\extern\re2\re2\variadic_function.h" />
+    <ClInclude Include="..\extern\re2\util\sparse_array.h" />
+    <ClInclude Include="..\extern\re2\util\sparse_set.h" />
+    <ClInclude Include="fileutil.hpp" />
+    <ClInclude Include="qrep.hpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
