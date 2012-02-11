@@ -1,0 +1,8 @@
+syntax:regexp
+
+# build artifacts
+^obj/
+^bin/.*\.(exe|pdb|ilk)$
+
+# visual studio temporary files
+^src/.*\.(sdf|suo)$
