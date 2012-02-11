@@ -388,6 +388,6 @@ void buildProject(const char* file)
 		printStatistics(bc.files.size(), bc.builder.getStatistics());
 	}
 	
-	if (renameFile(tempPath.c_str(), targetPath.c_str()) != 0)
+	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 		fatal("Error saving data file %s\n", targetPath.c_str());
 }
