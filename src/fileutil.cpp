@@ -71,3 +71,10 @@ bool renameFile(const char* oldpath, const char* newpath)
 {
 	return MoveFileExA(oldpath, newpath, MOVEFILE_REPLACE_EXISTING);
 }
+
+std::string replaceExtension(const char* path, const char* ext)
+{
+	const char* dot = strrchr(path, '.');
+
+	return dot ? std::string(path, dot) + ext : std::string(path) + ext;
+}

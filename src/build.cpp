@@ -333,13 +333,6 @@ static void traverseFileAppend(void* context, const char* path)
 		c.files.push_back(path);
 }
 
-static std::string replaceExtension(const char* path, const char* ext)
-{
-	const char* dot = strrchr(path, '.');
-
-	return dot ? std::string(path, dot) + ext : std::string(path) + ext;
-}
-
 struct ReverseStringComparator
 {
 	bool operator()(const std::string& lhs, const std::string& rhs) const
