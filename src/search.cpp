@@ -1,6 +1,7 @@
 #include "qrep.hpp"
 
 #include "fileutil.hpp"
+#include "workqueue.hpp"
 
 #include <fstream>
 #include <vector>
@@ -108,6 +109,56 @@ static void processChunk(Regex* re, const char* data, size_t fileCount)
 	}
 }
 
+struct ProcessChunk
+{
+	ProcessChunk(Regex* re, char* data, unsigned int fileCount): re(re), data(data), fileCount(fileCount)
+	{
+	}
+	
+	void operator()()
+	{
+		processChunk(re, data, fileCount);
+		free(data);
+	}
+	
+	Regex* re;
+	char* data;
+	unsigned int fileCount;
+};
+
+struct DecompressChunk
+{
+	DecompressChunk(char* compressed, char* data, unsigned int dataSize): compressed(compressed), data(data), dataSize(dataSize)
+	{
+	}
+	
+	void operator()()
+	{
+		LZ4_uncompress(compressed, data, dataSize);
+		free(compressed);
+	}
+	
+	char* compressed;
+	char* data;
+	unsigned int dataSize;
+};
+
+template <typename L, typename R> struct Chain
+{
+	Chain(const L& l, const R& r): l(l), r(r)
+	{
+	}
+	
+	void operator()()
+	{
+		l();
+		wqQueue(r);
+	}
+	
+	L l;
+	R r;
+};
+
 void searchProject(const char* file, const char* string)
 {
 	RE2::Options opts;
@@ -126,6 +177,8 @@ void searchProject(const char* file, const char* string)
 		
 	ChunkHeader chunk;
 	
+	wqBegin(16);
+	
 	while (read(in, chunk))
 	{
 		char* compressed = static_cast<char*>(malloc(chunk.compressedSize));
@@ -134,10 +187,21 @@ void searchProject(const char* file, const char* string)
 		if (!compressed || !data || !read(in, compressed, chunk.compressedSize))
 			fatal("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 			
-		LZ4_uncompress(compressed, data, chunk.uncompressedSize);
-		free(compressed);
+		DecompressChunk dc(compressed, data, chunk.uncompressedSize);
+		ProcessChunk pc(&regex, data, chunk.fileCount);
 		
-		processChunk(&regex, data, chunk.fileCount);
-		free(data);
+		if (chunk.compressedSize + chunk.uncompressedSize > 16*1024*1024)
+		{
+			// Huge chunk; to preserve memory process it synchronously
+			dc();
+			pc();
+		}
+		else
+		{
+			// Queue chunk processing
+			wqQueue(Chain<DecompressChunk, ProcessChunk>(dc, pc));
+		}
 	}
+	
+	wqEnd();
 }
