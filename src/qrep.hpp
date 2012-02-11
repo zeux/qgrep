@@ -30,5 +30,6 @@ void fatal(const char* message, ...);
 	
 void initProject(const char* file, const char* path);
 void buildProject(const char* file);
+void searchProject(const char* file, const char* string);
 
 #endif

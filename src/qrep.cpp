@@ -58,11 +58,17 @@ int main(int argc, const char** argv)
 	{
 		buildProject(getProjectPath(argv[2]).c_str());
 	}
+	else if (argc > 3 && strcmp(argv[1], "search") == 0)
+	{
+		searchProject(getProjectPath(argv[2]).c_str(), argv[3]);
+	}
 	else
 	{
 		fatal("Usage:\n"
 				"qrep init <project> <path>\n"
-				"qrep build <project>\n");
+				"qrep build <project>\n"
+				"qrep search <project> <query>\n"
+				);
 	}
 
 }
