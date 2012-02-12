@@ -73,6 +73,8 @@ static unsigned int countLines(const char* begin, const char* end)
 
 static void processMatch(const char* pathBegin, const char* pathEnd, unsigned int line, const char* begin, const char* end)
 {
+	if (begin < end && end[-1] == '\r') --end;
+	
 	printf("%.*s:%d: %.*s\n", pathEnd - pathBegin, pathBegin, line, end - begin, begin);
 }
 
