@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <vector>
+#include <algorithm>
 
 #include "re2/re2.h"
 #include "lz4/lz4.h"
@@ -71,27 +72,49 @@ static unsigned int countLines(const char* begin, const char* end)
 	return res;
 }
 
-static void processMatch(const char* pathBegin, const char* pathEnd, unsigned int line, const char* begin, const char* end)
+struct BackSlashTransformer
+{
+	char operator()(char ch) const
+	{
+		return (ch == '/') ? '\\' : ch;
+	}
+};
+
+static void processMatch(const char* pathBegin, const char* pathEnd, unsigned int line, const char* begin, const char* end, unsigned int options)
 {
 	if (begin < end && end[-1] == '\r') --end;
 	
-	printf("%.*s:%d: %.*s\n", pathEnd - pathBegin, pathBegin, line, end - begin, begin);
+	const char* lineBefore = ":";
+	const char* lineAfter = ":";
+	
+	if (options & SO_VISUALSTUDIO)
+	{
+		char* pathBuffer = static_cast<char*>(alloca(pathEnd - pathBegin));
+		
+		pathEnd = std::transform(pathBegin, pathEnd, pathBuffer, BackSlashTransformer());
+		pathBegin = pathBuffer;
+		
+		lineBefore = "(";
+		lineAfter = "):";
+	}
+	
+	printf("%.*s%s%d%s %.*s\n", pathEnd - pathBegin, pathBegin, lineBefore, line, lineAfter, end - begin, begin);
 }
 
-static void processFile(Regex* re, const char* pathBegin, const char* pathEnd, const char* begin, const char* end)
+static void processFile(Regex* re, const char* pathBegin, const char* pathEnd, const char* begin, const char* end, unsigned int options)
 {
-	unsigned int line = 1;
+	unsigned int line = 0;
 	const char* match;
 	
 	while ((match = re->search(begin, end)) != 0)
 	{
 		// update line counter
-		line += countLines(begin, match);
+		line += 1 + countLines(begin, match);
 		
 		// print match
 		const char* lbeg = findLineStart(begin, match);
 		const char* lend = findLineEnd(match, end);
-		processMatch(pathBegin, pathEnd, line, lbeg, lend);
+		processMatch(pathBegin, pathEnd, line, lbeg, lend, options);
 		
 		// move to next line
 		if (lend == end) return;
@@ -99,7 +122,7 @@ static void processFile(Regex* re, const char* pathBegin, const char* pathEnd, c
 	}
 }
 
-static void processChunk(Regex* re, const char* data, size_t fileCount)
+static void processChunk(Regex* re, const char* data, size_t fileCount, unsigned int options)
 {
 	const ChunkFileHeader* files = reinterpret_cast<const ChunkFileHeader*>(data);
 	
@@ -107,25 +130,26 @@ static void processChunk(Regex* re, const char* data, size_t fileCount)
 	{
 		const ChunkFileHeader& f = files[i];
 		
-		processFile(re, data + f.nameOffset, data + f.nameOffset + f.nameLength, data + f.dataOffset, data + f.dataOffset + f.dataSize);
+		processFile(re, data + f.nameOffset, data + f.nameOffset + f.nameLength, data + f.dataOffset, data + f.dataOffset + f.dataSize, options);
 	}
 }
 
 struct ProcessChunk
 {
-	ProcessChunk(Regex* re, char* data, unsigned int fileCount): re(re), data(data), fileCount(fileCount)
+	ProcessChunk(Regex* re, char* data, unsigned int fileCount, unsigned int options): re(re), data(data), fileCount(fileCount), options(options)
 	{
 	}
 	
 	void operator()()
 	{
-		processChunk(re, data, fileCount);
+		processChunk(re, data, fileCount, options);
 		free(data);
 	}
 	
 	Regex* re;
 	char* data;
 	unsigned int fileCount;
+	unsigned int options;
 };
 
 struct DecompressChunk
@@ -161,11 +185,14 @@ template <typename L, typename R> struct Chain
 	R r;
 };
 
-void searchProject(const char* file, const char* string)
+void searchProject(const char* file, const char* string, unsigned int options)
 {
 	RE2::Options opts;
+	opts.set_case_sensitive((options & SO_IGNORECASE) == 0);
+	
 	RE2 re(string, opts);
 	if (!re.ok()) fatal("Error parsing regular expression %s\n", string);
+	
 	RE2Regex regex(&re);
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
@@ -190,7 +217,7 @@ void searchProject(const char* file, const char* string)
 			fatal("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 			
 		DecompressChunk dc(compressed, data, chunk.uncompressedSize);
-		ProcessChunk pc(&regex, data, chunk.fileCount);
+		ProcessChunk pc(&regex, data, chunk.fileCount, options);
 		
 		if (chunk.compressedSize + chunk.uncompressedSize > 16*1024*1024)
 		{

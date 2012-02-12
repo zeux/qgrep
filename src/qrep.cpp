@@ -48,6 +48,30 @@ std::string getProjectPath(const char* name)
 	return home + "/" + name + ".cfg";
 }
 
+unsigned int parseSearchOptions(const char* opts)
+{
+	unsigned int result = 0;
+	
+	for (const char* s = opts; *s; ++s)
+	{
+		switch (*s)
+		{
+		case 'i':
+			result |= SO_IGNORECASE;
+			break;
+			
+		case 'V':
+			result |= SO_VISUALSTUDIO;
+			break;
+			
+		default:
+			fatal("Unknown search option '%c'\n", *s);
+		}
+	}
+	
+	return result;
+}
+
 int main(int argc, const char** argv)
 {
 	if (argc > 3 && strcmp(argv[1], "init") == 0)
@@ -58,9 +82,13 @@ int main(int argc, const char** argv)
 	{
 		buildProject(getProjectPath(argv[2]).c_str());
 	}
-	else if (argc > 3 && strcmp(argv[1], "search") == 0)
+	else if (argc > 3 && strncmp(argv[1], "search", strlen("search")) == 0)
 	{
-		searchProject(getProjectPath(argv[2]).c_str(), argv[3]);
+		searchProject(getProjectPath(argv[2]).c_str(), argv[3], parseSearchOptions(argv[1] + strlen("search")));
+	}
+	else if (argc > 3 && argv[1][0] == '/')
+	{
+		searchProject(getProjectPath(argv[2]).c_str(), argv[3], parseSearchOptions(argv[1] + 1));
 	}
 	else
 	{
