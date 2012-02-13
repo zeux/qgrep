@@ -10,27 +10,101 @@
 #include "re2/re2.h"
 #include "lz4/lz4.h"
 
-struct Regex
+class Regex
 {
-	virtual ~Regex() {}
-	
-	virtual const char* search(const char* begin, const char* end) = 0;
-};
-
-struct RE2Regex: Regex
-{
-	RE2Regex(RE2* re): re(re)
+public:
+	Regex(const char* string, unsigned int options): re(0), lowercase(false)
 	{
+		RE2::Options opts;
+		
+		std::string pattern;
+		if ((options & SO_IGNORECASE) && transformRegexLower(string, pattern))
+		{
+			lowercase = true;
+		}
+		else
+		{
+			pattern = string;
+			opts.set_case_sensitive((options & SO_IGNORECASE) == 0);
+		}
+		
+		re = new RE2(pattern, opts);
+		if (!re->ok()) fatal("Error parsing regular expression %s\n", string);
+		
+		if (lowercase)
+		{
+			for (size_t i = 0; i < sizeof(lower); ++i)
+			{
+				lower[i] = tolower(i);
+			}
+		}
 	}
 	
-	virtual const char* search(const char* begin, const char* end)
+	~Regex()
+	{
+		delete re;
+	}
+	
+	const char* search(const char* begin, const char* end)
+	{
+		if (lowercase && begin != end)
+		{
+			size_t size = end - begin;
+			char* temp = (char*)malloc(size);
+			
+			transformRangeLower(temp, begin, end);
+			
+			const char* result = searchRaw(temp, temp + size);
+			
+			free(temp);
+			
+			return result ? (result - temp) + begin : 0;
+		}
+		else
+			return searchRaw(begin, end);
+	}
+	
+private:
+	const char* searchRaw(const char* begin, const char* end)
 	{
 		re2::StringPiece p(begin, end - begin);
 		
 		return RE2::FindAndConsume(&p, *re) ? p.data() : 0;
 	}
 	
+	static bool transformRegexLower(const char* pattern, std::string& res)
+	{
+		res.clear();
+		
+		// Simple lexer intended to separate literals from non-literals; does not handle Unicode character classes
+		// properly, so bail out if we have them
+		for (const char* p = pattern; *p; ++p)
+		{
+			if (*p == '\\')
+			{
+				if (p[1] == 'p' || p[1] == 'P') return false;
+				res.push_back(*p);
+				p++;
+				res.push_back(*p);
+			}
+			else
+			{
+				res.push_back(tolower(*p));
+			}
+		}
+		
+		return true;
+	}
+	
+	void transformRangeLower(char* dest, const char* begin, const char* end)
+	{
+		for (const char* i = begin; i != end; ++i)
+			*dest++ = lower[static_cast<unsigned char>(*i)];
+	}
+	
 	RE2* re;
+	bool lowercase;
+	char lower[256];
 };
 
 bool read(std::istream& in, void* data, size_t size)
@@ -187,13 +261,7 @@ template <typename L, typename R> struct Chain
 
 void searchProject(const char* file, const char* string, unsigned int options)
 {
-	RE2::Options opts;
-	opts.set_case_sensitive((options & SO_IGNORECASE) == 0);
-	
-	RE2 re(string, opts);
-	if (!re.ok()) fatal("Error parsing regular expression %s\n", string);
-	
-	RE2Regex regex(&re);
+	Regex regex(string, options);
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
