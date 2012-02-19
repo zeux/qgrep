@@ -5,4 +5,4 @@ syntax:regexp
 ^bin/.*\.(exe|pdb|ilk)$
 
 # visual studio temporary files
-^src/.*\.(opensdf|sdf|suo)$
+^src/.*\.(user|opensdf|sdf|suo)$
