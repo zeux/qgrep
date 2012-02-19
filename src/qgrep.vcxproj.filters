@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\extern\re2\re2\bitstate.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\compile.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\dfa.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\util\hash.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\lz4\lz4.c">
+      <Filter>extern\lz4</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\lz4hc\lz4hc.c">
+      <Filter>extern\lz4</Filter>
+    </ClCompile>
+    <ClCompile Include="build.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="fileutil.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="init.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\lz4hc\mmc.c">
+      <Filter>extern\lz4</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\nfa.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\onepass.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\parse.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\perl_groups.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\prog.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="project.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\re2.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\regexp.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\util\rune.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="search.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\simplify.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\util\stringpiece.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\util\stringprintf.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\util\strutil.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\tostring.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\unicode_casefold.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\unicode_groups.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="workqueue.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\extern\lz4\lz4.h">
+      <Filter>extern\lz4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\lz4hc\lz4hc.h">
+      <Filter>extern\lz4</Filter>
+    </ClInclude>
+    <ClInclude Include="common.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="fileutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="format.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\lz4hc\mmc.h">
+      <Filter>extern\lz4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\prog.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="project.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\re2.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\regexp.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\util\sparse_array.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\util\sparse_set.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\unicode_casefold.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\unicode_groups.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\variadic_function.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="workqueue.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{1745b7c2-6959-48f4-9f76-c21b78314c6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extern">
+      <UniqueIdentifier>{0e3155d3-977c-4402-9120-26feb9605f57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extern\re2">
+      <UniqueIdentifier>{4fa22d59-61ea-40ba-9281-b19a7fac727c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extern\lz4">
+      <UniqueIdentifier>{fcaac51e-59e9-4784-a8d6-d507224a14e4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

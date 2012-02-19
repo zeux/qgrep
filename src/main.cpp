@@ -1,11 +1,10 @@
-#include "qrep.hpp"
-#include "fileutil.hpp"
+#include "common.hpp"
+#include "project.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <string>
 
 namespace re2 { int RunningOnValgrind() { return 0; } }
 
@@ -24,28 +23,6 @@ void fatal(const char* message, ...)
 	vfprintf(stderr, message, l);
 	va_end(l);
 	exit(1);
-}
-
-std::string getHomePath(const char* name)
-{
-    char* home = getenv("HOME");
-	const char* drive = getenv("HOMEDRIVE");
-	const char* path = getenv("HOMEPATH");
-
-    if (!home && !drive && !path) return "";
-
-	return (home ? std::string(home) : std::string(drive) + path) + "/.qrep";
-}
-
-std::string getProjectPath(const char* name)
-{
-	std::string home = getHomePath(name);
-
-	if (home.empty()) return name;
-
-	createPath(home.c_str());
-
-	return home + "/" + name + ".cfg";
 }
 
 unsigned int parseSearchOptions(const char* opts)
@@ -93,9 +70,9 @@ int main(int argc, const char** argv)
 	else
 	{
 		fatal("Usage:\n"
-				"qrep init <project> <path>\n"
-				"qrep build <project>\n"
-				"qrep search <project> <query>\n"
+				"qgrep init <project> <path>\n"
+				"qgrep build <project>\n"
+				"qgrep search <project> <query>\n"
 				);
 	}
 

@@ -16,7 +16,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6827D800-E969-478D-BF86-2B821F084585}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>qrep</RootNamespace>
+    <RootNamespace>qgrep</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -87,6 +87,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\extern\lz4hc\lz4hc.c" />
+    <ClCompile Include="..\extern\lz4hc\mmc.c" />
     <ClCompile Include="..\extern\lz4\lz4.c" />
     <ClCompile Include="..\extern\re2\re2\bitstate.cc" />
     <ClCompile Include="..\extern\re2\re2\compile.cc" />
@@ -109,9 +111,15 @@
     <ClCompile Include="..\extern\re2\util\strutil.cc" />
     <ClCompile Include="build.cpp" />
     <ClCompile Include="fileutil.cpp" />
-    <ClCompile Include="qrep.cpp" />
+    <ClCompile Include="init.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="project.cpp" />
+    <ClCompile Include="search.cpp" />
+    <ClCompile Include="workqueue.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\extern\lz4hc\lz4hc.h" />
+    <ClInclude Include="..\extern\lz4hc\mmc.h" />
     <ClInclude Include="..\extern\lz4\lz4.h" />
     <ClInclude Include="..\extern\re2\re2\prog.h" />
     <ClInclude Include="..\extern\re2\re2\re2.h" />
@@ -122,7 +130,10 @@
     <ClInclude Include="..\extern\re2\util\sparse_array.h" />
     <ClInclude Include="..\extern\re2\util\sparse_set.h" />
     <ClInclude Include="fileutil.hpp" />
-    <ClInclude Include="qrep.hpp" />
+    <ClInclude Include="common.hpp" />
+    <ClInclude Include="project.hpp" />
+    <ClInclude Include="format.hpp" />
+    <ClInclude Include="workqueue.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
