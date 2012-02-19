@@ -17,9 +17,10 @@ public:
 	Regex(const char* string, unsigned int options): re(0), lowercase(false)
 	{
 		RE2::Options opts;
+		opts.set_literal((options & SO_LITERAL) != 0);
 		
 		std::string pattern;
-		if ((options & SO_IGNORECASE) && transformRegexLower(string, pattern))
+		if ((options & SO_IGNORECASE) && transformRegexLower(string, pattern, (options & SO_LITERAL) != 0))
 		{
 			lowercase = true;
 		}
@@ -73,7 +74,7 @@ private:
 		return RE2::FindAndConsume(&p, *re) ? p.data() : 0;
 	}
 	
-	static bool transformRegexLower(const char* pattern, std::string& res)
+	static bool transformRegexLower(const char* pattern, std::string& res, bool literal)
 	{
 		res.clear();
 		
@@ -81,7 +82,7 @@ private:
 		// properly, so bail out if we have them
 		for (const char* p = pattern; *p; ++p)
 		{
-			if (*p == '\\')
+			if (*p == '\\' && !literal)
 			{
 				if (p[1] == 'p' || p[1] == 'P') return false;
 				res.push_back(*p);
@@ -107,17 +108,6 @@ private:
 	bool lowercase;
 	char lower[256];
 };
-
-bool read(std::istream& in, void* data, size_t size)
-{
-	in.read(static_cast<char*>(data), size);
-	return in.gcount() == size;
-}
-
-template <typename T> bool read(std::istream& in, T& value)
-{
-	return read(in, &value, sizeof(T));
-}
 
 static const char* findLineStart(const char* begin, const char* pos)
 {
@@ -211,54 +201,36 @@ static void processChunk(Regex* re, const char* data, size_t fileCount, unsigned
 
 struct ProcessChunk
 {
-	ProcessChunk(Regex* re, char* data, unsigned int fileCount, unsigned int options): re(re), data(data), fileCount(fileCount), options(options)
+	ProcessChunk(Regex* re, char* compressed, char* data, const ChunkHeader& chunk, unsigned int options): re(re), compressed(compressed), data(data), chunk(chunk), options(options)
 	{
 	}
 	
 	void operator()()
 	{
-		processChunk(re, data, fileCount, options);
+		LZ4_uncompress(compressed, data, chunk.uncompressedSize);
+		free(compressed);
+
+		processChunk(re, data, chunk.fileCount, options);
 		free(data);
 	}
 	
 	Regex* re;
+	char* compressed;
 	char* data;
-	unsigned int fileCount;
+	ChunkHeader chunk;
 	unsigned int options;
 };
 
-struct DecompressChunk
+bool read(std::istream& in, void* data, size_t size)
 {
-	DecompressChunk(char* compressed, char* data, unsigned int dataSize): compressed(compressed), data(data), dataSize(dataSize)
-	{
-	}
-	
-	void operator()()
-	{
-		LZ4_uncompress(compressed, data, dataSize);
-		free(compressed);
-	}
-	
-	char* compressed;
-	char* data;
-	unsigned int dataSize;
-};
+	in.read(static_cast<char*>(data), size);
+	return in.gcount() == size;
+}
 
-template <typename L, typename R> struct Chain
+template <typename T> bool read(std::istream& in, T& value)
 {
-	Chain(const L& l, const R& r): l(l), r(r)
-	{
-	}
-	
-	void operator()()
-	{
-		l();
-		wqQueue(r);
-	}
-	
-	L l;
-	R r;
-};
+	return read(in, &value, sizeof(T));
+}
 
 void searchProject(const char* file, const char* string, unsigned int options)
 {
@@ -285,19 +257,17 @@ void searchProject(const char* file, const char* string, unsigned int options)
 		if (!compressed || !data || !read(in, compressed, chunk.compressedSize))
 			fatal("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 			
-		DecompressChunk dc(compressed, data, chunk.uncompressedSize);
-		ProcessChunk pc(&regex, data, chunk.fileCount, options);
+		ProcessChunk job(&regex, compressed, data, chunk, options);
 		
 		if (chunk.compressedSize + chunk.uncompressedSize > 16*1024*1024)
 		{
 			// Huge chunk; to preserve memory process it synchronously
-			dc();
-			pc();
+			job();
 		}
 		else
 		{
 			// Queue chunk processing
-			wqQueue(Chain<DecompressChunk, ProcessChunk>(dc, pc));
+			wqQueue(job);
 		}
 	}
 	

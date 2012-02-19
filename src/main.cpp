@@ -36,6 +36,10 @@ unsigned int parseSearchOptions(const char* opts)
 		case 'i':
 			result |= SO_IGNORECASE;
 			break;
+
+		case 'l':
+			result |= SO_LITERAL;
+			break;
 			
 		case 'V':
 			result |= SO_VISUALSTUDIO;
@@ -95,13 +99,17 @@ int main(int argc, const char** argv)
 		for (size_t i = 0; i < paths.size(); ++i)
 			buildProject(paths[i].c_str());
 	}
-	else if (argc > 3 && strncmp(argv[1], "search", strlen("search")) == 0)
+	else if (argc > 3 && strcmp(argv[1], "search") == 0)
 	{
 		std::vector<std::string> paths = getProjectPaths(argv[2]);
-		unsigned int options = parseSearchOptions(argv[1] + strlen("search"));
+
+		unsigned int options = 0;
+
+		for (int i = 3; i + 1 < argc; ++i)
+			options |= parseSearchOptions(argv[i]);
 
 		for (size_t i = 0; i < paths.size(); ++i)
-			searchProject(paths[i].c_str(), argv[3], options);
+			searchProject(paths[i].c_str(), argv[argc - 1], options);
 	}
 	else if (argc > 1 && strcmp(argv[1], "projects") == 0)
 	{
@@ -120,6 +128,10 @@ int main(int argc, const char** argv)
 				"\n"
 				"<project> is either a project name (stored in ~/.qgrep) or a project path\n"
 				"<project-list> is either * (all projects) or a comma-separated list of project names\n"
+				"<search-options> can include:\n"
+				"  i - case-insensitive search\n"
+				"  l - literal search (query is treated as a literal string)\n"
+				"  V - Visual Studio style formatting\n"
 				"<query> is a regular expression\n"
 				);
 	}
