@@ -49,26 +49,23 @@ unsigned int parseSearchOptions(const char* opts)
 	return result;
 }
 
-std::vector<std::string> getProjectNames(const char* name)
+std::vector<std::string> split(const char* str, char sep)
 {
 	std::vector<std::string> result;
 
-	if (strcmp(name, "*") == 0)
-		result = getProjects();
-	else if (strcmp(name, "?") == 0)
+	for (const char* i = str; i; )
 	{
-		result = getProjects();
-		if (!result.empty()) result.resize(1);
-	}
-	else
-	{
-		// comma-separated list
-		for (const char* i = name; i; )
-		{
-			const char* c = strchr(i, ',');
+		const char* sp = strchr(i, sep);
 
-			result.push_back(c ? std::string(i, c) : i);
-			i = c ? c + 1 : 0;
+		if (sp)
+		{
+			result.push_back(std::string(i, sp));
+			i = sp + 1;
+		}
+		else
+		{
+			result.push_back(i);
+			break;
 		}
 	}
 
@@ -77,7 +74,7 @@ std::vector<std::string> getProjectNames(const char* name)
 
 std::vector<std::string> getProjectPaths(const char* name)
 {
-	std::vector<std::string> result = getProjectNames(name);
+	std::vector<std::string> result = strcmp(name, "*") == 0 ? getProjects() : split(name, ',');
 
 	for (size_t i = 0; i < result.size(); ++i)
 		result[i] = getProjectPath(result[i].c_str());
@@ -122,7 +119,7 @@ int main(int argc, const char** argv)
 				"qgrep projects\n"
 				"\n"
 				"<project> is either a project name (stored in ~/.qgrep) or a project path\n"
-				"<project-list> is either * (all projects), ? (first project) or a comma-separated list of project names\n"
+				"<project-list> is either * (all projects) or a comma-separated list of project names\n"
 				"<query> is a regular expression\n"
 				);
 	}
