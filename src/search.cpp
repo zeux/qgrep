@@ -239,7 +239,10 @@ void searchProject(const char* file, const char* string, unsigned int options)
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
 	if (!in)
-		fatal("Error reading data file %s\n", dataPath.c_str());
+	{
+		error("Error reading data file %s\n", dataPath.c_str());
+		return;
+	}
 	
 	FileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kFileHeaderMagic, strlen(kFileHeaderMagic)) != 0)

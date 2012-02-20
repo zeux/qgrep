@@ -11,7 +11,7 @@ enum SearchOptions
 	SO_VISUALSTUDIO = 1 << 2
 };
 	
-void initProject(const char* file, const char* path);
+void initProject(const char* name, const char* file, const char* path);
 void buildProject(const char* file);
 void searchProject(const char* file, const char* string, unsigned int options);
 

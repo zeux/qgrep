@@ -90,7 +90,7 @@ int main(int argc, const char** argv)
 {
 	if (argc > 3 && strcmp(argv[1], "init") == 0)
 	{
-		initProject(getProjectPath(argv[2]).c_str(), argv[3]);
+		initProject(argv[2], getProjectPath(argv[2]).c_str(), argv[3]);
 	}
 	else if (argc > 2 && strcmp(argv[1], "build") == 0)
 	{
