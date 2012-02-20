@@ -28,6 +28,8 @@ namespace re2 {
 #elif defined(HAVE_PTHREAD)
 # include <pthread.h>
   typedef pthread_mutex_t MutexType;
+#elif defined(_WIN32) && _WIN32_WINNT >= 0x0600
+  typedef SRWLOCK MutexType;
 #elif defined(_WIN32)
   typedef CRITICAL_SECTION MutexType;
 #else
@@ -115,6 +117,16 @@ bool Mutex::TryLock()      { return pthread_mutex_trylock(&mutex_) == 0; }
 void Mutex::ReaderLock()   { Lock(); }      // we don't have read-write locks
 void Mutex::ReaderUnlock() { Unlock(); }
 #undef SAFE_PTHREAD
+
+#elif defined(_WIN32) && _WIN32_WINNT >= 0x0600
+
+Mutex::Mutex()             { InitializeSRWLock(&mutex_); }
+Mutex::~Mutex()            { }
+void Mutex::Lock()         { AcquireSRWLockExclusive(&mutex_); }
+void Mutex::Unlock()       { ReleaseSRWLockExclusive(&mutex_); }
+bool Mutex::TryLock()      { return TryAcquireSRWLockExclusive(&mutex_) != 0; }
+void Mutex::ReaderLock()   { AcquireSRWLockShared(&mutex_); }
+void Mutex::ReaderUnlock() { ReleaseSRWLockShared(&mutex_); }
 
 #elif defined(_WIN32)
 
