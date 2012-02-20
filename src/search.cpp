@@ -11,6 +11,9 @@
 #include "re2/re2.h"
 #include "lz4/lz4.h"
 
+const size_t kMaxChunksInFlight = 16;
+const size_t kMaxChunkSizeAsync = 32 * 1024*1024;
+
 class Regex
 {
 public:
@@ -46,34 +49,35 @@ public:
 	{
 		delete re;
 	}
-	
-	const char* search(const char* begin, const char* end)
+
+	const char* prepareRange(const char* data, size_t size)
 	{
-		if (lowercase && begin != end)
+		if (lowercase)
 		{
-			size_t size = end - begin;
 			char* temp = (char*)malloc(size);
-			
-			transformRangeLower(temp, begin, end);
-			
-			const char* result = searchRaw(temp, temp + size);
-			
-			free(temp);
-			
-			return result ? (result - temp) + begin : 0;
+			transformRangeLower(temp, data, data + size);
+			return temp;
 		}
-		else
-			return searchRaw(begin, end);
+
+		return data;
+	}
+
+	void finalizeRange(const char* data)
+	{
+		if (lowercase)
+		{
+			free(const_cast<char*>(data));
+		}
 	}
 	
-private:
-	const char* searchRaw(const char* begin, const char* end)
+	const char* search(const char* begin, const char* end)
 	{
 		re2::StringPiece p(begin, end - begin);
 		
 		return RE2::FindAndConsume(&p, *re) ? p.data() : 0;
 	}
 	
+private:
 	static bool transformRegexLower(const char* pattern, std::string& res, bool literal)
 	{
 		res.clear();
@@ -145,33 +149,37 @@ struct BackSlashTransformer
 	}
 };
 
-static void processMatch(const char* pathBegin, const char* pathEnd, unsigned int line, const char* begin, const char* end, unsigned int options)
+static void processMatch(const char* path, size_t pathLength, unsigned int line, const char* match, size_t matchLength, unsigned int options)
 {
-	if (begin < end && end[-1] == '\r') --end;
+	if (matchLength > 0 && match[matchLength - 1] == '\r') matchLength--;
 	
 	const char* lineBefore = ":";
 	const char* lineAfter = ":";
 	
 	if (options & SO_VISUALSTUDIO)
 	{
-		char* pathBuffer = static_cast<char*>(alloca(pathEnd - pathBegin));
+		char* buffer = static_cast<char*>(alloca(pathLength));
 		
-		pathEnd = std::transform(pathBegin, pathEnd, pathBuffer, BackSlashTransformer());
-		pathBegin = pathBuffer;
+		std::transform(path, path + pathLength, buffer, BackSlashTransformer());
+		path = buffer;
 		
 		lineBefore = "(";
 		lineAfter = "):";
 	}
 	
-	printf("%.*s%s%d%s %.*s\n", pathEnd - pathBegin, pathBegin, lineBefore, line, lineAfter, end - begin, begin);
+	printf("%.*s%s%d%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, lineAfter, static_cast<unsigned>(matchLength), match);
 }
 
-static void processFile(Regex* re, const char* pathBegin, const char* pathEnd, const char* begin, const char* end, unsigned int options)
+static void processFile(Regex* re, const char* path, size_t pathLength, const char* data, size_t size, unsigned int options)
 {
+	const char* rdata = re->prepareRange(data, size);
+
+	const char* begin = rdata;
+	const char* end = begin + size;
+
 	unsigned int line = 0;
-	const char* match;
-	
-	while ((match = re->search(begin, end)) != 0)
+
+	while (const char* match = re->search(begin, end))
 	{
 		// update line counter
 		line += 1 + countLines(begin, match);
@@ -179,12 +187,14 @@ static void processFile(Regex* re, const char* pathBegin, const char* pathEnd, c
 		// print match
 		const char* lbeg = findLineStart(begin, match);
 		const char* lend = findLineEnd(match, end);
-		processMatch(pathBegin, pathEnd, line, lbeg, lend, options);
+		processMatch(path, pathLength, line, (lbeg - rdata) + data, lend - lbeg, options);
 		
 		// move to next line
-		if (lend == end) return;
+		if (lend == end) break;
 		begin = lend + 1;
 	}
+
+	re->finalizeRange(rdata);
 }
 
 static void processChunk(Regex* re, const char* data, size_t fileCount, unsigned int options)
@@ -195,7 +205,7 @@ static void processChunk(Regex* re, const char* data, size_t fileCount, unsigned
 	{
 		const ChunkFileHeader& f = files[i];
 		
-		processFile(re, data + f.nameOffset, data + f.nameOffset + f.nameLength, data + f.dataOffset, data + f.dataOffset + f.dataSize, options);
+		processFile(re, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, options);
 	}
 }
 
@@ -246,11 +256,14 @@ void searchProject(const char* file, const char* string, unsigned int options)
 	
 	FileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kFileHeaderMagic, strlen(kFileHeaderMagic)) != 0)
-		fatal("Error reading data file %s: malformed header\n", dataPath.c_str());
+	{
+		error("Error reading data file %s: malformed header\n", dataPath.c_str());
+		return;
+	}
 		
 	ChunkHeader chunk;
 	
-	wqBegin(16);
+	wqBegin(kMaxChunksInFlight);
 	
 	while (read(in, chunk))
 	{
@@ -258,11 +271,16 @@ void searchProject(const char* file, const char* string, unsigned int options)
 		char* data = static_cast<char*>(malloc(chunk.uncompressedSize));
 		
 		if (!compressed || !data || !read(in, compressed, chunk.compressedSize))
-			fatal("Error reading data file %s: malformed chunk\n", dataPath.c_str());
+		{
+			free(compressed);
+			free(data);
+			error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
+			return;
+		}
 			
 		ProcessChunk job(&regex, compressed, data, chunk, options);
 		
-		if (chunk.compressedSize + chunk.uncompressedSize > 16*1024*1024)
+		if (chunk.compressedSize + chunk.uncompressedSize > kMaxChunkSizeAsync)
 		{
 			// Huge chunk; to preserve memory process it synchronously
 			job();
