@@ -54,8 +54,10 @@ public:
 
 		std::ifstream in(path, std::ios::in | std::ios::binary);
 		if (!in) return false;
-	
+
 		File file = {path};
+
+		if (!getFileAttributes(path, &file.timeStamp, &file.fileSize)) return false;
 
 		while (!in.eof())
 		{
@@ -86,6 +88,9 @@ private:
 	{
 		std::string name;
 		std::vector<char> contents;
+
+		uint64_t fileSize;
+		uint64_t timeStamp;
 	};
 
 	struct Chunk
@@ -174,6 +179,9 @@ private:
 			h.nameLength = f.name.size();
 			h.dataOffset = dataOffset;
 			h.dataSize = f.contents.size();
+
+			h.fileSize = f.fileSize;
+			h.timeStamp = f.timeStamp;
 
 			nameOffset += f.name.size();
 			dataOffset += f.contents.size();
@@ -334,14 +342,6 @@ static void traverseFileAppend(void* context, const char* path)
 		c.files.push_back(path);
 }
 
-struct ReverseStringComparator
-{
-	bool operator()(const std::string& lhs, const std::string& rhs) const
-	{
-		return std::lexicographical_compare(lhs.rbegin(), lhs.rend(), rhs.rbegin(), rhs.rend());
-	}
-};
-
 void buildProject(const char* file)
 {
 	std::string path;
@@ -373,7 +373,7 @@ void buildProject(const char* file)
 
 		// Groups files with same names together, groups files with same extensions together...
 		// Results in ~20% compression ratio improvement
-		std::sort(bc.files.begin(), bc.files.end(), ReverseStringComparator());
+		std::sort(bc.files.begin(), bc.files.end());
 
 		for (size_t i = 0; i < bc.files.size(); ++i)
 			builderAppend(bc, bc.files[i].c_str());

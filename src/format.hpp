@@ -23,6 +23,9 @@ struct ChunkFileHeader
 	uint32_t nameLength;
 	uint32_t dataOffset;
 	uint32_t dataSize;
+
+	uint64_t fileSize;
+	uint64_t timeStamp;
 };
 
 #endif

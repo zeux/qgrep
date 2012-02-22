@@ -78,3 +78,22 @@ std::string replaceExtension(const char* path, const char* ext)
 
 	return dot ? std::string(path, dot) + ext : std::string(path) + ext;
 }
+
+static uint64_t combine(uint32_t hi, uint32_t lo)
+{
+	return (static_cast<uint64_t>(hi) << 32) | lo;
+}
+
+bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)
+{
+	WIN32_FILE_ATTRIBUTE_DATA data;
+
+	if (GetFileAttributesExA(path, GetFileExInfoStandard, &data))
+	{
+		*mtime = combine(data.ftLastWriteTime.dwHighDateTime, data.ftLastWriteTime.dwLowDateTime);
+		*size = combine(data.nFileSizeHigh, data.nFileSizeLow);
+		return true;
+	}
+
+	return false;
+}
