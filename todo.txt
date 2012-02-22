@@ -1,0 +1,9 @@
+1. incremental update (compare mtime/size, add/remove files, don't recompress chunks unless necessary)
+2. path-sorted output (output gather + memory-efficient writer (i.e. flush results to stdout asap))
+3. unicode conversion for input files
+4. column numbers in output (optional)
+5. vim script
+6. stale file support
+7. incremental update based on stale file list
+8. faster case-insensitive literal matching (one pass read instead of read/lower/write/read)
+9. linux support
