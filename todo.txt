@@ -1,3 +1,4 @@
+features:
 1. incremental update (compare mtime/size, add/remove files, don't recompress chunks unless necessary)
 2. path-sorted output (output gather + memory-efficient writer (i.e. flush results to stdout asap))
 3. unicode conversion for input files
@@ -8,3 +9,6 @@
 8. faster case-insensitive literal matching (one pass read instead of read/lower/write/read)
 9. recognize (?i) at the beginning of regular expression as case-insensitive marker (check that it's not toggled off later)
 10. linux support
+
+bugs:
+1. resolve lz4 decompression crash
