@@ -25,15 +25,6 @@
  * # endif
  **/
 
-#ifndef NTDDI_VERSION
-#define NTDDI_VERSION 0x00000400
-#endif
-
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT ((NTDDI_VERSION) << 16)
-#endif
-
-#define PSAPI_VERSION 1 // For backwards compatibility with older versions of PSAPI.
 #define NOGDI    // GDI defines the ERROR macro which collides with the Google logging mechanism.
 #define NOMINMAX
 

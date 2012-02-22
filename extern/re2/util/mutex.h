@@ -124,7 +124,7 @@ Mutex::Mutex()             { InitializeSRWLock(&mutex_); }
 Mutex::~Mutex()            { }
 void Mutex::Lock()         { AcquireSRWLockExclusive(&mutex_); }
 void Mutex::Unlock()       { ReleaseSRWLockExclusive(&mutex_); }
-bool Mutex::TryLock()      { return TryAcquireSRWLockExclusive(&mutex_) != 0; }
+bool Mutex::TryLock()      { __debugbreak(); return false; }
 void Mutex::ReaderLock()   { AcquireSRWLockShared(&mutex_); }
 void Mutex::ReaderUnlock() { ReleaseSRWLockShared(&mutex_); }
 
