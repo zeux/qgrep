@@ -21,6 +21,7 @@
 	- LZ4 homepage : http://fastcompression.blogspot.com/p/lz4.html
 	- LZ4-HC source repository : http://code.google.com/p/lz4hc/
 */
+#pragma once
 
 
 #if defined (__cplusplus)
@@ -32,7 +33,7 @@ extern "C" {
 // Simple Functions
 //****************************
 
-int LZ4_compressHC (char* source, char* dest, int isize);
+int LZ4_compressHC (const char* source, char* dest, int isize);
 
 /*
 LZ4_compressHC :

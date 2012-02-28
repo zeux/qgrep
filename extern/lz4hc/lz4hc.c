@@ -23,31 +23,51 @@
 	- LZ4-HC source repository : http://code.google.com/p/lz4hc/
 */
 
+
+
 //**************************************
-// Compilation Directives
+// CPU Feature Detection
 //**************************************
-#if __STDC_VERSION__ >= 199901L
+// 32 or 64 bits ?
+#if (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64) || defined(__ppc64__) || defined(_WIN64) || defined(__LP64__) || defined(_LP64) )   // Detects 64 bits mode
+#define LZ4_ARCH64 1
+#else
+#define LZ4_ARCH64 0
+#endif
+
+// Little Endian or Big Endian ? 
+#if (defined(__BIG_ENDIAN__) || defined(__BIG_ENDIAN) || defined(_BIG_ENDIAN) || defined(_ARCH_PPC) || defined(__PPC__) || defined(__PPC) || defined(PPC) || defined(__powerpc__) || defined(__powerpc) || defined(powerpc) || ((defined(__BYTE_ORDER__)&&(__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))) )
+#define LZ4_BIG_ENDIAN 1
+#else
+// Little Endian assumed. PDP Endian and other very rare endian format are unsupported.
+#endif
+
+// Unaligned memory access is automatically enabled for "common" CPU, such as x86.
+// For others CPU, the compiler will be more cautious, and insert extra code to ensure aligned access is respected
+// If you know your target CPU supports unaligned memory access, you may want to force this option manually to improve performance
+#if defined(__ARM_FEATURE_UNALIGNED)
+#define LZ4_FORCE_UNALIGNED_ACCESS 1
+#endif
+
+
+//**************************************
+// Compiler Options
+//**************************************
+#if __STDC_VERSION__ >= 199901L    // C99
   /* "restrict" is a known keyword */
 #else
 #define restrict  // Disable restrict
 #endif
 
 #ifdef _MSC_VER
-#define inline __forceinline
+#define inline __forceinline    // Visual is not C99, but supports some kind of inline
 #endif
 
-#ifdef __GNUC__
-#define _PACKED __attribute__ ((packed))
+#ifdef _MSC_VER  // Visual Studio
+#define bswap16(x) _byteswap_ushort(x)
 #else
-#define _PACKED
+#define bswap16(x)  ((unsigned short int) ((((x) >> 8) & 0xffu) | (((x) & 0xffu) << 8)))
 #endif
-
-#if (__x86_64__ || __ppc64__ || _WIN64 || __LP64__)   // Detect 64 bits mode
-#define ARCH64 1
-#else
-#define ARCH64 0
-#endif
-
 
 
 //**************************************
@@ -58,11 +78,10 @@
 #include "mmc.h"
 
 
-
 //**************************************
 // Basic Types
 //**************************************
-#if defined(_MSC_VER) 
+#if defined(_MSC_VER)    // Visual Studio does not support 'stdint' natively
 #define BYTE	unsigned __int8
 #define U16		unsigned __int16
 #define U32		unsigned __int32
@@ -76,6 +95,22 @@
 #define S32		int32_t
 #define U64		uint64_t
 #endif
+
+#ifndef LZ4_FORCE_UNALIGNED_ACCESS
+#pragma pack(push, 1) 
+#endif
+
+typedef struct _U16_S { U16 v; } U16_S;
+typedef struct _U32_S { U32 v; } U32_S;
+typedef struct _U64_S { U64 v; } U64_S;
+
+#ifndef LZ4_FORCE_UNALIGNED_ACCESS
+#pragma pack(pop) 
+#endif
+
+#define A64(x) (((U64_S *)(x))->v)
+#define A32(x) (((U32_S *)(x))->v)
+#define A16(x) (((U16_S *)(x))->v)
 
 
 //**************************************
@@ -93,31 +128,6 @@
 
 
 //**************************************
-// Local structures
-//**************************************
-
-typedef struct _U64_S
-{
-	U64 v;
-} _PACKED U64_S;
-
-typedef struct _U32_S
-{
-	U32 v;
-} _PACKED U32_S;
-
-typedef struct _U16_S
-{
-	U16 v;
-} _PACKED U16_S;
-
-#define A64(x) (((U64_S *)(x))->v)
-#define A32(x) (((U32_S *)(x))->v)
-#define A16(x) (((U16_S *)(x))->v)
-
-
-
-//**************************************
 // Architecture-specific macros
 //**************************************
 #if ARCH64	// 64-bit
@@ -130,14 +140,13 @@ typedef struct _U16_S
 #define LZ4_COPYPACKET(s,d)		LZ4_COPYSTEP(s,d); LZ4_COPYSTEP(s,d);
 #endif
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#if defined(LZ4_BIG_ENDIAN)
+#define LZ4_READ_LITTLEENDIAN_16(d,s,p) { U16 v = A16(p); v = bswap16(v); d = (s) - v; }
+#define LZ4_WRITE_LITTLEENDIAN_16(p,i) { U16 v = (U16)(i); v = bswap16(v); A16(p) = v; p+=2; }
+#else		// Little Endian
 #define LZ4_READ_LITTLEENDIAN_16(d,s,p) { d = (s) - A16(p); }
 #define LZ4_WRITE_LITTLEENDIAN_16(p,v) { A16(p) = v; p+=2; }
-#else		// Big Endian
-#define LZ4_READ_LITTLEENDIAN_16(d,s,p) { int delta = p[0]; delta += p[1] << 8; d = (s) - delta; }
-#define LZ4_WRITE_LITTLEENDIAN_16(p,v) { int delta = v; *p++ = delta; *p++ = delta>>8; }
 #endif
-
 
 
 //**************************************
@@ -151,9 +160,8 @@ typedef struct _U16_S
 //****************************
 // Compression CODE
 //****************************
-
 int LZ4_compressHCCtx(void* ctx,
-				 char* source, 
+				 const char* source, 
 				 char* dest,
 				 int isize)
 {	
@@ -188,7 +196,7 @@ int LZ4_compressHCCtx(void* ctx,
 		do
 		{
 			BYTE* rtmp;
-			int mltmp = MMC_InsertAndFindBestMatch(ctx, (char*)ip+1, iend-ip-1, (char**)&rtmp);
+			int mltmp = MMC_InsertAndFindBestMatch(ctx, (char*)ip+1, matchlimit-ip-1, (char**)&rtmp);
 			if (mltmp > ml) 
 			{
 				ip++; 
@@ -196,7 +204,7 @@ int LZ4_compressHCCtx(void* ctx,
 				ref = rtmp;
 				continue;
 			}
-			mltmp = MMC_InsertAndFindBestMatch(ctx, (char*)ip+2, iend-ip-2, (char**)&rtmp);
+			mltmp = MMC_InsertAndFindBestMatch(ctx, (char*)ip+2, matchlimit-ip-2, (char**)&rtmp);
 			if (mltmp > ml+1) 
 			{
 				ip+=2; 
@@ -268,11 +276,11 @@ _matchEncode:
 }
 
 
-int LZ4_compressHC(char* source, 
+int LZ4_compressHC(const char* source, 
 				 char* dest,
 				 int isize)
 {
-	void* ctx = MMC_Create (source);
+	void* ctx = MMC_Create((char*)source);
 	int result = LZ4_compressHCCtx(ctx, source, dest, isize);
 	MMC_Free (&ctx);
 
