@@ -88,6 +88,9 @@
     <ClCompile Include="workqueue.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="regex.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -139,6 +142,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="mutex.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="regex.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
