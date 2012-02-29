@@ -10,6 +10,7 @@
 #include <string>
 #include <algorithm>
 
+#include "lz4/lz4.h"
 #include "lz4hc/lz4hc.h"
 #include "re2/re2.h"
 
@@ -109,14 +110,9 @@ private:
 
 	static std::vector<char> compressData(const std::vector<char>& data)
 	{
-		// LZ4 worst-case size calculation :-/
-		std::vector<char> cdata(data.size() + data.size() / 100 + 16);
+		std::vector<char> cdata(LZ4_compressBound(data.size()));
 		
-		// Pad input data because the compressor can read past the array end sometimes
-		std::vector<char> paddedData(data.size() + 128);
-		std::copy(data.begin(), data.end(), paddedData.begin());
-
-		int csize = LZ4_compressHC(const_cast<char*>(&paddedData[0]), &cdata[0], data.size());
+		int csize = LZ4_compressHC(const_cast<char*>(&data[0]), &cdata[0], data.size());
 		assert(csize <= cdata.size());
 
 		cdata.resize(csize);
