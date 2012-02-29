@@ -9,6 +9,7 @@ features:
 8. faster case-insensitive literal matching (one pass read instead of read/lower/write/read)
 9. recognize (?i) at the beginning of regular expression as case-insensitive marker (check that it's not toggled off later)
 10. linux support
+11. search with filename filtering
 
 bugs:
 1. resolve lz4 decompression crash
