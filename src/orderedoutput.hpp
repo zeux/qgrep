@@ -15,6 +15,9 @@ public:
 		std::string result;
 	};
 
+	OrderedOutput();
+	~OrderedOutput();
+
     Chunk* begin(unsigned int id);
     void write(Chunk* chunk, const char* format, ...);
     void end(Chunk* chunk);

@@ -16,6 +16,15 @@ static void strprintf(std::string& result, const char* format, va_list args)
 	}
 }
 
+OrderedOutput::OrderedOutput(): current(0)
+{
+}
+
+OrderedOutput::~OrderedOutput()
+{
+	assert(chunks.empty());
+}
+
 OrderedOutput::Chunk* OrderedOutput::begin(unsigned int id)
 {
 	MutexLock lock(mutex);
