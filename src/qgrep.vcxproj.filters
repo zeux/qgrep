@@ -144,9 +144,6 @@
     <ClInclude Include="workqueue.hpp">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="mutex.hpp">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="regex.hpp">
       <Filter>src</Filter>
     </ClInclude>
