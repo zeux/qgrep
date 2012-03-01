@@ -1,7 +1,8 @@
 #include "orderedoutput.hpp"
 
-#include <assert.h>
-#include <stdarg.h>
+#include <functional>
+#include <cassert>
+#include <cstdarg>
 
 static void strprintf(std::string& result, const char* format, va_list args)
 {
@@ -25,7 +26,7 @@ static void writeThreadFun(BlockingQueue<OrderedOutput::Chunk*>& queue)
 	}
 }
 
-OrderedOutput::OrderedOutput(size_t memoryLimit): writeQueue(memoryLimit), writeThread(writeThreadFun, std::ref(writeQueue)), current(0)
+OrderedOutput::OrderedOutput(size_t memoryLimit): writeQueue(memoryLimit), writeThread(std::bind(writeThreadFun, std::ref(writeQueue))), current(0)
 {
 }
 

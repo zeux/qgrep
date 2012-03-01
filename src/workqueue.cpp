@@ -1,15 +1,9 @@
 #include "workqueue.hpp"
 
+#include <functional>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
-static void workerThreadFun(BlockingQueue<std::function<void()>>& queue)
-{
-	while (std::function<void()> fun = queue.pop())
-	{
-		fun();
-	}
-}
 
 unsigned int WorkQueue::getIdealWorkerCount()
 {
@@ -19,10 +13,18 @@ unsigned int WorkQueue::getIdealWorkerCount()
 	return info.dwNumberOfProcessors;
 }
 
+static void workerThreadFun(BlockingQueue<std::function<void()>>& queue)
+{
+	while (std::function<void()> fun = queue.pop())
+	{
+		fun();
+	}
+}
+
 WorkQueue::WorkQueue(size_t workerCount, size_t memoryLimit): queue(memoryLimit)
 {
 	for (size_t i = 0; i < workerCount; ++i)
-		workers.emplace_back(workerThreadFun, std::ref(queue));
+		workers.emplace_back(std::bind(workerThreadFun, std::ref(queue)));
 }
 
 WorkQueue::~WorkQueue()
