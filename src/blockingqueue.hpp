@@ -30,11 +30,8 @@ public:
 		items.push(item);
 		totalSize += size;
 
-		if (wasEmpty)
-		{
-			lock.unlock();
-			itemsNotEmpty.notify_one();
-		}
+		lock.unlock();
+		itemsNotEmpty.notify_one();
 	}
 
 	T pop()
