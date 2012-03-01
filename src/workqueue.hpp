@@ -1,35 +1,25 @@
 #ifndef WORKQUEUE_HPP
 #define WORKQUEUE_HPP
 
-void wqBegin(unsigned int maxQueueSize);
-void wqEnd();
+#include <vector>
+#include <thread>
+#include <functional>
 
-struct wqWorkItem
+#include "blockingqueue.hpp"
+
+struct WorkQueue
 {
-	virtual ~wqWorkItem() {}
-	virtual void run() = 0;
+public:
+	static unsigned int getIdealWorkerCount();
+
+	WorkQueue(size_t workerCount, size_t memoryLimit);
+	~WorkQueue();
+
+	void push(std::function<void()> fun, size_t size = 0);
+
+private:
+	BlockingQueue<std::function<void()>> queue;
+	std::vector<std::thread> workers;
 };
-
-void wqQueue(wqWorkItem* item);
-
-template <typename T>
-struct wqWorkItemT: wqWorkItem
-{
-	T pred;
-	
-	wqWorkItemT(const T& pred): pred(pred)
-	{
-	}
-	
-	virtual void run()
-	{
-		pred();
-	}
-};
-
-template <typename T> void wqQueue(const T& pred)
-{
-    wqQueue(static_cast<wqWorkItem*>(new wqWorkItemT<T>(pred)));
-}
 
 #endif

@@ -11,7 +11,7 @@
 
 #include "lz4/lz4.h"
 
-const size_t kMaxChunksInFlight = 16;
+const size_t kMaxQueuedChunkData = 256 * 1024*1024;
 const size_t kMaxChunkSizeAsync = 32 * 1024*1024;
 const size_t kMaxBufferedOutput = 32 * 1024*1024;
 
@@ -125,30 +125,6 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 	output->output.end(chunk);
 }
 
-struct ProcessChunk
-{
-	ProcessChunk(Regex* re, SearchOutput* output, char* compressed, char* data, const ChunkHeader& chunk, unsigned int chunkIndex):
-		re(re), output(output), compressed(compressed), data(data), chunk(chunk), chunkIndex(chunkIndex)
-	{
-	}
-	
-	void operator()()
-	{
-		LZ4_uncompress(compressed, data, chunk.uncompressedSize);
-		free(compressed);
-
-		processChunk(re, output, chunkIndex, data, chunk.fileCount);
-		free(data);
-	}
-	
-	Regex* re;
-	SearchOutput* output;
-	char* compressed;
-	char* data;
-	ChunkHeader chunk;
-	unsigned int chunkIndex;
-};
-
 bool read(std::istream& in, void* data, size_t size)
 {
 	in.read(static_cast<char*>(data), size);
@@ -183,7 +159,7 @@ void searchProject(const char* file, const char* string, unsigned int options)
 	ChunkHeader chunk;
 	unsigned int chunkIndex = 0;
 	
-	wqBegin(kMaxChunksInFlight);
+	WorkQueue queue(WorkQueue::getIdealWorkerCount(), kMaxQueuedChunkData);
 	
 	while (read(in, chunk))
 	{
@@ -198,9 +174,17 @@ void searchProject(const char* file, const char* string, unsigned int options)
 			return;
 		}
 			
-		ProcessChunk job(regex.get(), &output, compressed, data, chunk, chunkIndex++);
-		
-		if (chunk.compressedSize + chunk.uncompressedSize > kMaxChunkSizeAsync)
+		auto job = [=, &regex, &output]() {
+			LZ4_uncompress(compressed, data, chunk.uncompressedSize);
+			free(compressed);
+
+			processChunk(regex.get(), &output, chunkIndex, data, chunk.fileCount);
+			free(data);
+		};
+
+        size_t jobSize = chunk.compressedSize + chunk.uncompressedSize;
+
+		if (jobSize > kMaxChunkSizeAsync)
 		{
 			// Huge chunk; to preserve memory process it synchronously
 			job();
@@ -208,9 +192,9 @@ void searchProject(const char* file, const char* string, unsigned int options)
 		else
 		{
 			// Queue chunk processing
-			wqQueue(job);
+			queue.push(job, jobSize);
 		}
+
+		chunkIndex++;
 	}
-	
-	wqEnd();
 }
