@@ -11,3 +11,4 @@ features:
 10. linux support
 11. search with filename filtering
 12. project name support improvement: hierarchical project names (init should create folders), project path instead of name should work
+13. incremental update based on ntfs journal / inotify
