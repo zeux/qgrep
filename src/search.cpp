@@ -13,10 +13,11 @@
 
 const size_t kMaxChunksInFlight = 16;
 const size_t kMaxChunkSizeAsync = 32 * 1024*1024;
+const size_t kMaxBufferedOutput = 32 * 1024*1024;
 
 struct SearchOutput
 {
-	SearchOutput(unsigned int options): options(options)
+	SearchOutput(unsigned int options): options(options), output(kMaxBufferedOutput)
 	{
 	}
 

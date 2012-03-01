@@ -16,31 +16,39 @@ static void strprintf(std::string& result, const char* format, va_list args)
 	}
 }
 
-OrderedOutput::OrderedOutput(): current(0)
+static void writeThreadFun(BlockingQueue<OrderedOutput::Chunk*>& queue)
+{
+	while (OrderedOutput::Chunk* chunk = queue.pop())
+	{
+		printf("%s", chunk->result.c_str());
+		delete chunk;
+	}
+}
+
+OrderedOutput::OrderedOutput(size_t memoryLimit): writeQueue(memoryLimit), writeThread(writeThreadFun, std::ref(writeQueue)), current(0)
 {
 }
 
 OrderedOutput::~OrderedOutput()
 {
+	writeQueue.push(0);
+	writeThread.join();
+
 	assert(chunks.empty());
 }
 
 OrderedOutput::Chunk* OrderedOutput::begin(unsigned int id)
 {
-	MutexLock lock(mutex);
-
 	assert(id >= current);
 
-	Chunk& chunk = chunks[id];
-	chunk.ready = false;
+	Chunk* chunk = new Chunk;
+	chunk->id = id;
 
-	return &chunk;
+	return chunk;
 }
 
 void OrderedOutput::write(Chunk* chunk, const char* format, ...)
 {
-	assert(!chunk->ready);
-
 	va_list args;
 	va_start(args, format);
 	strprintf(chunk->result, format, args);
@@ -52,19 +60,24 @@ void OrderedOutput::write(Chunk* chunk, const char* format, ...)
 
 void OrderedOutput::end(Chunk* chunk)
 {
-	chunk->ready = true;
+	std::lock_guard<std::mutex> lock(mutex);
 
-	MutexLock lock(mutex);
+	assert(chunks[chunk->id] == 0);
+	chunks[chunk->id] = chunk;
 
-	while (!chunks.empty() && chunks.begin()->first == current && chunks.begin()->second.ready)
+	while (!chunks.empty() && chunks.begin()->first == current)
 	{
-		Chunk& chunk = chunks.begin()->second;
-
-		// $$$ this blocks the caller - we should send the chunks to the writer thread instead
-		if (!chunk.result.empty())
-			printf("%s", chunk.result.c_str());
-
+		Chunk* chunk = chunks.begin()->second;
 		chunks.erase(chunks.begin());
 		current++;
+
+		if (chunk->result.empty())
+		{
+			delete chunk;
+		}
+		else
+		{
+			writeQueue.push(chunk, chunk->result.size());
+		}
 	}
 }

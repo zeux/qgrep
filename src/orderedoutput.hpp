@@ -3,19 +3,21 @@
 
 #include <string>
 #include <map>
+#include <mutex>
+#include <thread>
 
-#include "mutex.hpp"
+#include "blockingqueue.hpp"
 
 class OrderedOutput
 {
 public:
 	struct Chunk
 	{
-		bool ready;
+		unsigned int id;
 		std::string result;
 	};
 
-	OrderedOutput();
+	explicit OrderedOutput(size_t memoryLimit);
 	~OrderedOutput();
 
     Chunk* begin(unsigned int id);
@@ -23,9 +25,12 @@ public:
     void end(Chunk* chunk);
 
 private:
-	Mutex mutex;
+	BlockingQueue<Chunk*> writeQueue;
+	std::thread writeThread;
+
+	std::mutex mutex;
 	unsigned int current;
-	std::map<unsigned int, Chunk> chunks;
+	std::map<unsigned int, Chunk*> chunks;
 };
 
 #endif
