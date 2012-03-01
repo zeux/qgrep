@@ -3,21 +3,26 @@
 #include "format.hpp"
 #include "fileutil.hpp"
 #include "workqueue.hpp"
-#include "mutex.hpp"
 #include "regex.hpp"
+#include "orderedoutput.hpp"
 
 #include <fstream>
-#include <vector>
-#include <map>
 #include <algorithm>
-
-#include <assert.h>
-#include <stdarg.h>
 
 #include "lz4/lz4.h"
 
 const size_t kMaxChunksInFlight = 16;
 const size_t kMaxChunkSizeAsync = 32 * 1024*1024;
+
+struct SearchOutput
+{
+	SearchOutput(unsigned int options): options(options)
+	{
+	}
+
+	unsigned int options;
+	OrderedOutput output;
+};
 
 struct BackSlashTransformer
 {
@@ -27,92 +32,26 @@ struct BackSlashTransformer
 	}
 };
 
-static void strprintf(std::string& result, const char* format, ...)
+static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, unsigned int line, const char* match, size_t matchLength)
 {
-	va_list l;
-	va_start(l, format);
-
-	int count = _vsnprintf_c(0, 0, format, l);
-	assert(count >= 0);
-
-	if (count > 0)
+	if (matchLength > 0 && match[matchLength - 1] == '\r') matchLength--;
+	
+	const char* lineBefore = ":";
+	const char* lineAfter = ":";
+	
+	if (output->options & SO_VISUALSTUDIO)
 	{
-		size_t offset = result.size();
-		result.resize(offset + count);
-		_vsnprintf(&result[offset], count, format, l);
+		char* buffer = static_cast<char*>(alloca(pathLength));
+		
+		std::transform(path, path + pathLength, buffer, BackSlashTransformer());
+		path = buffer;
+		
+		lineBefore = "(";
+		lineAfter = "):";
 	}
-
-	va_end(l);
+	
+	output->output.write(chunk, "%.*s%s%d%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, lineAfter, static_cast<unsigned>(matchLength), match);
 }
-
-class SearchOutput
-{
-public:
-	struct Chunk
-	{
-		bool ready;
-		std::string result;
-	};
-
-	SearchOutput(unsigned int options): options(options), current(0)
-	{
-	}
-
-	Chunk* begin(unsigned int id)
-	{
-		MutexLock lock(mutex);
-
-		Chunk& chunk = chunks[id];
-		
-		chunk.ready = false;
-
-		return &chunk;
-	}
-
-	void match(Chunk* chunk, const char* path, size_t pathLength, unsigned int line, const char* match, size_t matchLength)
-	{
-		assert(!chunk->ready);
-		if (matchLength > 0 && match[matchLength - 1] == '\r') matchLength--;
-		
-		const char* lineBefore = ":";
-		const char* lineAfter = ":";
-		
-		if (options & SO_VISUALSTUDIO)
-		{
-			char* buffer = static_cast<char*>(alloca(pathLength));
-			
-			std::transform(path, path + pathLength, buffer, BackSlashTransformer());
-			path = buffer;
-			
-			lineBefore = "(";
-			lineAfter = "):";
-		}
-		
-		strprintf(chunk->result, "%.*s%s%d%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, lineAfter, static_cast<unsigned>(matchLength), match);
-	}
-
-	void end(Chunk* chunk)
-	{
-		chunk->ready = true;
-
-		MutexLock lock(mutex);
-
-		while (!chunks.empty() && chunks.begin()->first == current && chunks.begin()->second.ready)
-		{
-			Chunk& chunk = chunks.begin()->second;
-			if (!chunk.result.empty()) printf("%s", chunk.result.c_str());
-			chunks.erase(chunks.begin());
-			current++;
-		}
-	}
-
-private:
-	unsigned int options;
-
-	Mutex mutex;
-	unsigned int current;
-	std::map<unsigned int, Chunk> chunks;
-};
 
 static const char* findLineStart(const char* begin, const char* pos)
 {
@@ -142,7 +81,7 @@ static unsigned int countLines(const char* begin, const char* end)
 	return res;
 }
 
-static void processFile(Regex* re, SearchOutput* output, SearchOutput::Chunk* chunk, const char* path, size_t pathLength, const char* data, size_t size)
+static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, const char* data, size_t size)
 {
 	const char* range = re->rangePrepare(data, size);
 
@@ -159,7 +98,7 @@ static void processFile(Regex* re, SearchOutput* output, SearchOutput::Chunk* ch
 		// print match
 		const char* lbeg = findLineStart(begin, match);
 		const char* lend = findLineEnd(match, end);
-		output->match(chunk, path, pathLength, line, (lbeg - range) + data, lend - lbeg);
+		processMatch(output, chunk, path, pathLength, line, (lbeg - range) + data, lend - lbeg);
 		
 		// move to next line
 		if (lend == end) break;
@@ -173,7 +112,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 {
 	const ChunkFileHeader* files = reinterpret_cast<const ChunkFileHeader*>(data);
 
-	SearchOutput::Chunk* chunk = output->begin(chunkIndex);
+	OrderedOutput::Chunk* chunk = output->output.begin(chunkIndex);
 	
 	for (size_t i = 0; i < fileCount; ++i)
 	{
@@ -182,7 +121,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 		processFile(re, output, chunk, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize);
 	}
 
-	output->end(chunk);
+	output->output.end(chunk);
 }
 
 struct ProcessChunk

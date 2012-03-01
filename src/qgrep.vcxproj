@@ -113,6 +113,7 @@
     <ClCompile Include="fileutil.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="orderedoutput.cpp" />
     <ClCompile Include="project.cpp" />
     <ClCompile Include="regex.cpp" />
     <ClCompile Include="search.cpp" />
@@ -133,6 +134,7 @@
     <ClInclude Include="fileutil.hpp" />
     <ClInclude Include="common.hpp" />
     <ClInclude Include="mutex.hpp" />
+    <ClInclude Include="orderedoutput.hpp" />
     <ClInclude Include="project.hpp" />
     <ClInclude Include="format.hpp" />
     <ClInclude Include="regex.hpp" />
