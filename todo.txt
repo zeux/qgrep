@@ -10,6 +10,4 @@ features:
 9. recognize (?i) at the beginning of regular expression as case-insensitive marker (check that it's not toggled off later)
 10. linux support
 11. search with filename filtering
-
-bugs:
-1. resolve lz4 decompression crash
+12. project name support improvement: hierarchical project names (init should create folders), project path instead of name should work
