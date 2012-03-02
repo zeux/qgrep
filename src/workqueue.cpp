@@ -1,16 +1,11 @@
 #include "workqueue.hpp"
 
 #include <functional>
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <thread>
 
 unsigned int WorkQueue::getIdealWorkerCount()
 {
-	SYSTEM_INFO info;
-	GetSystemInfo(&info);
-
-	return info.dwNumberOfProcessors;
+	return std::max(std::thread::hardware_concurrency(), 1u);
 }
 
 static void workerThreadFun(BlockingQueue<std::function<void()>>& queue)
