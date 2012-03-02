@@ -220,6 +220,7 @@ static void printStatistics(uint32_t fileCount, const Builder::Statistics& s)
 
 void buildProject(const char* path)
 {
+    printf("Building %s:\n", path);
 	printf("Scanning folder for files...\r");
 
 	std::vector<std::string> files;
@@ -252,6 +253,7 @@ void buildProject(const char* path)
 
 		builder.flush();
 		printStatistics(files.size(), builder.getStatistics());
+        printf("\n");
 	}
 	
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
