@@ -3,6 +3,8 @@
 
 #include "re2/re2.h"
 
+#include <memory>
+
 static bool transformRegexLower(const char* pattern, std::string& res, bool literal)
 {
 	res.clear();
@@ -31,7 +33,7 @@ static bool transformRegexLower(const char* pattern, std::string& res, bool lite
 class RE2Regex: public Regex
 {
 public:
-	RE2Regex(const char* string, unsigned int options): re(0), lowercase(false)
+	RE2Regex(const char* string, unsigned int options): lowercase(false)
 	{
 		RE2::Options opts;
 		opts.set_literal((options & SO_LITERAL) != 0);
@@ -47,7 +49,7 @@ public:
 			opts.set_case_sensitive((options & SO_IGNORECASE) == 0);
 		}
 		
-		re = new RE2(pattern, opts);
+		re.reset(new RE2(pattern, opts));
 		if (!re->ok()) fatal("Error parsing regular expression %s: %s\n", string, re->error().c_str());
 		
 		if (lowercase)
@@ -59,16 +61,11 @@ public:
 		}
 	}
 	
-	~RE2Regex()
-	{
-		delete re;
-	}
-
 	virtual const char* rangePrepare(const char* data, size_t size)
 	{
 		if (lowercase)
 		{
-			char* temp = (char*)malloc(size);
+			char* temp = new char[size];
 			transformRangeLower(temp, data, data + size);
 			return temp;
 		}
@@ -87,7 +84,7 @@ public:
 	{
 		if (lowercase)
 		{
-			free(const_cast<char*>(data));
+			delete[] data;
 		}
 	}
 
@@ -107,7 +104,7 @@ private:
 			*dest++ = lower[static_cast<unsigned char>(*i)];
 	}
 	
-	RE2* re;
+	std::unique_ptr<RE2> re;
 	bool lowercase;
 	char lower[256];
 };

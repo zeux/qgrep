@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <algorithm>
+#include <memory>
 
 #include "lz4/lz4.h"
 
@@ -133,10 +134,22 @@ template <typename T> bool read(std::istream& in, T& value)
 	return read(in, &value, sizeof(T));
 }
 
+char* safeAlloc(size_t size)
+{
+	try
+	{
+		return new char[size];
+	}
+	catch (const std::bad_alloc&)
+	{
+		return nullptr;
+	}
+}
+
 void searchProject(const char* file, const char* string, unsigned int options)
 {
 	SearchOutput output(options);
-	std::auto_ptr<Regex> regex(createRegex(string, options));
+	std::unique_ptr<Regex> regex(createRegex(string, options));
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
@@ -160,23 +173,23 @@ void searchProject(const char* file, const char* string, unsigned int options)
 	
 	while (read(in, chunk))
 	{
-		char* compressed = static_cast<char*>(malloc(chunk.compressedSize));
-		char* data = static_cast<char*>(malloc(chunk.uncompressedSize));
+		char* compressed = safeAlloc(chunk.compressedSize);
+		char* data = safeAlloc(chunk.uncompressedSize);
 		
 		if (!compressed || !data || !read(in, compressed, chunk.compressedSize))
 		{
-			free(compressed);
-			free(data);
+			delete[] compressed;
+			delete[] data;
 			error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 			return;
 		}
 			
 		auto job = [=, &regex, &output]() {
 			LZ4_uncompress(compressed, data, chunk.uncompressedSize);
-			free(compressed);
+			delete[] compressed;
 
 			processChunk(regex.get(), &output, chunkIndex, data, chunk.fileCount);
-			free(data);
+			delete[] data;
 		};
 
         size_t jobSize = chunk.compressedSize + chunk.uncompressedSize;
