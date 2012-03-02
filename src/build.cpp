@@ -228,7 +228,7 @@ static bool extractSuffix(const std::string& str, const char* prefix, std::strin
 	return false;
 }
 
-static bool parseInput(const char* file, std::string& path, std::vector<std::string>& include, std::vector<std::string>& exclude, std::vector<std::string>& files)
+static bool parseInput(const char* file, std::vector<std::string>& paths, std::vector<std::string>& include, std::vector<std::string>& exclude, std::vector<std::string>& files)
 {
 	std::ifstream in(file);
 	if (!in) return false;
@@ -244,7 +244,7 @@ static bool parseInput(const char* file, std::string& path, std::vector<std::str
 
 		// parse lines
 		if (extractSuffix(line, "path", suffix))
-			path = suffix;
+			paths.push_back(suffix);
 		else if (extractSuffix(line, "include", suffix))
 			include.push_back(suffix);
 		else if (extractSuffix(line, "exclude", suffix))
@@ -339,10 +339,9 @@ static void traverseFileAppend(void* context, const char* path)
 
 void buildProject(const char* file)
 {
-	std::string path;
-	std::vector<std::string> includeSet, excludeSet, fileSet;
+	std::vector<std::string> pathSet, includeSet, excludeSet, fileSet;
 
-	if (!parseInput(file, path, includeSet, excludeSet, fileSet))
+	if (!parseInput(file, pathSet, includeSet, excludeSet, fileSet))
 		fatal("Error opening project file %s for reading\n", file);
 
 	std::string targetPath = replaceExtension(file, ".qgd");
@@ -358,17 +357,17 @@ void buildProject(const char* file)
 
 		bc.files = fileSet;
 
-		if (!path.empty())
+		if (!pathSet.empty())
 		{
 			printf("Scanning folder for files...");
 			fflush(stdout);
 			
-			traverseDirectory(path.c_str(), traverseFileAppend, &bc);
+			for (size_t i = 0; i < pathSet.size(); ++i)
+				traverseDirectory(pathSet[i].c_str(), traverseFileAppend, &bc);
 		}
 
-		// Groups files with same names together, groups files with same extensions together...
-		// Results in ~20% compression ratio improvement
 		std::sort(bc.files.begin(), bc.files.end());
+		bc.files.erase(std::unique(bc.files.begin(), bc.files.end()), bc.files.end());
 
 		for (size_t i = 0; i < bc.files.size(); ++i)
 			builderAppend(bc, bc.files[i].c_str());
