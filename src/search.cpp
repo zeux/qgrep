@@ -33,8 +33,6 @@ struct BackSlashTransformer
 
 static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength)
 {
-	if (matchLength > 0 && match[matchLength - 1] == '\r') matchLength--;
-	
 	const char* lineBefore = ":";
 	const char* lineAfter = ":";
 	

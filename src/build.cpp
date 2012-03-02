@@ -52,7 +52,7 @@ public:
 	{
 		if (currentChunk.totalSize > kChunkSize) flushChunk();
 
-		std::ifstream in(path, std::ios::in | std::ios::binary);
+		std::ifstream in(path);
 		if (!in) return false;
 
 		File file = {path};

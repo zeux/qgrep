@@ -36,6 +36,10 @@ public:
 	RE2Regex(const char* string, unsigned int options): lowercase(false)
 	{
 		RE2::Options opts;
+		opts.set_posix_syntax(true);
+		opts.set_perl_classes(true);
+		opts.set_word_boundary(true);
+		opts.set_one_line(false);
 		opts.set_literal((options & SO_LITERAL) != 0);
 		
 		std::string pattern;
