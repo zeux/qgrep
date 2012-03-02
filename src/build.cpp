@@ -3,13 +3,13 @@
 #include "format.hpp"
 #include "fileutil.hpp"
 #include "constants.hpp"
+#include "project.hpp"
 
 #include <fstream>
 #include <vector>
 #include <numeric>
 #include <cassert>
 #include <string>
-#include <algorithm>
 
 #include "lz4/lz4.h"
 #include "lz4hc/lz4hc.h"
@@ -205,79 +205,6 @@ private:
 	}
 };
 
-static std::string trim(const std::string& s)
-{
-	const char* pattern = " \t";
-
-	std::string::size_type b = s.find_first_not_of(pattern);
-	std::string::size_type e = s.find_last_not_of(pattern);
-
-	return (b == std::string::npos || e == std::string::npos) ? "" : s.substr(b, e + 1);
-}
-
-static bool extractSuffix(const std::string& str, const char* prefix, std::string& suffix)
-{
-	size_t length = strlen(prefix);
-
-	if (str.compare(0, length, prefix) == 0 && str.length() > length && isspace(str[length]))
-	{
-		suffix = trim(str.substr(length));
-		return true;
-	}
-
-	return false;
-}
-
-static bool parseInput(const char* file, std::vector<std::string>& paths, std::vector<std::string>& include, std::vector<std::string>& exclude, std::vector<std::string>& files)
-{
-	std::ifstream in(file);
-	if (!in) return false;
-
-	std::string line;
-	std::string suffix;
-
-	while (std::getline(in, line))
-	{
-		// remove comment
-		std::string::size_type shp = line.find('#');
-		if (shp != std::string::npos) line.erase(line.begin() + shp, line.end());
-
-		// parse lines
-		if (extractSuffix(line, "path", suffix))
-			paths.push_back(suffix);
-		else if (extractSuffix(line, "include", suffix))
-			include.push_back(suffix);
-		else if (extractSuffix(line, "exclude", suffix))
-			exclude.push_back(suffix);
-		else
-		{
-			std::string file = trim(line);
-			if (!file.empty()) files.push_back(file);
-		}
-	}
-
-	return true;
-}
-
-static RE2* constructOrRE(const std::vector<std::string>& list)
-{
-	if (list.empty()) return 0;
-	
-	std::string re = "(" + list[0] + ")";
-
-	for (size_t i = 1; i < list.size(); ++i)
-		re += "|(" + list[i] + ")";
-
-	RE2::Options opts;
-	opts.set_case_sensitive(false);
-
-	RE2* r = new RE2(re, opts);
-
-	if (!r->ok()) fatal("Error parsing regexp %s: %s\n", re.c_str(), r->error().c_str());
-
-	return r;
-}
-
 static void printStatistics(uint32_t fileCount, const Builder::Statistics& s)
 {
 	static uint64_t lastResultSize = 0;
@@ -291,78 +218,45 @@ static void printStatistics(uint32_t fileCount, const Builder::Statistics& s)
 	fflush(stdout);
 }
 
-struct BuilderContext
+void buildProject(const char* path)
 {
-	Builder builder;
-	RE2* include;
-	RE2* exclude;
-	
+	printf("Scanning folder for files...\r");
+
 	std::vector<std::string> files;
-};
-
-static void builderAppend(BuilderContext& bc, const char* path)
-{
-	if (!bc.builder.appendFile(path))
+	if (!getProjectFiles(path, files))
 	{
-		error("Error reading file %s\n", path);
+		return;
 	}
-
-	printStatistics(bc.files.size(), bc.builder.getStatistics());
-}
-
-static bool isFileAcceptable(BuilderContext& c, const char* path)
-{
-	if (c.include && !RE2::PartialMatch(path, *c.include))
-		return false;
-
-	if (c.exclude && RE2::PartialMatch(path, *c.exclude))
-		return false;
-
-	return true;
-}
-
-void buildProject(const char* file)
-{
-	std::vector<std::string> pathSet, includeSet, excludeSet, fileSet;
-
-	if (!parseInput(file, pathSet, includeSet, excludeSet, fileSet))
-		fatal("Error opening project file %s for reading\n", file);
-
-	std::string targetPath = replaceExtension(file, ".qgd");
+	
+	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";
 
 	{
-		BuilderContext bc;
-		bc.include = constructOrRE(includeSet);
-		bc.exclude = constructOrRE(excludeSet);
+		Builder builder;
 
-		if (!bc.builder.start(tempPath.c_str()))
-			fatal("Error opening data file %s for writing\n", tempPath.c_str());
-
-		bc.files = fileSet;
-
-		if (!pathSet.empty())
+		if (!builder.start(tempPath.c_str()))
 		{
-			printf("Scanning folder for files...");
-			
-			for (size_t i = 0; i < pathSet.size(); ++i)
-			{
-				traverseDirectory(pathSet[i].c_str(), [&](const char* path) { 
-					if (isFileAcceptable(bc, path)) bc.files.push_back(path);
-				});
-			}
+			error("Error opening data file %s for writing\n", tempPath.c_str());
+			return;
 		}
 
-		std::sort(bc.files.begin(), bc.files.end());
-		bc.files.erase(std::unique(bc.files.begin(), bc.files.end()), bc.files.end());
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			const char* path = files[i].c_str();
 
-		for (size_t i = 0; i < bc.files.size(); ++i)
-			builderAppend(bc, bc.files[i].c_str());
+			if (!builder.appendFile(path))
+				error("Error reading file %s\n", path);
 
-		bc.builder.flush();
-		printStatistics(bc.files.size(), bc.builder.getStatistics());
+			printStatistics(files.size(), builder.getStatistics());
+		}
+
+		builder.flush();
+		printStatistics(files.size(), builder.getStatistics());
 	}
 	
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
-		fatal("Error saving data file %s\n", targetPath.c_str());
+	{
+		error("Error saving data file %s\n", targetPath.c_str());
+		return;
+	}
 }

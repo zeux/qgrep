@@ -1,5 +1,4 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#pragma once
 
 void error(const char* message, ...);
 void fatal(const char* message, ...);
@@ -12,7 +11,5 @@ enum SearchOptions
 };
 	
 void initProject(const char* name, const char* file, const char* path);
-void buildProject(const char* file);
+void buildProject(const char* path);
 void searchProject(const char* file, const char* string, unsigned int options);
-
-#endif

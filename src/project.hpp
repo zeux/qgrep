@@ -1,5 +1,4 @@
-#ifndef PROJECT_HPP
-#define PROJECT_HPP
+#pragma once
 
 #include <string>
 #include <vector>
@@ -7,4 +6,4 @@
 std::string getProjectPath(const char* name);
 std::vector<std::string> getProjects();
 
-#endif
+bool getProjectFiles(const char* path, std::vector<std::string>& files);
