@@ -31,7 +31,7 @@ struct BackSlashTransformer
 	}
 };
 
-static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, unsigned int line, const char* match, size_t matchLength)
+static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength)
 {
 	if (matchLength > 0 && match[matchLength - 1] == '\r') matchLength--;
 	
@@ -48,8 +48,15 @@ static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, cons
 		lineBefore = "(";
 		lineAfter = "):";
 	}
+
+	char colnumber[16] = "";
+
+	if (output->options & SO_COLUMNNUMBER)
+	{
+		sprintf(colnumber, "%c%d", (output->options & SO_VISUALSTUDIO) ? ',' : ':', column);
+	}
 	
-	output->output.write(chunk, "%.*s%s%d%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, lineAfter, static_cast<unsigned>(matchLength), match);
+	output->output.write(chunk, "%.*s%s%d%s%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, colnumber, lineAfter, static_cast<unsigned>(matchLength), match);
 }
 
 static const char* findLineStart(const char* begin, const char* pos)
@@ -89,15 +96,15 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 
 	unsigned int line = 0;
 
-	while (const char* match = re->rangeSearch(begin, end - begin))
+	while (RegexMatch match = re->rangeSearch(begin, end - begin))
 	{
 		// update line counter
-		line += 1 + countLines(begin, match);
+		line += 1 + countLines(begin, match.data);
 		
 		// print match
-		const char* lbeg = findLineStart(begin, match);
-		const char* lend = findLineEnd(match, end);
-		processMatch(output, chunk, path, pathLength, line, (lbeg - range) + data, lend - lbeg);
+		const char* lbeg = findLineStart(begin, match.data);
+		const char* lend = findLineEnd(match.data + match.size, end);
+		processMatch(output, chunk, path, pathLength, line, (match.data - lbeg) + 1, (lbeg - range) + data, lend - lbeg);
 		
 		// move to next line
 		if (lend == end) break;

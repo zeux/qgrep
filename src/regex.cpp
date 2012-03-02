@@ -73,11 +73,15 @@ public:
 		return data;
 	}
 
-	virtual const char* rangeSearch(const char* data, size_t size)
+	virtual RegexMatch rangeSearch(const char* data, size_t size)
 	{
 		re2::StringPiece p(data, size);
-		
-		return RE2::FindAndConsume(&p, *re) ? p.data() : 0;
+		re2::StringPiece match;
+
+		if (re->Match(re2::StringPiece(data, size), 0, size, re2::RE2::UNANCHORED, &match, 1))
+			return RegexMatch(match.data(), match.size());
+
+		return RegexMatch();
 	}
 	
 	virtual void rangeFinalize(const char* data)
@@ -88,13 +92,13 @@ public:
 		}
 	}
 
-	virtual const char* search(const char* data, size_t size)
+	virtual RegexMatch search(const char* data, size_t size)
 	{
 		const char* range = rangePrepare(data, size);
-		const char* result = rangeSearch(range, size);
+		RegexMatch result = rangeSearch(range, size);
 		rangeFinalize(range);
 
-		return result ? result - range + data : 0;
+		return result ? RegexMatch(result.data - range + data, result.size) : RegexMatch();
 	}
 	
 private:
@@ -108,6 +112,19 @@ private:
 	bool lowercase;
 	char lower[256];
 };
+
+RegexMatch::RegexMatch(): data(0), size(0)
+{
+}
+
+RegexMatch::RegexMatch(const char* data, size_t size): data(data), size(size)
+{
+}
+
+RegexMatch::operator bool() const
+{
+	return data != 0;
+}
 
 Regex* createRegex(const char* pattern, unsigned int options)
 {

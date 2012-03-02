@@ -44,6 +44,10 @@ unsigned int parseSearchOptions(const char* opts)
 		case 'V':
 			result |= SO_VISUALSTUDIO;
 			break;
+
+		case 'C':
+			result |= SO_COLUMNNUMBER;
+			break;
 			
 		default:
 			fatal("Unknown search option '%c'\n", *s);
