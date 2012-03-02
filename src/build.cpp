@@ -321,22 +321,6 @@ static bool isFileAcceptable(BuilderContext& c, const char* path)
 	return true;
 }
 
-static void traverseBuilderAppend(void* context, const char* path)
-{
-	BuilderContext& c = *static_cast<BuilderContext*>(context);
-	
-	if (isFileAcceptable(c, path))
-		builderAppend(c, path);
-}
-
-static void traverseFileAppend(void* context, const char* path)
-{
-	BuilderContext& c = *static_cast<BuilderContext*>(context);
-	
-	if (isFileAcceptable(c, path))
-		c.files.push_back(path);
-}
-
 void buildProject(const char* file)
 {
 	std::vector<std::string> pathSet, includeSet, excludeSet, fileSet;
@@ -360,10 +344,13 @@ void buildProject(const char* file)
 		if (!pathSet.empty())
 		{
 			printf("Scanning folder for files...");
-			fflush(stdout);
 			
 			for (size_t i = 0; i < pathSet.size(); ++i)
-				traverseDirectory(pathSet[i].c_str(), traverseFileAppend, &bc);
+			{
+				traverseDirectory(pathSet[i].c_str(), [&](const char* path) { 
+					if (isFileAcceptable(bc, path)) bc.files.push_back(path);
+				});
+			}
 		}
 
 		std::sort(bc.files.begin(), bc.files.end());

@@ -20,7 +20,7 @@ static bool processFile(const char* name)
 	return true;
 }
 
-void traverseDirectory(const char* path, void (*callback)(void* context, const char* path), void* context)
+void traverseDirectory(const char* path, const std::function<void (const char*)>& callback)
 {
 	WIN32_FIND_DATAA data;
 	HANDLE h = FindFirstFileA((std::string(path) + "/*").c_str(), &data);
@@ -36,9 +36,9 @@ void traverseDirectory(const char* path, void (*callback)(void* context, const c
 				fp += data.cFileName;
 	
 				if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-					traverseDirectory(fp.c_str(), callback, context);
+					traverseDirectory(fp.c_str(), callback);
 				else
-					callback(context, fp.c_str());
+					callback(fp.c_str());
 			}
 		}
 		while (FindNextFileA(h, &data));
