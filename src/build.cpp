@@ -2,6 +2,7 @@
 
 #include "format.hpp"
 #include "fileutil.hpp"
+#include "constants.hpp"
 
 #include <fstream>
 #include <vector>
@@ -17,8 +18,6 @@
 class Builder
 {
 public:
-	static const size_t kChunkSize = 1*1024*1024;
-
 	struct Statistics
 	{
 		size_t fileCount;

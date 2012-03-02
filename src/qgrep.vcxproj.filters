@@ -153,6 +153,9 @@
     <ClInclude Include="blockingqueue.hpp">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="constants.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">

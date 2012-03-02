@@ -132,6 +132,7 @@
     <ClInclude Include="..\extern\re2\util\sparse_array.h" />
     <ClInclude Include="..\extern\re2\util\sparse_set.h" />
     <ClInclude Include="blockingqueue.hpp" />
+    <ClInclude Include="constants.hpp" />
     <ClInclude Include="fileutil.hpp" />
     <ClInclude Include="common.hpp" />
     <ClInclude Include="orderedoutput.hpp" />

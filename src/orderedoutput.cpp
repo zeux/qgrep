@@ -26,7 +26,8 @@ static void writeThreadFun(BlockingQueue<OrderedOutput::Chunk*>& queue)
 	}
 }
 
-OrderedOutput::OrderedOutput(size_t memoryLimit): writeQueue(memoryLimit), writeThread(std::bind(writeThreadFun, std::ref(writeQueue))), current(0)
+OrderedOutput::OrderedOutput(size_t memoryLimit, size_t flushThreshold):
+	writeQueue(memoryLimit), writeThread(std::bind(writeThreadFun, std::ref(writeQueue))), flushThreshold(flushThreshold), currentChunk(0)
 {
 }
 
@@ -40,7 +41,7 @@ OrderedOutput::~OrderedOutput()
 
 OrderedOutput::Chunk* OrderedOutput::begin(unsigned int id)
 {
-	assert(id >= current);
+	assert(id >= currentChunk);
 
 	Chunk* chunk = new Chunk;
 	chunk->id = id;
@@ -55,8 +56,12 @@ void OrderedOutput::write(Chunk* chunk, const char* format, ...)
 	strprintf(chunk->result, format, args);
 	va_end(args);
 
-	// $$$ if the chunk is too large and it's the current one, we can flush it immediately,
-	// as long as we do it via writer thread
+	if (chunk->result.size() > flushThreshold && chunk->id == currentChunk)
+	{
+		Chunk* temp = new Chunk;
+		temp->result.swap(chunk->result);
+		writeQueue.push(temp, temp->result.size());
+	}
 }
 
 void OrderedOutput::end(Chunk* chunk)
@@ -66,11 +71,11 @@ void OrderedOutput::end(Chunk* chunk)
 	assert(chunks[chunk->id] == 0);
 	chunks[chunk->id] = chunk;
 
-	while (!chunks.empty() && chunks.begin()->first == current)
+	while (!chunks.empty() && chunks.begin()->first == currentChunk)
 	{
 		Chunk* chunk = chunks.begin()->second;
 		chunks.erase(chunks.begin());
-		current++;
+		currentChunk++;
 
 		if (chunk->result.empty())
 		{

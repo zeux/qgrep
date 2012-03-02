@@ -5,19 +5,16 @@
 #include "workqueue.hpp"
 #include "regex.hpp"
 #include "orderedoutput.hpp"
+#include "constants.hpp"
 
 #include <fstream>
 #include <algorithm>
 
 #include "lz4/lz4.h"
 
-const size_t kMaxQueuedChunkData = 256 * 1024*1024;
-const size_t kMaxChunkSizeAsync = 32 * 1024*1024;
-const size_t kMaxBufferedOutput = 32 * 1024*1024;
-
 struct SearchOutput
 {
-	SearchOutput(unsigned int options): options(options), output(kMaxBufferedOutput)
+	SearchOutput(unsigned int options): options(options), output(kMaxBufferedOutput, kBufferedOutputFlushThreshold)
 	{
 	}
 

@@ -17,7 +17,7 @@ public:
 		std::string result;
 	};
 
-	explicit OrderedOutput(size_t memoryLimit);
+	OrderedOutput(size_t memoryLimit, size_t flushThreshold);
 	~OrderedOutput();
 
     Chunk* begin(unsigned int id);
@@ -28,8 +28,10 @@ private:
 	BlockingQueue<Chunk*> writeQueue;
 	std::thread writeThread;
 
+	size_t flushThreshold;
+
 	std::mutex mutex;
-	unsigned int current;
+	unsigned int currentChunk;
 	std::map<unsigned int, Chunk*> chunks;
 };
 
