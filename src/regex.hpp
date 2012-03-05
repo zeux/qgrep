@@ -1,5 +1,11 @@
 #pragma once
 
+enum RegexOptions
+{
+	RO_IGNORECASE = 1 << 0,
+	RO_LITERAL = 1 << 1,
+};
+
 struct RegexMatch
 {
 	const char* data;

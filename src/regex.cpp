@@ -40,17 +40,17 @@ public:
 		opts.set_perl_classes(true);
 		opts.set_word_boundary(true);
 		opts.set_one_line(false);
-		opts.set_literal((options & SO_LITERAL) != 0);
+		opts.set_literal((options & RO_LITERAL) != 0);
 		
 		std::string pattern;
-		if ((options & SO_IGNORECASE) && transformRegexLower(string, pattern, (options & SO_LITERAL) != 0))
+		if ((options & RO_IGNORECASE) && transformRegexLower(string, pattern, (options & RO_LITERAL) != 0))
 		{
 			lowercase = true;
 		}
 		else
 		{
 			pattern = string;
-			opts.set_case_sensitive((options & SO_IGNORECASE) == 0);
+			opts.set_case_sensitive((options & RO_IGNORECASE) == 0);
 		}
 		
 		re.reset(new RE2(pattern, opts));

@@ -1,5 +1,6 @@
-#include "common.hpp"
+#include "build.hpp"
 
+#include "common.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
 #include "constants.hpp"
@@ -10,12 +11,13 @@
 #include <numeric>
 #include <cassert>
 #include <string>
+#include <memory>
 
 #include "lz4/lz4.h"
 #include "lz4hc/lz4hc.h"
 #include "re2/re2.h"
 
-class Builder
+class Builder::BuilderImpl
 {
 public:
 	struct Statistics
@@ -25,12 +27,12 @@ public:
 		uint64_t resultSize;
 	};
 
-	Builder()
+	BuilderImpl()
 	{
 		statistics = Statistics();
 	}
 
-	~Builder()
+	~BuilderImpl()
 	{
 		flush();
 	}
@@ -205,17 +207,51 @@ private:
 	}
 };
 
-static void printStatistics(uint32_t fileCount, const Builder::Statistics& s)
+Builder::Builder(BuilderImpl* impl, unsigned int fileCount): impl(impl), fileCount(fileCount), lastResultSize(0)
 {
-	static uint64_t lastResultSize = 0;
-	
-	if (lastResultSize == s.resultSize) return;
+}
+
+Builder::~Builder()
+{
+	impl->flush();
+	printStatistics();
+
+	delete impl;
+}
+
+void Builder::appendFile(const char* path)
+{
+	if (!impl->appendFile(path))
+		error("Error reading file %s\n", path);
+
+	printStatistics();
+}
+
+void Builder::printStatistics()
+{
+	const BuilderImpl::Statistics& s = impl->getStatistics();
+
+	if (fileCount == 0 || lastResultSize == s.resultSize) return;
+
 	lastResultSize = s.resultSize;
 	
 	int percent = s.fileCount * 100 / fileCount;
 
 	printf("\r[%3d%%] %d files, %d Mb in, %d Mb out\r", percent, s.fileCount, (int)(s.fileSize / 1024 / 1024), (int)(s.resultSize / 1024 / 1024));
 	fflush(stdout);
+}
+
+Builder* createBuilder(const char* path, unsigned int fileCount)
+{
+	std::unique_ptr<Builder::BuilderImpl> impl(new Builder::BuilderImpl);
+
+	if (!impl->start(path))
+	{
+		error("Error opening data file %s for writing\n", path);
+		return 0;
+	}
+
+	return new Builder(impl.release(), fileCount);
 }
 
 void buildProject(const char* path)
@@ -233,28 +269,18 @@ void buildProject(const char* path)
 	std::string tempPath = targetPath + "_";
 
 	{
-		Builder builder;
-
-		if (!builder.start(tempPath.c_str()))
-		{
-			error("Error opening data file %s for writing\n", tempPath.c_str());
-			return;
-		}
+		std::unique_ptr<Builder> builder(createBuilder(tempPath.c_str()));
+		if (!builder) return;
 
 		for (size_t i = 0; i < files.size(); ++i)
 		{
 			const char* path = files[i].c_str();
 
-			if (!builder.appendFile(path))
-				error("Error reading file %s\n", path);
-
-			printStatistics(files.size(), builder.getStatistics());
+			builder->appendFile(path);
 		}
-
-		builder.flush();
-		printStatistics(files.size(), builder.getStatistics());
-        printf("\n");
 	}
+
+	printf("\n");
 	
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{

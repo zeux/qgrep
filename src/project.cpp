@@ -115,7 +115,7 @@ static Regex* constructOrRE(const std::vector<std::string>& list)
 	for (size_t i = 1; i < list.size(); ++i)
 		re += "|(" + list[i] + ")";
 
-	return createRegex(re.c_str(), SO_IGNORECASE);
+	return createRegex(re.c_str(), RO_IGNORECASE);
 }
 
 static bool isFileAcceptable(Regex* include, Regex* exclude, const char* path)

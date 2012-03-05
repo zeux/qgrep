@@ -132,13 +132,16 @@
     <ClInclude Include="..\extern\re2\util\sparse_array.h" />
     <ClInclude Include="..\extern\re2\util\sparse_set.h" />
     <ClInclude Include="blockingqueue.hpp" />
+    <ClInclude Include="build.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="fileutil.hpp" />
     <ClInclude Include="common.hpp" />
+    <ClInclude Include="init.hpp" />
     <ClInclude Include="orderedoutput.hpp" />
     <ClInclude Include="project.hpp" />
     <ClInclude Include="format.hpp" />
     <ClInclude Include="regex.hpp" />
+    <ClInclude Include="search.hpp" />
     <ClInclude Include="workqueue.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

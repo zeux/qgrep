@@ -1,3 +1,5 @@
+#include "init.hpp"
+
 #include "common.hpp"
 
 #include <fstream>

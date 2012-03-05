@@ -1,4 +1,7 @@
 #include "common.hpp"
+#include "init.hpp"
+#include "build.hpp"
+#include "search.hpp"
 #include "project.hpp"
 
 #include <stdio.h>

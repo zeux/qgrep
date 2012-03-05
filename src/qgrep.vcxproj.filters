@@ -156,6 +156,15 @@
     <ClInclude Include="constants.hpp">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="build.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="init.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="search.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">

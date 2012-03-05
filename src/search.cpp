@@ -1,5 +1,6 @@
-#include "common.hpp"
+#include "search.hpp"
 
+#include "common.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
 #include "workqueue.hpp"
@@ -151,10 +152,17 @@ char* safeAlloc(size_t size)
 	}
 }
 
+unsigned int getRegexOptions(unsigned int options)
+{
+	return
+		(options & SO_IGNORECASE ? RO_IGNORECASE : 0) |
+		(options & SO_LITERAL ? RO_LITERAL : 0);
+}
+
 void searchProject(const char* file, const char* string, unsigned int options)
 {
 	SearchOutput output(options);
-	std::unique_ptr<Regex> regex(createRegex(string, options));
+	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
