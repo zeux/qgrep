@@ -9,9 +9,6 @@ const size_t kChunkSize = 1 Mb;
 // Total amount of chunk data in flight
 const size_t kMaxQueuedChunkData = 256 Mb;
 
-// Max size of the chunk that can be pushed into async queue ($$ remove this)
-const size_t kMaxChunkSizeAsync = 32 Mb;
-
 // Total amount of buffered output in flight
 const size_t kMaxBufferedOutput = 32 Mb;
 

@@ -197,26 +197,13 @@ void searchProject(const char* file, const char* string, unsigned int options)
 			return;
 		}
 			
-		auto job = [=, &regex, &output]() {
+		queue.push([=, &regex, &output]() {
 			LZ4_uncompress(compressed, data, chunk.uncompressedSize);
 			delete[] compressed;
 
 			processChunk(regex.get(), &output, chunkIndex, data, chunk.fileCount);
 			delete[] data;
-		};
-
-        size_t jobSize = chunk.compressedSize + chunk.uncompressedSize;
-
-		if (jobSize > kMaxChunkSizeAsync)
-		{
-			// Huge chunk; to preserve memory process it synchronously
-			job();
-		}
-		else
-		{
-			// Queue chunk processing
-			queue.push(job, jobSize);
-		}
+		}, chunk.compressedSize + chunk.uncompressedSize);
 
 		chunkIndex++;
 	}
