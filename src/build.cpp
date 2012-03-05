@@ -50,28 +50,41 @@ public:
 		return true;
 	}
 
-	bool appendFile(const char* path)
+	void appendFile(const char* path, uint32_t startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
 	{
 		if (currentChunk.totalSize > kChunkSize) flushChunk();
+
+		File file;
+
+		file.name = path;
+		file.startLine = startLine;
+		file.timeStamp = lastWriteTime;
+		file.fileSize = fileSize;
+		file.contents.assign(static_cast<const char*>(data), static_cast<const char*>(data) + dataSize);
+
+		currentChunk.files.emplace_back(file);
+		currentChunk.totalSize += dataSize;
+	}
+
+	bool appendFile(const char* path)
+	{
+		uint64_t lastWriteTime, fileSize;
+		if (!getFileAttributes(path, &lastWriteTime, &fileSize)) return false;
 
 		std::ifstream in(path);
 		if (!in) return false;
 
-		File file = {path};
-
-		if (!getFileAttributes(path, &file.timeStamp, &file.fileSize)) return false;
+		std::vector<char> contents;
 
 		while (!in.eof())
 		{
 			char buffer[65536];
 			in.read(buffer, sizeof(buffer));
 
-			file.contents.insert(file.contents.end(), buffer, buffer + in.gcount());
+			contents.insert(contents.end(), buffer, buffer + in.gcount());
 		}
 
-		currentChunk.files.push_back(file);
-		currentChunk.totalSize += file.contents.size();
-
+		appendFile(path, 0, contents.empty() ? 0 : &contents[0], contents.size(), lastWriteTime, fileSize);
 		return true;
 	}
 
@@ -91,6 +104,7 @@ private:
 		std::string name;
 		std::vector<char> contents;
 
+		uint32_t startLine;
 		uint64_t fileSize;
 		uint64_t timeStamp;
 	};
@@ -177,6 +191,9 @@ private:
 			h.dataOffset = dataOffset;
 			h.dataSize = f.contents.size();
 
+			h.startLine = f.startLine;
+			h.reserved = 0;
+
 			h.fileSize = f.fileSize;
 			h.timeStamp = f.timeStamp;
 
@@ -227,6 +244,12 @@ void Builder::appendFile(const char* path)
 	printStatistics();
 }
 
+void Builder::appendFile(const char* path, uint32_t startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
+{
+	impl->appendFile(path, startLine, data, dataSize, lastWriteTime, fileSize);
+	printStatistics();
+}
+
 void Builder::printStatistics()
 {
 	const BuilderImpl::Statistics& s = impl->getStatistics();
@@ -269,7 +292,7 @@ void buildProject(const char* path)
 	std::string tempPath = targetPath + "_";
 
 	{
-		std::unique_ptr<Builder> builder(createBuilder(tempPath.c_str()));
+		std::unique_ptr<Builder> builder(createBuilder(tempPath.c_str(), files.size()));
 		if (!builder) return;
 
 		for (size_t i = 0; i < files.size(); ++i)

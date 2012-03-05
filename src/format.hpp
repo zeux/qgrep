@@ -24,6 +24,9 @@ struct ChunkFileHeader
 	uint32_t dataOffset;
 	uint32_t dataSize;
 
+	uint32_t startLine;
+	uint32_t reserved;
+
 	uint64_t fileSize;
 	uint64_t timeStamp;
 };

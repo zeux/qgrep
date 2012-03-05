@@ -86,14 +86,14 @@ static unsigned int countLines(const char* begin, const char* end)
 	return res;
 }
 
-static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, const char* data, size_t size)
+static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, const char* data, size_t size, unsigned int startLine)
 {
 	const char* range = re->rangePrepare(data, size);
 
 	const char* begin = range;
 	const char* end = begin + size;
 
-	unsigned int line = 0;
+	unsigned int line = startLine;
 
 	while (RegexMatch match = re->rangeSearch(begin, end - begin))
 	{
@@ -123,7 +123,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 	{
 		const ChunkFileHeader& f = files[i];
 		
-		processFile(re, output, chunk, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize);
+		processFile(re, output, chunk, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
 	}
 
 	output->output.end(chunk);
