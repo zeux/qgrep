@@ -50,20 +50,75 @@ public:
 		return true;
 	}
 
-	void appendFile(const char* path, uint32_t startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
+	void appendFilePart(const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
 	{
-		if (currentChunk.totalSize > kChunkSize) flushChunk();
-
 		File file;
 
 		file.name = path;
 		file.startLine = startLine;
 		file.timeStamp = lastWriteTime;
 		file.fileSize = fileSize;
-		file.contents.assign(static_cast<const char*>(data), static_cast<const char*>(data) + dataSize);
+		file.contents.assign(data, data + dataSize);
 
 		currentChunk.files.emplace_back(file);
 		currentChunk.totalSize += dataSize;
+	}
+
+	static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t dataSize)
+	{
+		auto result = std::make_pair(0, 0);
+
+		for (size_t i = 0; i < dataSize; ++i)
+			if (data[i] == '\n')
+			{
+				result.first = i + 1;
+				result.second++;
+			}
+
+		return result;
+	}
+
+	static size_t skipOneLine(const char* data, size_t dataSize)
+	{
+		for (size_t i = 0; i < dataSize; ++i)
+			if (data[i] == '\n')
+				return i + 1;
+
+		return dataSize;
+	}
+
+	void appendFile(const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
+	{
+		if (currentChunk.totalSize >= kChunkSize) flushChunk();
+
+		do
+		{
+			if (currentChunk.totalSize + dataSize <= kChunkSize)
+			{
+				appendFilePart(path, startLine, data, dataSize, lastWriteTime, fileSize);
+				return;
+			}
+
+			assert(currentChunk.totalSize < kChunkSize);
+			size_t remainingSize = kChunkSize - currentChunk.totalSize;
+
+			assert(remainingSize < dataSize);
+			std::pair<size_t, unsigned int> skip = skipByLines(data, remainingSize);
+
+			if (skip.first > 0 || currentChunk.totalSize == 0)
+			{
+				size_t skipSize = (skip.first > 0) ? skip.first : skipOneLine(data, dataSize);
+				unsigned int skipLines = (skip.first > 0) ? skip.second : 1;
+
+				appendFilePart(path, startLine, data, skipSize, lastWriteTime, fileSize);
+				data += skipSize;
+				dataSize -= skipSize;
+				startLine += skipLines;
+			}
+
+			flushChunk();
+		}
+		while (dataSize > 0);
 	}
 
 	bool appendFile(const char* path)
@@ -218,7 +273,10 @@ private:
 		outData.write(reinterpret_cast<char*>(&header), sizeof(header));
 		outData.write(&cdata[0], cdata.size());
 
-		statistics.fileCount += chunk.files.size();
+		for (size_t i = 0; i < chunk.files.size(); ++i)
+			if (chunk.files[i].startLine == 0)
+				statistics.fileCount++;
+
 		statistics.fileSize += data.size();
 		statistics.resultSize += cdata.size();
 	}
@@ -244,9 +302,9 @@ void Builder::appendFile(const char* path)
 	printStatistics();
 }
 
-void Builder::appendFile(const char* path, uint32_t startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
+void Builder::appendFile(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
 {
-	impl->appendFile(path, startLine, data, dataSize, lastWriteTime, fileSize);
+	impl->appendFile(path, startLine, static_cast<const char*>(data), dataSize, lastWriteTime, fileSize);
 	printStatistics();
 }
 
