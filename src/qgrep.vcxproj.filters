@@ -94,6 +94,9 @@
     <ClCompile Include="orderedoutput.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="blockpool.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -163,6 +166,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="search.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="blockpool.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

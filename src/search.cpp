@@ -7,6 +7,7 @@
 #include "regex.hpp"
 #include "orderedoutput.hpp"
 #include "constants.hpp"
+#include "blockpool.hpp"
 
 #include <fstream>
 #include <algorithm>
@@ -140,15 +141,15 @@ template <typename T> bool read(std::istream& in, T& value)
 	return read(in, &value, sizeof(T));
 }
 
-char* safeAlloc(size_t size)
+std::shared_ptr<char> safeAlloc(BlockPool& pool, size_t size)
 {
 	try
 	{
-		return new char[size];
+		return pool.allocate(size);
 	}
 	catch (const std::bad_alloc&)
 	{
-		return nullptr;
+		return std::shared_ptr<char>();
 	}
 }
 
@@ -182,27 +183,26 @@ void searchProject(const char* file, const char* string, unsigned int options)
 	ChunkHeader chunk;
 	unsigned int chunkIndex = 0;
 	
+	// Assume 50% compression ratio (it's usually much better)
+	BlockPool chunkPool(kChunkSize * 3 / 2);
 	WorkQueue queue(WorkQueue::getIdealWorkerCount(), kMaxQueuedChunkData);
 	
 	while (read(in, chunk))
 	{
-		char* compressed = safeAlloc(chunk.compressedSize);
-		char* data = safeAlloc(chunk.uncompressedSize);
+		std::shared_ptr<char> data = safeAlloc(chunkPool, chunk.compressedSize + chunk.uncompressedSize);
 		
-		if (!compressed || !data || !read(in, compressed, chunk.compressedSize))
+		if (!data || !read(in, data.get(), chunk.compressedSize))
 		{
-			delete[] compressed;
-			delete[] data;
 			error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 			return;
 		}
 			
 		queue.push([=, &regex, &output]() {
-			LZ4_uncompress(compressed, data, chunk.uncompressedSize);
-			delete[] compressed;
+			char* compressed = data.get();
+			char* uncompressed = data.get() + chunk.compressedSize;
 
-			processChunk(regex.get(), &output, chunkIndex, data, chunk.fileCount);
-			delete[] data;
+			LZ4_uncompress(compressed, uncompressed, chunk.uncompressedSize);
+			processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount);
 		}, chunk.compressedSize + chunk.uncompressedSize);
 
 		chunkIndex++;
