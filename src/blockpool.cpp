@@ -33,7 +33,7 @@ std::shared_ptr<char> BlockPool::allocate(size_t size)
 	liveBlocks++;
 
 	return std::shared_ptr<char>(block, [this](char* block) {
-		std::lock_guard<std::mutex> lock(mutex);
+		std::lock_guard<std::mutex> lock(this->mutex);
 
 		assert(liveBlocks > 0);
 		liveBlocks--;
