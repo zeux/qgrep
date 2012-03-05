@@ -1,5 +1,4 @@
-#ifndef FORMAT_HPP
-#define FORMAT_HPP
+#pragma once
 
 #include <stdint.h>
 
@@ -30,5 +29,3 @@ struct ChunkFileHeader
 	uint64_t fileSize;
 	uint64_t timeStamp;
 };
-
-#endif

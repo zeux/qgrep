@@ -15,7 +15,6 @@
 
 #include "lz4/lz4.h"
 #include "lz4hc/lz4hc.h"
-#include "re2/re2.h"
 
 class Builder::BuilderImpl
 {

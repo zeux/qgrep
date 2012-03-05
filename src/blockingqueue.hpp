@@ -1,5 +1,4 @@
-#ifndef BLOCKINGQUEUE_HPP
-#define BLOCKINGQUEUE_HPP
+#pragma once
 
 #include <queue>
 #include <mutex>
@@ -70,5 +69,3 @@ private:
 	size_t totalSize;
 	size_t totalSizeLimit;
 };
-
-#endif

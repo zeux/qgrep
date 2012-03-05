@@ -1,5 +1,4 @@
-#ifndef ORDEREDOUTPUT_HPP
-#define ORDEREDOUTPUT_HPP
+#pragma once
 
 #include <string>
 #include <map>
@@ -34,5 +33,3 @@ private:
 	unsigned int currentChunk;
 	std::map<unsigned int, Chunk*> chunks;
 };
-
-#endif

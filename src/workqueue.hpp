@@ -1,5 +1,4 @@
-#ifndef WORKQUEUE_HPP
-#define WORKQUEUE_HPP
+#pragma once
 
 #include <vector>
 #include <thread>
@@ -7,7 +6,7 @@
 
 #include "blockingqueue.hpp"
 
-struct WorkQueue
+class WorkQueue
 {
 public:
 	static unsigned int getIdealWorkerCount();
@@ -21,5 +20,3 @@ private:
 	BlockingQueue<std::function<void()>> queue;
 	std::vector<std::thread> workers;
 };
-
-#endif
