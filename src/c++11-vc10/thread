@@ -1,0 +1,64 @@
+#pragma once
+
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+
+#include <functional>
+#include <cassert>
+
+namespace std
+{
+    class thread
+    {
+		thread(const thread&);
+		thread& operator=(const thread&);
+
+    public:
+        thread(const std::function<void()>& fun)
+        {
+			handle = CreateThread(0, 0, threadProc, new std::function<void()>(fun), 0, 0);
+			assert(handle != INVALID_HANDLE_VALUE);
+        }
+
+        ~thread()
+        {
+			if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
+        }
+
+		thread(thread&& o)
+		{
+			handle = o.handle;
+			o.handle = INVALID_HANDLE_VALUE;
+		}
+
+        void join()
+        {
+            WaitForSingleObject(handle, INFINITE);
+        }
+
+		unsigned int get_id()
+		{
+			return GetThreadId(handle);
+		}
+
+		static unsigned int hardware_concurrency()
+		{
+			SYSTEM_INFO info;
+			GetSystemInfo(&info);
+
+			return info.dwNumberOfProcessors;
+		}
+
+    private:
+        HANDLE handle;
+
+		static DWORD WINAPI threadProc(void* parameter)
+		{
+			auto fun = static_cast<std::function<void()>*>(parameter);
+			(*fun)();
+			delete fun;
+			return 0;
+		}
+    };
+}
