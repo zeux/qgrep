@@ -88,7 +88,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\lz4hc\lz4hc.c" />
-    <ClCompile Include="..\extern\lz4hc\mmc.c" />
     <ClCompile Include="..\extern\lz4\lz4.c" />
     <ClCompile Include="..\extern\re2\re2\bitstate.cc" />
     <ClCompile Include="..\extern\re2\re2\compile.cc" />
@@ -122,7 +121,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4hc\lz4hc.h" />
-    <ClInclude Include="..\extern\lz4hc\mmc.h" />
     <ClInclude Include="..\extern\lz4\lz4.h" />
     <ClInclude Include="..\extern\re2\re2\prog.h" />
     <ClInclude Include="..\extern\re2\re2\re2.h" />

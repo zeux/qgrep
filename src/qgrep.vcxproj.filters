@@ -31,9 +31,6 @@
     <ClCompile Include="main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\extern\lz4hc\mmc.c">
-      <Filter>extern\lz4</Filter>
-    </ClCompile>
     <ClCompile Include="..\extern\re2\re2\nfa.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>
@@ -113,9 +110,6 @@
     </ClInclude>
     <ClInclude Include="format.hpp">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="..\extern\lz4hc\mmc.h">
-      <Filter>extern\lz4</Filter>
     </ClInclude>
     <ClInclude Include="..\extern\re2\re2\prog.h">
       <Filter>extern\re2</Filter>
