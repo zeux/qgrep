@@ -60,7 +60,7 @@ public:
 		file.startLine = startLine;
 		file.timeStamp = lastWriteTime;
 		file.fileSize = fileSize;
-		file.contents.assign(data, data + dataSize);
+		file.contents = std::vector<char>(data, data + dataSize);
 
 		pendingFiles.emplace_back(file);
 		pendingSize += dataSize;
@@ -127,25 +127,40 @@ public:
 	}
 
 private:
+	struct Blob
+	{
+		size_t offset;
+		size_t count;
+		std::shared_ptr<std::vector<char>> storage;
+
+		Blob(): offset(0), count(0)
+		{
+		}
+
+		Blob(std::vector<char> storage): offset(0), count(storage.size()), storage(new std::vector<char>(std::move(storage)))
+		{
+		}
+
+		const char* data() const
+		{
+			assert(offset + count <= storage->size());
+			return storage->empty() ? nullptr : &(*storage)[0] + offset;
+		}
+
+		size_t size() const
+		{
+			return count;
+		}
+	};
+
 	struct File
 	{
 		std::string name;
-		std::vector<char> contents;
+		Blob contents;
 
 		uint32_t startLine;
 		uint64_t fileSize;
 		uint64_t timeStamp;
-
-		File splitPrefix(size_t size)
-		{
-			File result = *this;
-
-			assert(size <= contents.size());
-			result.contents.resize(size);
-			contents.erase(contents.begin(), contents.begin() + size);
-
-			return result;
-		}
 	};
 
 	struct Chunk
@@ -187,6 +202,18 @@ private:
 		return dataSize;
 	}
 
+	static File splitPrefix(File& file, size_t size)
+	{
+		File result = file;
+
+		assert(size <= file.contents.size());
+		result.contents.count = size;
+		file.contents.offset += size;
+		file.contents.count -= size;
+
+		return result;
+	}
+
 	static void appendChunkFile(Chunk& chunk, File&& file)
 	{
 		chunk.totalSize += file.contents.size();
@@ -195,7 +222,7 @@ private:
 
 	static void appendChunkFilePrefix(Chunk& chunk, File& file, size_t remainingSize)
 	{
-		const char* data = &file.contents[0];
+		const char* data = file.contents.data();
 		size_t dataSize = file.contents.size();
 
 		assert(remainingSize < dataSize);
@@ -208,7 +235,7 @@ private:
 			unsigned int skipLines = (skip.first > 0) ? skip.second : 1;
 
 			chunk.totalSize += skipSize;
-			chunk.files.push_back(file.splitPrefix(skipSize));
+			chunk.files.push_back(splitPrefix(file, skipSize));
 
 			file.startLine += skipLines;
 		}
@@ -307,7 +334,7 @@ private:
 			const File& f = chunk.files[i];
 
 			std::copy(f.name.begin(), f.name.end(), data.begin() + nameOffset);
-			std::copy(f.contents.begin(), f.contents.end(), data.begin() + dataOffset);
+			std::copy(f.contents.data(), f.contents.data() + f.contents.size(), data.begin() + dataOffset);
 
 			ChunkFileHeader& h = reinterpret_cast<ChunkFileHeader*>(&data[0])[i];
 
