@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <vector>
+#include <list>
 #include <numeric>
 #include <cassert>
 #include <string>
@@ -29,6 +30,7 @@ public:
 
 	BuilderImpl()
 	{
+		pendingSize = 0;
 		statistics = Statistics();
 	}
 
@@ -60,65 +62,10 @@ public:
 		file.fileSize = fileSize;
 		file.contents.assign(data, data + dataSize);
 
-		currentChunk.files.emplace_back(file);
-		currentChunk.totalSize += dataSize;
-	}
+		pendingFiles.emplace_back(file);
+		pendingSize += dataSize;
 
-	static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t dataSize)
-	{
-		auto result = std::make_pair(0, 0);
-
-		for (size_t i = 0; i < dataSize; ++i)
-			if (data[i] == '\n')
-			{
-				result.first = i + 1;
-				result.second++;
-			}
-
-		return result;
-	}
-
-	static size_t skipOneLine(const char* data, size_t dataSize)
-	{
-		for (size_t i = 0; i < dataSize; ++i)
-			if (data[i] == '\n')
-				return i + 1;
-
-		return dataSize;
-	}
-
-	void appendFile(const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
-	{
-		if (currentChunk.totalSize >= kChunkSize) flushChunk();
-
-		do
-		{
-			if (currentChunk.totalSize + dataSize <= kChunkSize)
-			{
-				appendFilePart(path, startLine, data, dataSize, lastWriteTime, fileSize);
-				return;
-			}
-
-			assert(currentChunk.totalSize < kChunkSize);
-			size_t remainingSize = kChunkSize - currentChunk.totalSize;
-
-			assert(remainingSize < dataSize);
-			std::pair<size_t, unsigned int> skip = skipByLines(data, remainingSize);
-
-			if (skip.first > 0 || currentChunk.totalSize == 0)
-			{
-				size_t skipSize = (skip.first > 0) ? skip.first : skipOneLine(data, dataSize);
-				unsigned int skipLines = (skip.first > 0) ? skip.second : 1;
-
-				appendFilePart(path, startLine, data, skipSize, lastWriteTime, fileSize);
-				data += skipSize;
-				dataSize -= skipSize;
-				startLine += skipLines;
-			}
-
-			flushChunk();
-		}
-		while (dataSize > 0);
+		flushIfNeeded();
 	}
 
 	std::vector<char> readFile(std::ifstream& in)
@@ -148,7 +95,7 @@ public:
 		{
 			std::vector<char> contents = convertToUTF8(readFile(in));
 
-			appendFile(path, 0, contents.empty() ? 0 : &contents[0], contents.size(), lastWriteTime, fileSize);
+			appendFilePart(path, 0, contents.empty() ? 0 : &contents[0], contents.size(), lastWriteTime, fileSize);
 
 			return true;
 		}
@@ -158,9 +105,20 @@ public:
 		}
 	}
 
+	void flushIfNeeded()
+	{
+		while (pendingSize >= kChunkSize * 2)
+		{
+			flushChunk(kChunkSize);
+		}
+	}
+
 	void flush()
 	{
-		flushChunk();
+		while (pendingSize > 0)
+		{
+			flushChunk(kChunkSize);
+		}
 	}
 
 	const Statistics& getStatistics() const
@@ -177,6 +135,17 @@ private:
 		uint32_t startLine;
 		uint64_t fileSize;
 		uint64_t timeStamp;
+
+		File splitPrefix(size_t size)
+		{
+			File result = *this;
+
+			assert(size <= contents.size());
+			result.contents.resize(size);
+			contents.erase(contents.begin(), contents.begin() + size);
+
+			return result;
+		}
 	};
 
 	struct Chunk
@@ -189,9 +158,97 @@ private:
 		}
 	};
 
-	Chunk currentChunk;
+	std::list<File> pendingFiles;
+	size_t pendingSize;
+	
 	std::ofstream outData;
 	Statistics statistics;
+
+	static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t dataSize)
+	{
+		auto result = std::make_pair(0, 0);
+
+		for (size_t i = 0; i < dataSize; ++i)
+			if (data[i] == '\n')
+			{
+				result.first = i + 1;
+				result.second++;
+			}
+
+		return result;
+	}
+
+	static size_t skipOneLine(const char* data, size_t dataSize)
+	{
+		for (size_t i = 0; i < dataSize; ++i)
+			if (data[i] == '\n')
+				return i + 1;
+
+		return dataSize;
+	}
+
+	static void appendChunkFile(Chunk& chunk, File&& file)
+	{
+		chunk.totalSize += file.contents.size();
+		chunk.files.emplace_back(std::move(file));
+	}
+
+	static void appendChunkFilePrefix(Chunk& chunk, File& file, size_t remainingSize)
+	{
+		const char* data = &file.contents[0];
+		size_t dataSize = file.contents.size();
+
+		assert(remainingSize < dataSize);
+		std::pair<size_t, unsigned int> skip = skipByLines(data, remainingSize);
+
+		// add file even if we could not split the (very large) line if it'll be the only file in chunk
+		if (skip.first > 0 || chunk.files.empty())
+		{
+			size_t skipSize = (skip.first > 0) ? skip.first : skipOneLine(data, dataSize);
+			unsigned int skipLines = (skip.first > 0) ? skip.second : 1;
+
+			chunk.totalSize += skipSize;
+			chunk.files.push_back(file.splitPrefix(skipSize));
+
+			file.startLine += skipLines;
+		}
+	}
+
+	void flushChunk(size_t size)
+	{
+		Chunk chunk;
+
+		// grab pending files one by one and add it to current chunk
+		while (chunk.totalSize < size && !pendingFiles.empty())
+		{
+			File file = std::move(pendingFiles.front());
+			pendingFiles.pop_front();
+
+			size_t remainingSize = size - chunk.totalSize;
+
+			if (file.contents.size() <= remainingSize)
+			{
+				// no need to split the file, just add it
+				appendChunkFile(chunk, std::move(file));
+			}
+			else
+			{
+				// last file does not fit completely, store some part of it and put the remaining lines back into pending list
+				appendChunkFilePrefix(chunk, file, remainingSize);
+				pendingFiles.emplace_front(file);
+
+				// it's impossible to add any more files to this chunk without making it larger than requested
+				break;
+			}
+		}
+
+		// update pending size
+		assert(chunk.totalSize <= pendingSize);
+		pendingSize -= chunk.totalSize;
+
+		// store resulting chunk
+		flushChunk(chunk);
+	}
 
 	static std::vector<char> compressData(const std::vector<char>& data)
 	{
@@ -205,14 +262,12 @@ private:
 		return cdata;
 	}
 
-	void flushChunk()
+	void flushChunk(const Chunk& chunk)
 	{
-		if (currentChunk.files.empty()) return;
+		if (chunk.files.empty()) return;
 
-		std::vector<char> data = prepareChunkData(currentChunk);
-		writeChunk(currentChunk, data);
-
-		currentChunk = Chunk();
+		std::vector<char> data = prepareChunkData(chunk);
+		writeChunk(chunk, data);
 	}
 
 	size_t getChunkNameTotalSize(const Chunk& chunk)
@@ -317,9 +372,9 @@ void Builder::appendFile(const char* path)
 	printStatistics();
 }
 
-void Builder::appendFile(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
+void Builder::appendFilePart(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
 {
-	impl->appendFile(path, startLine, static_cast<const char*>(data), dataSize, lastWriteTime, fileSize);
+	impl->appendFilePart(path, startLine, static_cast<const char*>(data), dataSize, lastWriteTime, fileSize);
 	printStatistics();
 }
 
