@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include "init.hpp"
 #include "build.hpp"
+#include "update.hpp"
 #include "search.hpp"
 #include "project.hpp"
 
@@ -105,6 +106,13 @@ int main(int argc, const char** argv)
 
 		for (size_t i = 0; i < paths.size(); ++i)
 			buildProject(paths[i].c_str());
+	}
+	else if (argc > 2 && strcmp(argv[1], "update") == 0)
+	{
+		std::vector<std::string> paths = getProjectPaths(argv[2]);
+
+		for (size_t i = 0; i < paths.size(); ++i)
+			updateProject(paths[i].c_str());
 	}
 	else if (argc > 3 && strcmp(argv[1], "search") == 0)
 	{

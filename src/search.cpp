@@ -130,13 +130,13 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 	output->output.end(chunk);
 }
 
-bool read(std::istream& in, void* data, size_t size)
+inline bool read(std::istream& in, void* data, size_t size)
 {
 	in.read(static_cast<char*>(data), size);
 	return in.gcount() == size;
 }
 
-template <typename T> bool read(std::istream& in, T& value)
+template <typename T> inline bool read(std::istream& in, T& value)
 {
 	return read(in, &value, sizeof(T));
 }
