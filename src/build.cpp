@@ -121,6 +121,21 @@ public:
 		while (dataSize > 0);
 	}
 
+	std::vector<char> readFile(std::ifstream& in)
+	{
+		std::vector<char> result;
+
+		while (!in.eof())
+		{
+			char buffer[65536];
+			in.read(buffer, sizeof(buffer));
+
+			result.insert(result.end(), buffer, buffer + in.gcount());
+		}
+
+		return result;
+	}
+
 	bool appendFile(const char* path)
 	{
 		uint64_t lastWriteTime, fileSize;
@@ -129,20 +144,18 @@ public:
 		std::ifstream in(path);
 		if (!in) return false;
 
-		std::vector<char> contents;
-
-		while (!in.eof())
+		try
 		{
-			char buffer[65536];
-			in.read(buffer, sizeof(buffer));
+			std::vector<char> contents = convertToUTF8(readFile(in));
 
-			contents.insert(contents.end(), buffer, buffer + in.gcount());
+			appendFile(path, 0, contents.empty() ? 0 : &contents[0], contents.size(), lastWriteTime, fileSize);
+
+			return true;
 		}
-
-		std::vector<char> contentsUTF8 = convertToUTF8(contents);
-
-		appendFile(path, 0, contentsUTF8.empty() ? 0 : &contentsUTF8[0], contentsUTF8.size(), lastWriteTime, fileSize);
-		return true;
+		catch (const std::bad_alloc&)
+		{
+			return false;
+		}
 	}
 
 	void flush()
