@@ -110,6 +110,7 @@
     <ClCompile Include="..\extern\re2\util\strutil.cc" />
     <ClCompile Include="blockpool.cpp" />
     <ClCompile Include="build.cpp" />
+    <ClCompile Include="encoding.cpp" />
     <ClCompile Include="fileutil.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="main.cpp" />
@@ -134,6 +135,7 @@
     <ClInclude Include="blockpool.hpp" />
     <ClInclude Include="build.hpp" />
     <ClInclude Include="constants.hpp" />
+    <ClInclude Include="encoding.hpp" />
     <ClInclude Include="fileutil.hpp" />
     <ClInclude Include="common.hpp" />
     <ClInclude Include="init.hpp" />

@@ -5,6 +5,7 @@
 #include "fileutil.hpp"
 #include "constants.hpp"
 #include "project.hpp"
+#include "encoding.hpp"
 
 #include <fstream>
 #include <vector>
@@ -138,7 +139,9 @@ public:
 			contents.insert(contents.end(), buffer, buffer + in.gcount());
 		}
 
-		appendFile(path, 0, contents.empty() ? 0 : &contents[0], contents.size(), lastWriteTime, fileSize);
+		std::vector<char> contentsUTF8 = convertToUTF8(contents);
+
+		appendFile(path, 0, contentsUTF8.empty() ? 0 : &contentsUTF8[0], contentsUTF8.size(), lastWriteTime, fileSize);
 		return true;
 	}
 
