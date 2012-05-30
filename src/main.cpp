@@ -4,6 +4,7 @@
 #include "update.hpp"
 #include "search.hpp"
 #include "project.hpp"
+#include "files.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +30,25 @@ void fatal(const char* message, ...)
 	exit(1);
 }
 
+unsigned int parseSearchFileOption(char opt)
+{
+	switch (opt)
+	{
+	case 'n':
+		return SO_FILE_NAMEREGEX;
+
+	case 'p':
+		return SO_FILE_PATHREGEX;
+
+	case 's':
+		return 0; // default
+
+	default:
+		fatal("Unknown search option 'f%c'\n", opt);
+		return 0;
+	}
+}
+
 unsigned int parseSearchOptions(const char* opts)
 {
 	unsigned int result = 0;
@@ -51,6 +71,11 @@ unsigned int parseSearchOptions(const char* opts)
 
 		case 'C':
 			result |= SO_COLUMNNUMBER;
+			break;
+
+		case 'f':
+			s++;
+			result |= parseSearchFileOption(*s);
 			break;
 			
 		default:
@@ -126,6 +151,20 @@ int main(int argc, const char** argv)
 		for (size_t i = 0; i < paths.size(); ++i)
 			searchProject(paths[i].c_str(), argv[argc - 1], options);
 	}
+	else if (argc > 2 && strcmp(argv[1], "files") == 0)
+	{
+		std::vector<std::string> paths = getProjectPaths(argv[2]);
+
+		unsigned int options = 0;
+
+		for (int i = 3; i + 1 < argc; ++i)
+			options |= parseSearchOptions(argv[i]);
+
+		const char* query = argc > 3 ? argv[argc - 1] : "";
+
+		for (size_t i = 0; i < paths.size(); ++i)
+			searchFiles(paths[i].c_str(), query, options);
+	}
 	else if (argc > 1 && strcmp(argv[1], "projects") == 0)
 	{
 		std::vector<std::string> projects = getProjects();
@@ -139,6 +178,8 @@ int main(int argc, const char** argv)
 				"qgrep init <project> <path>\n"
 				"qgrep build <project-list>\n"
 				"qgrep search <project-list> <search-options> <query>\n"
+				"qgrep files <project-list>\n"
+				"qgrep files <project-list> <search-options> <query>\n"
 				"qgrep projects\n"
 				"\n"
 				"<project> is either a project name (stored in ~/.qgrep) or a project path\n"
@@ -147,6 +188,12 @@ int main(int argc, const char** argv)
 				"  i - case-insensitive search\n"
 				"  l - literal search (query is treated as a literal string)\n"
 				"  V - Visual Studio style formatting\n"
+				"  C - include column name in output\n"
+				"<search-options> can include additional options for file search:\n"
+				"  fn - search in file names\n"
+				"  fp - search in file paths\n"
+				"  fs - search in file names/paths using a space-delimited literal query (default)\n"
+				"       paths are grepped for components with slashes, names are grepped for the rest\n"
 				"<query> is a regular expression\n"
 				);
 	}

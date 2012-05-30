@@ -4,12 +4,14 @@
 #include "project.hpp"
 #include "fileutil.hpp"
 #include "format.hpp"
+#include "search.hpp"
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
 
 #include <fstream>
 #include <cassert>
+#include <memory>
 
 static std::vector<char> compressData(const std::vector<char>& data)
 {
@@ -23,9 +25,9 @@ static std::vector<char> compressData(const std::vector<char>& data)
 	return cdata;
 }
 
-static std::string getNameBuffer(const char** files, unsigned int count)
+static std::vector<const char*> getFileNames(const char** files, unsigned int count)
 {
-	std::string result;
+	std::vector<const char*> result(count);
 
 	for (unsigned int i = 0; i < count; ++i)
 	{
@@ -33,24 +35,60 @@ static std::string getNameBuffer(const char** files, unsigned int count)
 		const char* slash = strrchr(file, '/');
 		const char* name = slash ? slash + 1 : file;
 
-		result += name;
-		result += '\n';
+		result[i] = name;
 	}
 
 	return result;
 }
 
-static std::string getPathBuffer(const char** files, unsigned int count)
+static size_t getStringBufferSize(const std::vector<const char*>& strings)
 {
-	std::string result;
+	size_t result = 0;
 
+	for (size_t i = 0; i < strings.size(); ++i)
+		result += strlen(strings[i]) + 1;
+
+	return result + 1;
+}
+
+static std::pair<std::vector<char>, std::pair<unsigned int, unsigned int>> prepareFileData(const char** files, unsigned int count)
+{
+	std::vector<const char*> paths(files, files + count);
+	std::vector<const char*> names = getFileNames(files, count);
+
+	size_t entrySize = sizeof(FileFileEntry) * count;
+	size_t nameSize = getStringBufferSize(names);
+	size_t pathSize = getStringBufferSize(paths);
+	size_t totalSize = entrySize + nameSize + pathSize;
+
+	std::vector<char> data(totalSize);
+
+	size_t nameOffset = entrySize;
+	size_t pathOffset = entrySize + nameSize;
+	
 	for (unsigned int i = 0; i < count; ++i)
 	{
-		result += files[i];
-		result += '\n';
+		size_t nameLength = strlen(names[i]);
+		size_t pathLength = strlen(paths[i]);
+
+		std::copy(names[i], names[i] + nameLength, data.begin() + nameOffset);
+		data[nameOffset + nameLength] = '\n';
+
+		std::copy(paths[i], paths[i] + pathLength, data.begin() + pathOffset);
+		data[pathOffset + pathLength] = '\n';
+
+		FileFileEntry& e = reinterpret_cast<FileFileEntry*>(&data[0])[i];
+
+		e.nameOffset = nameOffset;
+		e.pathOffset = pathOffset;
+
+		nameOffset += nameLength + 1;
+		pathOffset += pathLength + 1;
 	}
 
-	return result;
+	assert(nameOffset + 1 == entrySize + nameSize && pathOffset + 1 == totalSize);
+
+	return std::make_pair(data, std::make_pair(entrySize, entrySize + nameSize));
 }
 
 void buildFiles(const char* path, const char** files, unsigned int count)
@@ -68,26 +106,18 @@ void buildFiles(const char* path, const char** files, unsigned int count)
 			return;
 		}
 
-		std::string nameBuffer = getNameBuffer(files, count);
-		std::string pathBuffer = getPathBuffer(files, count);
-
-		std::vector<char> dataBuffer;
-		dataBuffer.insert(dataBuffer.end(), nameBuffer.begin(), nameBuffer.end());
-		dataBuffer.push_back(0);
-		dataBuffer.insert(dataBuffer.end(), pathBuffer.begin(), pathBuffer.end());
-		dataBuffer.push_back(0);
-
-		std::vector<char> compressed = compressData(dataBuffer);
+		std::pair<std::vector<char>, std::pair<unsigned int, unsigned int>> data = prepareFileData(files, count);
+		std::vector<char> compressed = compressData(data.first);
 
 		FileFileHeader header;
-		memcpy(header.magic, kDataFileHeaderMagic, sizeof(header.magic));
+		memcpy(header.magic, kFileFileHeaderMagic, sizeof(header.magic));
 
 		header.fileCount = count;
 		header.compressedSize = compressed.size();
-		header.uncompressedSize = dataBuffer.size();
+		header.uncompressedSize = data.first.size();
 
-		header.nameBufferOffset = 0;
-		header.pathBufferOffset = nameBuffer.size() + 1;
+		header.nameBufferOffset = data.second.first;
+		header.pathBufferOffset = data.second.second;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(header));
 		if (!compressed.empty()) out.write(&compressed[0], compressed.size());
@@ -122,6 +152,75 @@ void buildFiles(const char* path)
 	buildFiles(path, files);
 }
 
+inline bool read(std::istream& in, void* data, size_t size)
+{
+	in.read(static_cast<char*>(data), size);
+	return in.gcount() == size;
+}
+
+template <typename T> inline bool read(std::istream& in, T& value)
+{
+	return read(in, &value, sizeof(T));
+}
+
+std::unique_ptr<char[]> safeAlloc(size_t size)
+{
+	try
+	{
+		return std::unique_ptr<char[]>(new char[size]);
+	}
+	catch (const std::bad_alloc&)
+	{
+		return std::unique_ptr<char[]>();
+	}
+}
+
+template <typename ExtractOffset>
+static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, unsigned int options, ExtractOffset extractOffset)
+{
+}
+
+static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, unsigned int options)
+{
+}
+
+static void searchFiles(const FileFileHeader& header, const char* data, const char* string, unsigned int options)
+{
+	if (options & SO_FILE_NAMEREGEX)
+		searchFilesRegex(header, data, data + header.nameBufferOffset, string, options, [](const FileFileEntry& e) { return e.nameOffset; });
+	else if (options & SO_FILE_PATHREGEX)
+		searchFilesRegex(header, data, data + header.pathBufferOffset, string, options, [](const FileFileEntry& e) { return e.pathOffset; });
+	else
+		searchFilesSolution(header, data, string, options);
+}
+
 void searchFiles(const char* file, const char* string, unsigned int options)
 {
+	std::string dataPath = replaceExtension(file, ".qgf");
+	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
+	if (!in)
+	{
+		error("Error reading data file %s\n", dataPath.c_str());
+		return;
+	}
+	
+	FileFileHeader header;
+	if (!read(in, header) || memcmp(header.magic, kFileFileHeaderMagic, strlen(kFileFileHeaderMagic)) != 0)
+	{
+		error("Error reading data file %s: malformed header\n", dataPath.c_str());
+		return;
+	}
+
+	std::unique_ptr<char[]> buffer = safeAlloc(header.compressedSize + header.uncompressedSize);
+
+	if (!buffer || !read(in, buffer.get(), header.compressedSize))
+	{
+		error("Error reading data file %s: malformed header\n", dataPath.c_str());
+		return;
+	}
+
+	char* data = buffer.get() + header.compressedSize;
+	LZ4_uncompress(buffer.get(), data, header.uncompressedSize);
+
+	searchFiles(header, data, string, options);
 }
