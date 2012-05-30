@@ -214,11 +214,17 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 
 	while (RegexMatch match = re->rangeSearch(begin, end - begin))
 	{
-		// find file index
-		size_t matchOffset = (match.data - begin) + (buffer - data);
+		size_t matchOffset = (match.data - range) + (buffer - data);
+
+		// find first file entry with offset >= matchOffset
 		const FileFileEntry* entry =
 			std::lower_bound(entries, entries + header.fileCount, matchOffset, [=](const FileFileEntry& e, size_t o) { return extractOffset(e) < o; });
-		assert(entry < entries + header.fileCount);
+
+		// find last file entry with offset <= matchOffset
+		if (entry == entries + header.fileCount || extractOffset(*entry) > matchOffset)
+			--entry;
+
+		assert(entry >= entries && entry < entries + header.fileCount);
 
 		// print match
 		processMatch(*entry, data, options);
@@ -238,6 +244,8 @@ static void searchFilesSolution(const FileFileHeader& header, const char* data, 
 
 static void searchFiles(const FileFileHeader& header, const char* data, const char* string, unsigned int options)
 {
+	if (*string == 0)
+		printf("%s", data + header.pathBufferOffset);
 	if (options & SO_FILE_NAMEREGEX)
 		searchFilesRegex(header, data, data + header.nameBufferOffset, string, options, [](const FileFileEntry& e) { return e.nameOffset; });
 	else if (options & SO_FILE_PATHREGEX)
