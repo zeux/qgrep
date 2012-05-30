@@ -1,5 +1,8 @@
 features:
 1. incremental update (compare mtime/size, add/remove files, don't recompress chunks unless necessary)
+2. file database and regex-based file path search
+3. open file in solution-style file path search
+4. output limit support for text search
 5. vim script
 6. stale file support
 7. incremental update based on stale file list
