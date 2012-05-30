@@ -198,6 +198,16 @@ static void processMatch(const FileFileEntry& entry, const char* data, unsigned 
 	printf("%.*s\n", static_cast<unsigned>(pathLength), path);
 }
 
+static void dumpFiles(const FileFileHeader& header, const char* data, unsigned int options, unsigned int limit)
+{
+	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
+
+	unsigned int count = limit == 0 ? header.fileCount : std::min(limit, header.fileCount);
+
+	for (unsigned int i = 0; i < count; ++i)
+		processMatch(entries[i], data, options);
+}
+
 template <typename ExtractOffset>
 static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, unsigned int options, unsigned int limit,
 	ExtractOffset extractOffset)
@@ -275,7 +285,7 @@ void searchFiles(const char* file, const char* string, unsigned int options, uns
 	LZ4_uncompress(buffer.get(), data, header.uncompressedSize);
 
 	if (*string == 0)
-		printf("%s", data + header.pathBufferOffset);
+		dumpFiles(header, data, options, limit);
 	if (options & SO_FILE_NAMEREGEX)
 		searchFilesRegex(header, data, data + header.nameBufferOffset, string, options, limit, [](const FileFileEntry& e) { return e.nameOffset; });
 	else if (options & SO_FILE_PATHREGEX)
