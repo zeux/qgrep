@@ -199,7 +199,8 @@ static void processMatch(const FileFileEntry& entry, const char* data, unsigned 
 }
 
 template <typename ExtractOffset>
-static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, unsigned int options, ExtractOffset extractOffset)
+static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, unsigned int options, unsigned int limit,
+	ExtractOffset extractOffset)
 {
 	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(options)));
 
@@ -211,6 +212,8 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 
 	const char* begin = range;
 	const char* end = begin + size;
+
+	unsigned int matches = 0;
 
 	while (RegexMatch match = re->rangeSearch(begin, end - begin))
 	{
@@ -231,28 +234,19 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 		const char* lend = findLineEnd(match.data + match.size, end);
 		if (lend == end) break;
 		begin = lend + 1;
+		matches++;
+
+		if (matches == limit) break;
 	}
 
 	re->rangeFinalize(range);
 }
 
-static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, unsigned int options)
+static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, unsigned int options, unsigned int limit)
 {
 }
 
-static void searchFiles(const FileFileHeader& header, const char* data, const char* string, unsigned int options)
-{
-	if (*string == 0)
-		printf("%s", data + header.pathBufferOffset);
-	if (options & SO_FILE_NAMEREGEX)
-		searchFilesRegex(header, data, data + header.nameBufferOffset, string, options, [](const FileFileEntry& e) { return e.nameOffset; });
-	else if (options & SO_FILE_PATHREGEX)
-		searchFilesRegex(header, data, data + header.pathBufferOffset, string, options, [](const FileFileEntry& e) { return e.pathOffset; });
-	else
-		searchFilesSolution(header, data, string, options);
-}
-
-void searchFiles(const char* file, const char* string, unsigned int options)
+void searchFiles(const char* file, const char* string, unsigned int options, unsigned int limit)
 {
 	std::string dataPath = replaceExtension(file, ".qgf");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
@@ -280,5 +274,12 @@ void searchFiles(const char* file, const char* string, unsigned int options)
 	char* data = buffer.get() + header.compressedSize;
 	LZ4_uncompress(buffer.get(), data, header.uncompressedSize);
 
-	searchFiles(header, data, string, options);
+	if (*string == 0)
+		printf("%s", data + header.pathBufferOffset);
+	if (options & SO_FILE_NAMEREGEX)
+		searchFilesRegex(header, data, data + header.nameBufferOffset, string, options, limit, [](const FileFileEntry& e) { return e.nameOffset; });
+	else if (options & SO_FILE_PATHREGEX)
+		searchFilesRegex(header, data, data + header.pathBufferOffset, string, options, limit, [](const FileFileEntry& e) { return e.pathOffset; });
+	else
+		searchFilesSolution(header, data, string, options, limit);
 }

@@ -12,4 +12,4 @@ enum SearchOptions
 
 unsigned int getRegexOptions(unsigned int options);
 	
-void searchProject(const char* file, const char* string, unsigned int options);
+void searchProject(const char* file, const char* string, unsigned int options, unsigned int limit);

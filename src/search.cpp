@@ -125,7 +125,7 @@ unsigned int getRegexOptions(unsigned int options)
 		(options & SO_LITERAL ? RO_LITERAL : 0);
 }
 
-void searchProject(const char* file, const char* string, unsigned int options)
+void searchProject(const char* file, const char* string, unsigned int options, unsigned int limit)
 {
 	SearchOutput output(options);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));

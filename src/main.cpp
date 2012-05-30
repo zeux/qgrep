@@ -49,33 +49,42 @@ unsigned int parseSearchFileOption(char opt)
 	}
 }
 
-unsigned int parseSearchOptions(const char* opts)
+std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 {
-	unsigned int result = 0;
+	unsigned int options = 0;
+	int limit = -1;
 	
 	for (const char* s = opts; *s; ++s)
 	{
 		switch (*s)
 		{
 		case 'i':
-			result |= SO_IGNORECASE;
+			options |= SO_IGNORECASE;
 			break;
 
 		case 'l':
-			result |= SO_LITERAL;
+			options |= SO_LITERAL;
 			break;
 			
 		case 'V':
-			result |= SO_VISUALSTUDIO;
+			options |= SO_VISUALSTUDIO;
 			break;
 
 		case 'C':
-			result |= SO_COLUMNNUMBER;
+			options |= SO_COLUMNNUMBER;
+			break;
+
+		case 'L':
+			{
+				char* end = 0;
+				limit = strtol(s + 1, &end, 10);
+				s = end - 1;
+			}
 			break;
 
 		case 'f':
 			s++;
-			result |= parseSearchFileOption(*s);
+			options |= parseSearchFileOption(*s);
 			break;
 			
 		default:
@@ -83,7 +92,7 @@ unsigned int parseSearchOptions(const char* opts)
 		}
 	}
 	
-	return result;
+	return std::make_pair(options, limit);
 }
 
 std::vector<std::string> split(const char* str, char sep)
@@ -119,6 +128,27 @@ std::vector<std::string> getProjectPaths(const char* name)
 	return result;
 }
 
+void processSearchCommand(int argc, const char** argv, void (*search)(const char* file, const char* string, unsigned int options, unsigned int limit))
+{
+	std::vector<std::string> paths = getProjectPaths(argv[2]);
+
+	unsigned int options = 0;
+	unsigned int limit = 0;
+
+	for (int i = 3; i + 1 < argc; ++i)
+	{
+		auto p = parseSearchOptions(argv[i]);
+
+		options |= p.first;
+		if (p.second >= 0) limit = p.second;
+	}
+
+	const char* query = argc > 3 ? argv[argc - 1] : "";
+
+	for (size_t i = 0; i < paths.size(); ++i)
+		search(paths[i].c_str(), query, options, limit);
+}
+
 int main(int argc, const char** argv)
 {
 	if (argc > 3 && strcmp(argv[1], "init") == 0)
@@ -141,29 +171,11 @@ int main(int argc, const char** argv)
 	}
 	else if (argc > 3 && strcmp(argv[1], "search") == 0)
 	{
-		std::vector<std::string> paths = getProjectPaths(argv[2]);
-
-		unsigned int options = 0;
-
-		for (int i = 3; i + 1 < argc; ++i)
-			options |= parseSearchOptions(argv[i]);
-
-		for (size_t i = 0; i < paths.size(); ++i)
-			searchProject(paths[i].c_str(), argv[argc - 1], options);
+		processSearchCommand(argc, argv, searchProject);
 	}
 	else if (argc > 2 && strcmp(argv[1], "files") == 0)
 	{
-		std::vector<std::string> paths = getProjectPaths(argv[2]);
-
-		unsigned int options = 0;
-
-		for (int i = 3; i + 1 < argc; ++i)
-			options |= parseSearchOptions(argv[i]);
-
-		const char* query = argc > 3 ? argv[argc - 1] : "";
-
-		for (size_t i = 0; i < paths.size(); ++i)
-			searchFiles(paths[i].c_str(), query, options);
+		processSearchCommand(argc, argv, searchFiles);
 	}
 	else if (argc > 1 && strcmp(argv[1], "projects") == 0)
 	{
@@ -189,6 +201,7 @@ int main(int argc, const char** argv)
 				"  l - literal search (query is treated as a literal string)\n"
 				"  V - Visual Studio style formatting\n"
 				"  C - include column name in output\n"
+				"  Lnumber - limit output to <number> lines\n"
 				"<search-options> can include additional options for file search:\n"
 				"  fn - search in file names\n"
 				"  fp - search in file paths\n"
