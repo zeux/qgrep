@@ -6,6 +6,7 @@
 #include "format.hpp"
 #include "search.hpp"
 #include "regex.hpp"
+#include "stringutil.hpp"
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
@@ -176,23 +177,6 @@ std::unique_ptr<char[]> safeAlloc(size_t size)
 		return std::unique_ptr<char[]>();
 	}
 }
-
-static const char* findLineEnd(const char* pos, const char* end)
-{
-	for (const char* s = pos; s != end; ++s)
-		if (*s == '\n')
-			return s;
-
-	return end;
-}
-
-struct BackSlashTransformer
-{
-	char operator()(char ch) const
-	{
-		return (ch == '/') ? '\\' : ch;
-	}
-};
 
 static void processMatch(const FileFileEntry& entry, const char* data, unsigned int options)
 {

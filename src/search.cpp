@@ -8,6 +8,7 @@
 #include "orderedoutput.hpp"
 #include "constants.hpp"
 #include "blockpool.hpp"
+#include "stringutil.hpp"
 
 #include <fstream>
 #include <algorithm>
@@ -23,14 +24,6 @@ struct SearchOutput
 
 	unsigned int options;
 	OrderedOutput output;
-};
-
-struct BackSlashTransformer
-{
-	char operator()(char ch) const
-	{
-		return (ch == '/') ? '\\' : ch;
-	}
 };
 
 static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength)
@@ -57,34 +50,6 @@ static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, cons
 	}
 	
 	output->output.write(chunk, "%.*s%s%d%s%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, colnumber, lineAfter, static_cast<unsigned>(matchLength), match);
-}
-
-static const char* findLineStart(const char* begin, const char* pos)
-{
-	for (const char* s = pos; s > begin; --s)
-		if (s[-1] == '\n')
-			return s;
-
-	return begin;
-}
-
-static const char* findLineEnd(const char* pos, const char* end)
-{
-	for (const char* s = pos; s != end; ++s)
-		if (*s == '\n')
-			return s;
-
-	return end;
-}
-
-static unsigned int countLines(const char* begin, const char* end)
-{
-	unsigned int res = 0;
-	
-	for (const char* s = begin; s != end; ++s)
-		res += (*s == '\n');
-		
-	return res;
 }
 
 static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, const char* data, size_t size, unsigned int startLine)

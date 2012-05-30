@@ -147,6 +147,7 @@
     <ClInclude Include="format.hpp" />
     <ClInclude Include="regex.hpp" />
     <ClInclude Include="search.hpp" />
+    <ClInclude Include="stringutil.hpp" />
     <ClInclude Include="update.hpp" />
     <ClInclude Include="workqueue.hpp" />
   </ItemGroup>

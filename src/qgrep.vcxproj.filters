@@ -183,6 +183,9 @@
     <ClInclude Include="files.hpp">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="stringutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
