@@ -116,13 +116,13 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 
 static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount)
 {
-	const ChunkFileHeader* files = reinterpret_cast<const ChunkFileHeader*>(data);
+	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
 	OrderedOutput::Chunk* chunk = output->output.begin(chunkIndex);
 	
 	for (size_t i = 0; i < fileCount; ++i)
 	{
-		const ChunkFileHeader& f = files[i];
+		const DataChunkFileHeader& f = files[i];
 		
 		processFile(re, output, chunk, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
 	}
@@ -173,14 +173,14 @@ void searchProject(const char* file, const char* string, unsigned int options)
 		return;
 	}
 	
-	FileHeader header;
-	if (!read(in, header) || memcmp(header.magic, kFileHeaderMagic, strlen(kFileHeaderMagic)) != 0)
+	DataFileHeader header;
+	if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
 	{
 		error("Error reading data file %s: malformed header\n", dataPath.c_str());
 		return;
 	}
 		
-	ChunkHeader chunk;
+	DataChunkHeader chunk;
 	unsigned int chunkIndex = 0;
 	
 	// Assume 50% compression ratio (it's usually much better)

@@ -5,6 +5,7 @@
 #include "format.hpp"
 #include "fileutil.hpp"
 #include "project.hpp"
+#include "files.hpp"
 
 #include <fstream>
 #include <memory>
@@ -44,8 +45,8 @@ public:
 	{
 		in.open(path, std::ios::in | std::ios::binary);
 
-		FileHeader header;
-		if (!read(in, header) || memcmp(header.magic, kFileHeaderMagic, strlen(kFileHeaderMagic)) != 0)
+		DataFileHeader header;
+		if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
 		{
 			in.close();
 		}
@@ -60,21 +61,21 @@ public:
 		return file < chunk.fileCount;
 	}
 
-	const ChunkFileHeader& getHeader() const
+	const DataChunkFileHeader& getHeader() const
 	{
 		assert(*this);
-		return reinterpret_cast<const ChunkFileHeader*>(data.get())[file];
+		return reinterpret_cast<const DataChunkFileHeader*>(data.get())[file];
 	}
 
 	std::string getPath() const
 	{
-		const ChunkFileHeader& header = getHeader();
+		const DataChunkFileHeader& header = getHeader();
 		return std::string(data.get() + header.nameOffset, header.nameLength);
 	}
 
 	const char* getData() const
 	{
-		const ChunkFileHeader& header = getHeader();
+		const DataChunkFileHeader& header = getHeader();
 		return data.get() + header.dataOffset;
 	}
 
@@ -105,7 +106,7 @@ public:
 
 private:
 	std::ifstream in;
-	ChunkHeader chunk;
+	DataChunkHeader chunk;
 	std::unique_ptr<char[]> data;
 	unsigned int file;
 };
@@ -128,13 +129,15 @@ std::string getCurrentFileContents(FileDataIterator& it)
 void updateProject(const char* path)
 {
     printf("Updating %s:\n", path);
-	printf("Scanning folder for files...\r");
+	printf("Scanning project...\r");
 
 	std::vector<std::string> files;
 	if (!getProjectFiles(path, files))
 	{
 		return;
 	}
+
+	buildFiles(path, files);
 	
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";

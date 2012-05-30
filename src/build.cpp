@@ -6,6 +6,7 @@
 #include "constants.hpp"
 #include "project.hpp"
 #include "encoding.hpp"
+#include "files.hpp"
 
 #include <fstream>
 #include <vector>
@@ -44,8 +45,8 @@ public:
 		outData.open(path, std::ios::out | std::ios::binary);
 		if (!outData) return false;
 
-		FileHeader header;
-		memcpy(header.magic, kFileHeaderMagic, sizeof(header.magic));
+		DataFileHeader header;
+		memcpy(header.magic, kDataFileHeaderMagic, sizeof(header.magic));
 
 		outData.write(reinterpret_cast<char*>(&header), sizeof(header));
 
@@ -319,7 +320,7 @@ private:
 
 	std::vector<char> prepareChunkData(const Chunk& chunk)
 	{
-		size_t headerSize = sizeof(ChunkFileHeader) * chunk.files.size();
+		size_t headerSize = sizeof(DataChunkFileHeader) * chunk.files.size();
 		size_t nameSize = getChunkNameTotalSize(chunk);
 		size_t dataSize = getChunkDataTotalSize(chunk);
 		size_t totalSize = headerSize + nameSize + dataSize;
@@ -336,7 +337,7 @@ private:
 			std::copy(f.name.begin(), f.name.end(), data.begin() + nameOffset);
 			std::copy(f.contents.data(), f.contents.data() + f.contents.size(), data.begin() + dataOffset);
 
-			ChunkFileHeader& h = reinterpret_cast<ChunkFileHeader*>(&data[0])[i];
+			DataChunkFileHeader& h = reinterpret_cast<DataChunkFileHeader*>(&data[0])[i];
 
 			h.nameOffset = nameOffset;
 			h.nameLength = f.name.size();
@@ -362,7 +363,7 @@ private:
 	{
 		std::vector<char> cdata = compressData(data);
 
-		ChunkHeader header = {};
+		DataChunkHeader header = {};
 		header.fileCount = chunk.files.size();
 		header.uncompressedSize = data.size();
 		header.compressedSize = cdata.size();
@@ -435,13 +436,15 @@ Builder* createBuilder(const char* path, unsigned int fileCount)
 void buildProject(const char* path)
 {
     printf("Building %s:\n", path);
-	printf("Scanning folder for files...\r");
+	printf("Scanning project...\r");
 
 	std::vector<std::string> files;
 	if (!getProjectFiles(path, files))
 	{
 		return;
 	}
+
+	buildFiles(path, files);
 	
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";

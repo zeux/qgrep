@@ -100,6 +100,9 @@
     <ClCompile Include="update.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="files.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -175,6 +178,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="update.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="files.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

@@ -2,21 +2,41 @@
 
 #include <stdint.h>
 
-const char kFileHeaderMagic[] = "QGD0";
+const char kFileFileHeaderMagic[] = "QGF0";
 
-struct FileHeader
+struct FileFileHeader
+{
+	char magic[4];
+
+	uint32_t fileCount;
+	uint32_t compressedSize;
+	uint32_t uncompressedSize;
+
+	uint32_t nameBufferOffset;
+	uint32_t pathBufferOffset;
+};
+
+struct FileFileEntry
+{
+	uint32_t nameOffset;
+	uint32_t pathOffset;
+};
+
+const char kDataFileHeaderMagic[] = "QGD0";
+
+struct DataFileHeader
 {
 	char magic[4];
 };
 
-struct ChunkHeader
+struct DataChunkHeader
 {
 	uint32_t fileCount;
 	uint32_t compressedSize;
 	uint32_t uncompressedSize;
 };
 
-struct ChunkFileHeader
+struct DataChunkFileHeader
 {
 	uint32_t nameOffset;
 	uint32_t nameLength;
