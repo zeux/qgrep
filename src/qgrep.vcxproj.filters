@@ -16,7 +16,7 @@
     <ClCompile Include="..\extern\lz4\lz4.c">
       <Filter>extern\lz4</Filter>
     </ClCompile>
-    <ClCompile Include="..\extern\lz4hc\lz4hc.c">
+    <ClCompile Include="..\extern\lz4\lz4hc.c">
       <Filter>extern\lz4</Filter>
     </ClCompile>
     <ClCompile Include="build.cpp">
@@ -105,7 +105,7 @@
     <ClInclude Include="..\extern\lz4\lz4.h">
       <Filter>extern\lz4</Filter>
     </ClInclude>
-    <ClInclude Include="..\extern\lz4hc\lz4hc.h">
+    <ClInclude Include="..\extern\lz4\lz4hc.h">
       <Filter>extern\lz4</Filter>
     </ClInclude>
     <ClInclude Include="common.hpp">

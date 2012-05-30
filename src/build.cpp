@@ -16,7 +16,7 @@
 #include <memory>
 
 #include "lz4/lz4.h"
-#include "lz4hc/lz4hc.h"
+#include "lz4/lz4hc.h"
 
 class Builder::BuilderImpl
 {
