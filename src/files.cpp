@@ -216,15 +216,13 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 	{
 		size_t matchOffset = (match.data - range) + (buffer - data);
 
-		// find first file entry with offset >= matchOffset
+		// find first file entry with offset > matchOffset
 		const FileFileEntry* entry =
-			std::lower_bound(entries, entries + header.fileCount, matchOffset, [=](const FileFileEntry& e, size_t o) { return extractOffset(e) < o; });
+			std::upper_bound(entries, entries + header.fileCount, matchOffset, [=](size_t l, const FileFileEntry& r) { return l < extractOffset(r); });
 
 		// find last file entry with offset <= matchOffset
-		if (entry == entries + header.fileCount || extractOffset(*entry) > matchOffset)
-			--entry;
-
-		assert(entry >= entries && entry < entries + header.fileCount);
+		assert(entry > entries);
+		entry--;
 
 		// print match
 		processMatch(*entry, data, options);
