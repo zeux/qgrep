@@ -5,6 +5,7 @@
 #include "fileutil.hpp"
 #include "format.hpp"
 #include "search.hpp"
+#include "regex.hpp"
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
@@ -12,6 +13,7 @@
 #include <fstream>
 #include <cassert>
 #include <memory>
+#include <algorithm>
 
 static std::vector<char> compressData(const std::vector<char>& data)
 {
@@ -175,9 +177,75 @@ std::unique_ptr<char[]> safeAlloc(size_t size)
 	}
 }
 
+static const char* findLineEnd(const char* pos, const char* end)
+{
+	for (const char* s = pos; s != end; ++s)
+		if (*s == '\n')
+			return s;
+
+	return end;
+}
+
+struct BackSlashTransformer
+{
+	char operator()(char ch) const
+	{
+		return (ch == '/') ? '\\' : ch;
+	}
+};
+
+static void processMatch(const FileFileEntry& entry, const char* data, unsigned int options)
+{
+	const char* path = entry.pathOffset + data;
+
+	const char* pathEnd = strchr(path, '\n');
+	assert(pathEnd);
+
+	size_t pathLength = pathEnd - path;
+
+	if (options & SO_VISUALSTUDIO)
+	{
+		char* buffer = static_cast<char*>(alloca(pathLength));
+		
+		std::transform(path, path + pathLength, buffer, BackSlashTransformer());
+		path = buffer;
+	}
+
+	printf("%.*s\n", static_cast<unsigned>(pathLength), path);
+}
+
 template <typename ExtractOffset>
 static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, unsigned int options, ExtractOffset extractOffset)
 {
+	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(options)));
+
+	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
+
+	size_t size = strlen(buffer);
+
+	const char* range = re->rangePrepare(buffer, size);
+
+	const char* begin = range;
+	const char* end = begin + size;
+
+	while (RegexMatch match = re->rangeSearch(begin, end - begin))
+	{
+		// find file index
+		size_t matchOffset = (match.data - begin) + (buffer - data);
+		const FileFileEntry* entry =
+			std::lower_bound(entries, entries + header.fileCount, matchOffset, [=](const FileFileEntry& e, size_t o) { return extractOffset(e) < o; });
+		assert(entry < entries + header.fileCount);
+
+		// print match
+		processMatch(*entry, data, options);
+
+		// move to next line
+		const char* lend = findLineEnd(match.data + match.size, end);
+		if (lend == end) break;
+		begin = lend + 1;
+	}
+
+	re->rangeFinalize(range);
 }
 
 static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, unsigned int options)
