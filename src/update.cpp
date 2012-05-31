@@ -1,6 +1,6 @@
 #include "update.hpp"
 
-#include "common.hpp"
+#include "output.hpp"
 #include "build.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
@@ -126,18 +126,18 @@ std::string getCurrentFileContents(FileDataIterator& it)
 	return contents;
 }
 
-void updateProject(const char* path)
+void updateProject(Output* output, const char* path)
 {
-    printf("Updating %s:\n", path);
-	printf("Scanning project...\r");
+    output->print("Updating %s:\n", path);
+	output->print("Scanning project...\r");
 
 	std::vector<std::string> files;
-	if (!getProjectFiles(path, files))
+	if (!getProjectFiles(output, path, files))
 	{
 		return;
 	}
 
-	buildFiles(path, files);
+	buildFiles(output, path, files);
 	
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";
@@ -145,7 +145,7 @@ void updateProject(const char* path)
 	{
 		FileDataIterator current(targetPath.c_str());
 
-		std::unique_ptr<Builder> builder(createBuilder(tempPath.c_str(), files.size()));
+		std::unique_ptr<Builder> builder(createBuilder(output, tempPath.c_str(), files.size()));
 		if (!builder) return;
 
 		for (size_t i = 0; i < files.size(); ++i)
@@ -175,11 +175,11 @@ void updateProject(const char* path)
 		}
 	}
 
-	printf("\n");
+	output->print("\n");
 	
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
-		error("Error saving data file %s\n", targetPath.c_str());
+		output->error("Error saving data file %s\n", targetPath.c_str());
 		return;
 	}
 }

@@ -2,12 +2,14 @@
 
 #include <stdint.h>
 
+class Output;
+
 class Builder
 {
 public:
 	class BuilderImpl;
 
-	Builder(BuilderImpl* impl, unsigned int fileCount);
+	Builder(Output* output, BuilderImpl* impl, unsigned int fileCount);
 	~Builder();
 
 	void appendFile(const char* path);
@@ -15,12 +17,13 @@ public:
 
 private:
     BuilderImpl* impl;
+	Output* output;
 	unsigned int fileCount;
 	uint64_t lastResultSize;
 
 	void printStatistics();
 };
 
-Builder* createBuilder(const char* path, unsigned int fileCount = 0);
+Builder* createBuilder(Output* output, const char* path, unsigned int fileCount = 0);
 
-void buildProject(const char* path);
+void buildProject(Output* output, const char* path);

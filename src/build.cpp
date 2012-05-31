@@ -1,6 +1,6 @@
 #include "build.hpp"
 
-#include "common.hpp"
+#include "output.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
 #include "constants.hpp"
@@ -380,7 +380,7 @@ private:
 	}
 };
 
-Builder::Builder(BuilderImpl* impl, unsigned int fileCount): impl(impl), fileCount(fileCount), lastResultSize(0)
+Builder::Builder(Output* output, BuilderImpl* impl, unsigned int fileCount): impl(impl), output(output), fileCount(fileCount), lastResultSize(0)
 {
 }
 
@@ -395,7 +395,7 @@ Builder::~Builder()
 void Builder::appendFile(const char* path)
 {
 	if (!impl->appendFile(path))
-		error("Error reading file %s\n", path);
+		output->error("Error reading file %s\n", path);
 
 	printStatistics();
 }
@@ -416,41 +416,40 @@ void Builder::printStatistics()
 	
 	int percent = s.fileCount * 100 / fileCount;
 
-	printf("\r[%3d%%] %d files, %d Mb in, %d Mb out\r", percent, s.fileCount, (int)(s.fileSize / 1024 / 1024), (int)(s.resultSize / 1024 / 1024));
-	fflush(stdout);
+	output->print("\r[%3d%%] %d files, %d Mb in, %d Mb out\r", percent, s.fileCount, (int)(s.fileSize / 1024 / 1024), (int)(s.resultSize / 1024 / 1024));
 }
 
-Builder* createBuilder(const char* path, unsigned int fileCount)
+Builder* createBuilder(Output* output, const char* path, unsigned int fileCount)
 {
 	std::unique_ptr<Builder::BuilderImpl> impl(new Builder::BuilderImpl);
 
 	if (!impl->start(path))
 	{
-		error("Error opening data file %s for writing\n", path);
+		output->error("Error opening data file %s for writing\n", path);
 		return 0;
 	}
 
-	return new Builder(impl.release(), fileCount);
+	return new Builder(output, impl.release(), fileCount);
 }
 
-void buildProject(const char* path)
+void buildProject(Output* output, const char* path)
 {
-    printf("Building %s:\n", path);
-	printf("Scanning project...\r");
+    output->print("Building %s:\n", path);
+	output->print("Scanning project...\r");
 
 	std::vector<std::string> files;
-	if (!getProjectFiles(path, files))
+	if (!getProjectFiles(output, path, files))
 	{
 		return;
 	}
 
-	buildFiles(path, files);
+	buildFiles(output, path, files);
 	
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";
 
 	{
-		std::unique_ptr<Builder> builder(createBuilder(tempPath.c_str(), files.size()));
+		std::unique_ptr<Builder> builder(createBuilder(output, tempPath.c_str(), files.size()));
 		if (!builder) return;
 
 		for (size_t i = 0; i < files.size(); ++i)
@@ -461,11 +460,11 @@ void buildProject(const char* path)
 		}
 	}
 
-	printf("\n");
+	output->print("\n");
 	
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
-		error("Error saving data file %s\n", targetPath.c_str());
+		output->error("Error saving data file %s\n", targetPath.c_str());
 		return;
 	}
 }

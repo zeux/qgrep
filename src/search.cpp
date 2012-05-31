@@ -1,6 +1,6 @@
 #include "search.hpp"
 
-#include "common.hpp"
+#include "output.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
 #include "workqueue.hpp"
@@ -18,7 +18,7 @@
 
 struct SearchOutput
 {
-	SearchOutput(unsigned int options): options(options), output(kMaxBufferedOutput, kBufferedOutputFlushThreshold)
+	SearchOutput(Output* output, unsigned int options): options(options), output(output, kMaxBufferedOutput, kBufferedOutputFlushThreshold)
 	{
 	}
 
@@ -125,23 +125,23 @@ unsigned int getRegexOptions(unsigned int options)
 		(options & SO_LITERAL ? RO_LITERAL : 0);
 }
 
-void searchProject(const char* file, const char* string, unsigned int options, unsigned int limit)
+void searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
 {
-	SearchOutput output(options);
+	SearchOutput output(output_, options);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
 	if (!in)
 	{
-		error("Error reading data file %s\n", dataPath.c_str());
+		output_->error("Error reading data file %s\n", dataPath.c_str());
 		return;
 	}
 	
 	DataFileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
 	{
-		error("Error reading data file %s: malformed header\n", dataPath.c_str());
+		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
 		return;
 	}
 		
@@ -158,7 +158,7 @@ void searchProject(const char* file, const char* string, unsigned int options, u
 		
 		if (!data || !read(in, data.get(), chunk.compressedSize))
 		{
-			error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
+			output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 			return;
 		}
 			

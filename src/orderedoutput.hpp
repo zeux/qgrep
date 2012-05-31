@@ -7,6 +7,8 @@
 
 #include "blockingqueue.hpp"
 
+class Output;
+
 class OrderedOutput
 {
 public:
@@ -16,7 +18,7 @@ public:
 		std::string result;
 	};
 
-	OrderedOutput(size_t memoryLimit, size_t flushThreshold);
+	OrderedOutput(Output* output, size_t memoryLimit, size_t flushThreshold);
 	~OrderedOutput();
 
     Chunk* begin(unsigned int id);
@@ -24,6 +26,8 @@ public:
     void end(Chunk* chunk);
 
 private:
+	Output* output;
+
 	BlockingQueue<Chunk*> writeQueue;
 	std::thread writeThread;
 

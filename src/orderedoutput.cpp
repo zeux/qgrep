@@ -1,5 +1,7 @@
 #include "orderedoutput.hpp"
 
+#include "output.hpp"
+
 #include <functional>
 #include <cassert>
 #include <cstdarg>
@@ -17,17 +19,17 @@ static void strprintf(std::string& result, const char* format, va_list args)
 	}
 }
 
-static void writeThreadFun(BlockingQueue<OrderedOutput::Chunk*>& queue)
+static void writeThreadFun(Output* output, BlockingQueue<OrderedOutput::Chunk*>& queue)
 {
 	while (OrderedOutput::Chunk* chunk = queue.pop())
 	{
-		printf("%s", chunk->result.c_str());
+		output->print("%s", chunk->result.c_str());
 		delete chunk;
 	}
 }
 
-OrderedOutput::OrderedOutput(size_t memoryLimit, size_t flushThreshold):
-	writeQueue(memoryLimit), writeThread(std::bind(writeThreadFun, std::ref(writeQueue))), flushThreshold(flushThreshold), currentChunk(0)
+OrderedOutput::OrderedOutput(Output* output, size_t memoryLimit, size_t flushThreshold):
+	output(output), writeQueue(memoryLimit), writeThread(std::bind(writeThreadFun, output, std::ref(writeQueue))), flushThreshold(flushThreshold), currentChunk(0)
 {
 }
 

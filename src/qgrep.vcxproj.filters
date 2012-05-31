@@ -111,9 +111,6 @@
     <ClInclude Include="..\extern\lz4\lz4hc.h">
       <Filter>extern\lz4</Filter>
     </ClInclude>
-    <ClInclude Include="common.hpp">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="fileutil.hpp">
       <Filter>src</Filter>
     </ClInclude>
@@ -184,6 +181,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="stringutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="output.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

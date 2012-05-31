@@ -1,5 +1,4 @@
 #include "regex.hpp"
-#include "common.hpp"
 
 #include "re2/re2.h"
 
@@ -54,7 +53,8 @@ public:
 		}
 		
 		re.reset(new RE2(pattern, opts));
-		if (!re->ok()) fatal("Error parsing regular expression %s: %s\n", string, re->error().c_str());
+		if (!re->ok())
+			throw std::runtime_error("Error parsing regular expression " + (string + (": " + re->error())));
 		
 		if (lowercase)
 		{

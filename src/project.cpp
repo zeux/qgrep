@@ -1,6 +1,6 @@
 #include "project.hpp"
 
-#include "common.hpp"
+#include "output.hpp"
 #include "fileutil.hpp"
 #include "regex.hpp"
 
@@ -131,13 +131,13 @@ static bool isFileAcceptable(Regex* include, Regex* exclude, const char* path)
 	return true;
 }
 
-bool getProjectFiles(const char* path, std::vector<std::string>& files)
+bool getProjectFiles(Output* output, const char* path, std::vector<std::string>& files)
 {
 	std::vector<std::string> pathSet, includeSet, excludeSet, fileSet;
 
 	if (!parseInput(path, pathSet, includeSet, excludeSet, fileSet))
 	{
-		error("Error opening project file %s for reading\n", path);
+		output->error("Error opening project file %s for reading\n", path);
 		return false;
 	}
 

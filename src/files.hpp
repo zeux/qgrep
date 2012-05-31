@@ -3,8 +3,10 @@
 #include <vector>
 #include <string>
 
-void buildFiles(const char* path);
-void buildFiles(const char* path, const char** files, unsigned int count);
-void buildFiles(const char* path, const std::vector<std::string>& files);
+class Output;
 
-void searchFiles(const char* file, const char* string, unsigned int options, unsigned int limit);
+void buildFiles(Output* output, const char* path);
+void buildFiles(Output* output, const char* path, const char** files, unsigned int count);
+void buildFiles(Output* output, const char* path, const std::vector<std::string>& files);
+
+void searchFiles(Output* output, const char* file, const char* string, unsigned int options, unsigned int limit);

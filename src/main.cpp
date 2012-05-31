@@ -1,4 +1,4 @@
-#include "common.hpp"
+#include "output.hpp"
 #include "init.hpp"
 #include "build.hpp"
 #include "update.hpp"
@@ -13,22 +13,25 @@
 
 namespace re2 { int RunningOnValgrind() { return 0; } }
 
-void error(const char* message, ...)
+class StandardOutput: public Output
 {
-	va_list l;
-	va_start(l, message);
-	vfprintf(stderr, message, l);
-	va_end(l);
-}
+public:
+	virtual void print(const char* message, ...)
+	{
+		va_list l;
+		va_start(l, message);
+		vfprintf(stdout, message, l);
+		va_end(l);
+	}
 
-void fatal(const char* message, ...)
-{
-	va_list l;
-	va_start(l, message);
-	vfprintf(stderr, message, l);
-	va_end(l);
-	exit(1);
-}
+	virtual void error(const char* message, ...)
+	{
+		va_list l;
+		va_start(l, message);
+		vfprintf(stderr, message, l);
+		va_end(l);
+	}
+};
 
 unsigned int parseSearchFileOption(char opt)
 {
@@ -44,8 +47,7 @@ unsigned int parseSearchFileOption(char opt)
 		return 0; // default
 
 	default:
-		fatal("Unknown search option 'f%c'\n", opt);
-		return 0;
+		throw std::runtime_error(std::string("Unknown search option 'f") + opt + "'");
 	}
 }
 
@@ -88,7 +90,7 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 			break;
 			
 		default:
-			fatal("Unknown search option '%c'\n", *s);
+			throw std::runtime_error(std::string("Unknown search option '") + *s + "'");
 		}
 	}
 	
@@ -128,7 +130,7 @@ std::vector<std::string> getProjectPaths(const char* name)
 	return result;
 }
 
-void processSearchCommand(int argc, const char** argv, void (*search)(const char* file, const char* string, unsigned int options, unsigned int limit))
+void processSearchCommand(Output* output, int argc, const char** argv, void (*search)(Output*, const char*, const char*, unsigned int, unsigned int))
 {
 	std::vector<std::string> paths = getProjectPaths(argv[2]);
 
@@ -146,47 +148,49 @@ void processSearchCommand(int argc, const char** argv, void (*search)(const char
 	const char* query = argc > 3 ? argv[argc - 1] : "";
 
 	for (size_t i = 0; i < paths.size(); ++i)
-		search(paths[i].c_str(), query, options, limit);
+		search(output, paths[i].c_str(), query, options, limit);
 }
 
-int main(int argc, const char** argv)
+void mainImpl(Output* output, int argc, const char** argv)
 {
-	if (argc > 3 && strcmp(argv[1], "init") == 0)
+	try
 	{
-		initProject(argv[2], getProjectPath(argv[2]).c_str(), argv[3]);
-	}
-	else if (argc > 2 && strcmp(argv[1], "build") == 0)
-	{
-		std::vector<std::string> paths = getProjectPaths(argv[2]);
+		if (argc > 3 && strcmp(argv[1], "init") == 0)
+		{
+			initProject(output, argv[2], getProjectPath(argv[2]).c_str(), argv[3]);
+		}
+		else if (argc > 2 && strcmp(argv[1], "build") == 0)
+		{
+			std::vector<std::string> paths = getProjectPaths(argv[2]);
 
-		for (size_t i = 0; i < paths.size(); ++i)
-			buildProject(paths[i].c_str());
-	}
-	else if (argc > 2 && strcmp(argv[1], "update") == 0)
-	{
-		std::vector<std::string> paths = getProjectPaths(argv[2]);
+			for (size_t i = 0; i < paths.size(); ++i)
+				buildProject(output, paths[i].c_str());
+		}
+		else if (argc > 2 && strcmp(argv[1], "update") == 0)
+		{
+			std::vector<std::string> paths = getProjectPaths(argv[2]);
 
-		for (size_t i = 0; i < paths.size(); ++i)
-			updateProject(paths[i].c_str());
-	}
-	else if (argc > 3 && strcmp(argv[1], "search") == 0)
-	{
-		processSearchCommand(argc, argv, searchProject);
-	}
-	else if (argc > 2 && strcmp(argv[1], "files") == 0)
-	{
-		processSearchCommand(argc, argv, searchFiles);
-	}
-	else if (argc > 1 && strcmp(argv[1], "projects") == 0)
-	{
-		std::vector<std::string> projects = getProjects();
+			for (size_t i = 0; i < paths.size(); ++i)
+				updateProject(output, paths[i].c_str());
+		}
+		else if (argc > 3 && strcmp(argv[1], "search") == 0)
+		{
+			processSearchCommand(output, argc, argv, searchProject);
+		}
+		else if (argc > 2 && strcmp(argv[1], "files") == 0)
+		{
+			processSearchCommand(output, argc, argv, searchFiles);
+		}
+		else if (argc > 1 && strcmp(argv[1], "projects") == 0)
+		{
+			std::vector<std::string> projects = getProjects();
 
-		for (size_t i = 0; i < projects.size(); ++i)
-			printf("%s\n", projects[i].c_str());
-	}
-	else
-	{
-		fatal("Usage:\n"
+			for (size_t i = 0; i < projects.size(); ++i)
+				output->print("%s\n", projects[i].c_str());
+		}
+		else
+		{
+			output->error("Usage:\n"
 				"qgrep init <project> <path>\n"
 				"qgrep build <project-list>\n"
 				"qgrep search <project-list> <search-options> <query>\n"
@@ -209,6 +213,16 @@ int main(int argc, const char** argv)
 				"       paths are grepped for components with slashes, names are grepped for the rest\n"
 				"<query> is a regular expression\n"
 				);
+		}
 	}
+	catch (const std::exception& e)
+	{
+		output->error("%s\n", e.what());
+	}
+}
 
+int main(int argc, const char** argv)
+{
+	StandardOutput output;
+	mainImpl(&output, argc, argv);
 }

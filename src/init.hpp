@@ -1,3 +1,5 @@
 #pragma once
 
-void initProject(const char* name, const char* file, const char* path);
+class Output;
+
+void initProject(Output* output, const char* name, const char* file, const char* path);

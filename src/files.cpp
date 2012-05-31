@@ -1,6 +1,6 @@
 #include "files.hpp"
 
-#include "common.hpp"
+#include "output.hpp"
 #include "project.hpp"
 #include "fileutil.hpp"
 #include "format.hpp"
@@ -94,9 +94,9 @@ static std::pair<std::vector<char>, std::pair<unsigned int, unsigned int>> prepa
 	return std::make_pair(data, std::make_pair(entrySize, entrySize + nameSize));
 }
 
-void buildFiles(const char* path, const char** files, unsigned int count)
+void buildFiles(Output* output, const char* path, const char** files, unsigned int count)
 {
-	printf("Building file table...\r");
+	output->print("Building file table...\r");
 
 	std::string targetPath = replaceExtension(path, ".qgf");
 	std::string tempPath = targetPath + "_";
@@ -105,7 +105,7 @@ void buildFiles(const char* path, const char** files, unsigned int count)
 		std::ofstream out(tempPath.c_str(), std::ios::out | std::ios::binary);
 		if (!out)
 		{
-			error("Error saving data file %s\n", tempPath.c_str());
+			output->error("Error saving data file %s\n", tempPath.c_str());
 			return;
 		}
 
@@ -128,31 +128,31 @@ void buildFiles(const char* path, const char** files, unsigned int count)
 
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
-		error("Error saving data file %s\n", targetPath.c_str());
+		output->error("Error saving data file %s\n", targetPath.c_str());
 		return;
 	}
 }
 
-void buildFiles(const char* path, const std::vector<std::string>& files)
+void buildFiles(Output* output, const char* path, const std::vector<std::string>& files)
 {
 	std::vector<const char*> filesc(files.size());
 	for (size_t i = 0; i < files.size(); ++i) filesc[i] = files[i].c_str();
 
-	buildFiles(path, filesc.empty() ? NULL : &filesc[0], filesc.size());
+	buildFiles(output, path, filesc.empty() ? NULL : &filesc[0], filesc.size());
 }
 
-void buildFiles(const char* path)
+void buildFiles(Output* output, const char* path)
 {
-    printf("Building file table for %s:\n", path);
-	printf("Scanning project...\r");
+    output->print("Building file table for %s:\n", path);
+	output->print("Scanning project...\r");
 
 	std::vector<std::string> files;
-	if (!getProjectFiles(path, files))
+	if (!getProjectFiles(output, path, files))
 	{
 		return;
 	}
 
-	buildFiles(path, files);
+	buildFiles(output, path, files);
 }
 
 inline bool read(std::istream& in, void* data, size_t size)
@@ -178,7 +178,18 @@ std::unique_ptr<char[]> safeAlloc(size_t size)
 	}
 }
 
-static void processMatch(const FileFileEntry& entry, const char* data, unsigned int options)
+struct FilesOutput
+{
+	FilesOutput(Output* output, unsigned int options, unsigned int limit): output(output), options(options), limit(limit)
+	{
+	}
+
+	Output* output;
+	unsigned int options;
+	unsigned int limit;
+};
+
+static void processMatch(const FileFileEntry& entry, const char* data, FilesOutput* output)
 {
 	const char* path = entry.pathOffset + data;
 
@@ -187,7 +198,7 @@ static void processMatch(const FileFileEntry& entry, const char* data, unsigned 
 
 	size_t pathLength = pathEnd - path;
 
-	if (options & SO_VISUALSTUDIO)
+	if (output->options & SO_VISUALSTUDIO)
 	{
 		char* buffer = static_cast<char*>(alloca(pathLength));
 		
@@ -195,24 +206,24 @@ static void processMatch(const FileFileEntry& entry, const char* data, unsigned 
 		path = buffer;
 	}
 
-	printf("%.*s\n", static_cast<unsigned>(pathLength), path);
+	output->output->print("%.*s\n", static_cast<unsigned>(pathLength), path);
 }
 
-static void dumpFiles(const FileFileHeader& header, const char* data, unsigned int options, unsigned int limit)
+static void dumpFiles(const FileFileHeader& header, const char* data, FilesOutput* output)
 {
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
-	unsigned int count = limit == 0 ? header.fileCount : std::min(limit, header.fileCount);
+	unsigned int count = (output->limit == 0) ? header.fileCount : std::min(output->limit, header.fileCount);
 
 	for (unsigned int i = 0; i < count; ++i)
-		processMatch(entries[i], data, options);
+		processMatch(entries[i], data, output);
 }
 
 template <typename ExtractOffset>
-static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, unsigned int options, unsigned int limit,
+static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, FilesOutput* output,
 	ExtractOffset extractOffset)
 {
-	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(options)));
+	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(output->options)));
 
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
@@ -238,7 +249,7 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 		entry--;
 
 		// print match
-		processMatch(*entry, data, options);
+		processMatch(*entry, data, output);
 
 		// move to next line
 		const char* lend = findLineEnd(match.data + match.size, end);
@@ -246,30 +257,32 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 		begin = lend + 1;
 		matches++;
 
-		if (matches == limit) break;
+		if (matches == output->limit) break;
 	}
 
 	re->rangeFinalize(range);
 }
 
-static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, unsigned int options, unsigned int limit)
+static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
 }
 
-void searchFiles(const char* file, const char* string, unsigned int options, unsigned int limit)
+void searchFiles(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
 {
+	FilesOutput output(output_, options, limit);
+
 	std::string dataPath = replaceExtension(file, ".qgf");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
 	if (!in)
 	{
-		error("Error reading data file %s\n", dataPath.c_str());
+		output_->error("Error reading data file %s\n", dataPath.c_str());
 		return;
 	}
 	
 	FileFileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kFileFileHeaderMagic, strlen(kFileFileHeaderMagic)) != 0)
 	{
-		error("Error reading data file %s: malformed header\n", dataPath.c_str());
+		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
 		return;
 	}
 
@@ -277,7 +290,7 @@ void searchFiles(const char* file, const char* string, unsigned int options, uns
 
 	if (!buffer || !read(in, buffer.get(), header.compressedSize))
 	{
-		error("Error reading data file %s: malformed header\n", dataPath.c_str());
+		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
 		return;
 	}
 
@@ -285,11 +298,11 @@ void searchFiles(const char* file, const char* string, unsigned int options, uns
 	LZ4_uncompress(buffer.get(), data, header.uncompressedSize);
 
 	if (*string == 0)
-		dumpFiles(header, data, options, limit);
+		dumpFiles(header, data, &output);
 	if (options & SO_FILE_NAMEREGEX)
-		searchFilesRegex(header, data, data + header.nameBufferOffset, string, options, limit, [](const FileFileEntry& e) { return e.nameOffset; });
+		searchFilesRegex(header, data, data + header.nameBufferOffset, string, &output, [](const FileFileEntry& e) { return e.nameOffset; });
 	else if (options & SO_FILE_PATHREGEX)
-		searchFilesRegex(header, data, data + header.pathBufferOffset, string, options, limit, [](const FileFileEntry& e) { return e.pathOffset; });
+		searchFilesRegex(header, data, data + header.pathBufferOffset, string, &output, [](const FileFileEntry& e) { return e.pathOffset; });
 	else
-		searchFilesSolution(header, data, string, options, limit);
+		searchFilesSolution(header, data, string, &output);
 }

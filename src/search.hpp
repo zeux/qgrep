@@ -1,5 +1,7 @@
 #pragma once
 
+class Output;
+
 enum SearchOptions
 {
 	SO_IGNORECASE = 1 << 0,
@@ -12,4 +14,4 @@ enum SearchOptions
 
 unsigned int getRegexOptions(unsigned int options);
 	
-void searchProject(const char* file, const char* string, unsigned int options, unsigned int limit);
+void searchProject(Output* output, const char* file, const char* string, unsigned int options, unsigned int limit);

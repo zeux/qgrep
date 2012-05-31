@@ -1,3 +1,5 @@
 #pragma once
 
-void updateProject(const char* path);
+class Output;
+
+void updateProject(Output* output, const char* path);
