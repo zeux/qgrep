@@ -8,8 +8,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
+
+#include <cassert>
+#include <cstdarg>
+#include <mutex>
 
 namespace re2 { int RunningOnValgrind() { return 0; } }
 
@@ -32,6 +35,50 @@ public:
 		va_end(l);
 	}
 };
+
+class StringOutput: public Output
+{
+public:
+	StringOutput(std::string& buf): result(buf)
+	{
+	}
+
+	virtual void print(const char* message, ...)
+	{
+		va_list l;
+		va_start(l, message);
+		strprintf(message, l);
+		va_end(l);
+	}
+
+	virtual void error(const char* message, ...)
+	{
+		va_list l;
+		va_start(l, message);
+		strprintf(message, l);
+		va_end(l);
+	}
+
+private:
+	std::string& result;
+	std::mutex mutex;
+
+	void strprintf(const char* format, va_list args)
+	{
+		int count = _vsnprintf_c(0, 0, format, args);
+		assert(count >= 0);
+
+		if (count > 0)
+		{
+			std::unique_lock<std::mutex> lock(mutex);
+
+			size_t offset = result.size();
+			result.resize(offset + count);
+			_vsnprintf(&result[offset], count, format, args);
+		}
+	}
+};
+
 
 unsigned int parseSearchFileOption(char opt)
 {
@@ -221,8 +268,47 @@ void mainImpl(Output* output, int argc, const char** argv)
 	}
 }
 
-int main(int argc, const char** argv)
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+void pinModule()
+{
+	static HMODULE module;
+	static BOOL result = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, (LPCWSTR)&module, &module);
+}
+
+extern "C" __declspec(dllexport) void entryPointConsole(int argc, const char** argv)
 {
 	StandardOutput output;
 	mainImpl(&output, argc, argv);
+}
+
+extern "C" __declspec(dllexport) const char* entryPointVim(const char* args)
+{
+	pinModule();
+
+	std::vector<const char*> argv;
+	argv.push_back("qgrep.dll");
+
+	std::string argstr = args;
+	argstr += '\n';
+
+	size_t last = 0;
+
+	for (size_t i = 0; i < argstr.size(); ++i)
+		if (argstr[i] == '\n')
+		{
+			argstr[i] = 0;
+			argv.push_back(argstr.c_str() + last);
+			last = i + 1;
+		}
+
+	// string contents is preserved until next call
+	static std::string result;
+	result.clear();
+
+	StringOutput output(result);
+	mainImpl(&output, argv.size(), &argv[0]);
+
+	return result.c_str();
 }
