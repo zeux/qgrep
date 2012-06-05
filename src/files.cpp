@@ -51,10 +51,12 @@ static size_t getStringBufferSize(const std::vector<const char*>& strings)
 	for (size_t i = 0; i < strings.size(); ++i)
 		result += strlen(strings[i]) + 1;
 
-	return result + 1;
+	return result;
 }
 
-static std::pair<std::vector<char>, std::pair<unsigned int, unsigned int>> prepareFileData(const char** files, unsigned int count)
+typedef std::pair<unsigned int, unsigned int> BufferOffsetLength;
+
+static std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> prepareFileData(const char** files, unsigned int count)
 {
 	std::vector<const char*> paths(files, files + count);
 	std::vector<const char*> names = getFileNames(files, count);
@@ -89,9 +91,9 @@ static std::pair<std::vector<char>, std::pair<unsigned int, unsigned int>> prepa
 		pathOffset += pathLength + 1;
 	}
 
-	assert(nameOffset + 1 == entrySize + nameSize && pathOffset + 1 == totalSize);
+	assert(nameOffset == entrySize + nameSize && pathOffset == totalSize);
 
-	return std::make_pair(data, std::make_pair(entrySize, entrySize + nameSize));
+	return std::make_pair(data, std::make_pair(BufferOffsetLength(entrySize, nameSize), BufferOffsetLength(entrySize + nameSize, pathSize)));
 }
 
 void buildFiles(Output* output, const char* path, const char** files, unsigned int count)
@@ -109,7 +111,7 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 			return;
 		}
 
-		std::pair<std::vector<char>, std::pair<unsigned int, unsigned int>> data = prepareFileData(files, count);
+		std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> data = prepareFileData(files, count);
 		std::vector<char> compressed = compressData(data.first);
 
 		FileFileHeader header;
@@ -119,8 +121,10 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 		header.compressedSize = compressed.size();
 		header.uncompressedSize = data.first.size();
 
-		header.nameBufferOffset = data.second.first;
-		header.pathBufferOffset = data.second.second;
+		header.nameBufferOffset = data.second.first.first;
+		header.nameBufferLength = data.second.first.second;
+		header.pathBufferOffset = data.second.second.first;
+		header.pathBufferLength = data.second.second.second;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(header));
 		if (!compressed.empty()) out.write(&compressed[0], compressed.size());
@@ -220,19 +224,17 @@ static void dumpFiles(const FileFileHeader& header, const char* data, FilesOutpu
 }
 
 template <typename ExtractOffset, typename ProcessMatch>
-static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, FilesOutput* output,
-	ExtractOffset extractOffset, ProcessMatch processMatch)
+static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, unsigned int bufferSize, const char* string,
+	unsigned int options, unsigned int limit, ExtractOffset extractOffset, ProcessMatch processMatch)
 {
-	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(output->options)));
+	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(options)));
 
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
-	size_t size = strlen(buffer);
-
-	const char* range = re->rangePrepare(buffer, size);
+	const char* range = re->rangePrepare(buffer, bufferSize);
 
 	const char* begin = range;
-	const char* end = begin + size;
+	const char* end = begin + bufferSize;
 
 	unsigned int matches = 0;
 
@@ -257,19 +259,22 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 		begin = lend + 1;
 		matches++;
 
-		if (matches == output->limit) break;
+		if (matches == limit) break;
 	}
 
 	re->rangeFinalize(range);
 }
 
 template <typename ProcessMatch>
-static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* string, bool matchPaths, FilesOutput* output, ProcessMatch processMatch)
+static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* string, bool matchPaths,
+	unsigned int options, unsigned int limit, ProcessMatch processMatch)
 {
 	if (matchPaths)
-		searchFilesRegex(header, data, data + header.pathBufferOffset, string, output, [](const FileFileEntry& e) { return e.pathOffset; }, processMatch);
+		searchFilesRegex(header, data, data + header.pathBufferOffset, header.pathBufferLength, string, options, limit,
+			[](const FileFileEntry& e) { return e.pathOffset; }, processMatch);
 	else
-		searchFilesRegex(header, data, data + header.nameBufferOffset, string, output, [](const FileFileEntry& e) { return e.nameOffset; }, processMatch);
+		searchFilesRegex(header, data, data + header.nameBufferOffset, header.nameBufferLength, string, options, limit,
+			[](const FileFileEntry& e) { return e.nameOffset; }, processMatch);
 }
 
 static bool isPathComponent(const char* str)
@@ -292,12 +297,13 @@ static void searchFilesSolution(const FileFileHeader& header, const char* data, 
 		});
 
 	// force literal searches
-	output->options |= SO_LITERAL;
+	unsigned int options = output->options | SO_LITERAL;
 
 	// gather files by first component
 	std::vector<const FileFileEntry*> entries;
 
-	searchFilesRegex(header, data, fragments[0].c_str(), isPathComponent(fragments[0].c_str()), output, [&](const FileFileEntry& e) { entries.push_back(&e); });
+	searchFilesRegex(header, data, fragments[0].c_str(), isPathComponent(fragments[0].c_str()),
+		options, (fragments.size() == 1) ? output->limit : 0, [&](const FileFileEntry& e) { entries.push_back(&e); });
 
 	// filter results by subsequent components
 	for (size_t i = 1; i < fragments.size(); ++i)
@@ -314,6 +320,10 @@ static void searchFilesSolution(const FileFileHeader& header, const char* data, 
 
 			return re->search(begin, end - begin).size == 0; }), entries.end());
 	}
+
+	// trim results according to limit
+	if (output->limit && entries.size() > output->limit)
+		entries.resize(output->limit);
 
 	// output results
 	for (auto& e: entries)
@@ -353,7 +363,8 @@ void searchFiles(Output* output_, const char* file, const char* string, unsigned
 	if (*string == 0)
 		dumpFiles(header, data, &output);
 	else if (options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX))
-		searchFilesRegex(header, data, string, (options & SO_FILE_PATHREGEX) != 0, &output, [&](const FileFileEntry& e) { processMatch(e, data, &output); });
+		searchFilesRegex(header, data, string, (options & SO_FILE_PATHREGEX) != 0,
+			output.options, output.limit, [&](const FileFileEntry& e) { processMatch(e, data, &output); });
 	else
 		searchFilesSolution(header, data, string, &output);
 }

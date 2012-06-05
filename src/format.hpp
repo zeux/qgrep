@@ -13,7 +13,10 @@ struct FileFileHeader
 	uint32_t uncompressedSize;
 
 	uint32_t nameBufferOffset;
+	uint32_t nameBufferLength;
+
 	uint32_t pathBufferOffset;
+	uint32_t pathBufferLength;
 };
 
 struct FileFileEntry
