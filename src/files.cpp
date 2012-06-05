@@ -219,9 +219,9 @@ static void dumpFiles(const FileFileHeader& header, const char* data, FilesOutpu
 		processMatch(entries[i], data, output);
 }
 
-template <typename ExtractOffset>
+template <typename ExtractOffset, typename ProcessMatch>
 static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, const char* string, FilesOutput* output,
-	ExtractOffset extractOffset)
+	ExtractOffset extractOffset, ProcessMatch processMatch)
 {
 	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(output->options)));
 
@@ -249,7 +249,7 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 		entry--;
 
 		// print match
-		processMatch(*entry, data, output);
+		processMatch(*entry);
 
 		// move to next line
 		const char* lend = findLineEnd(match.data + match.size, end);
@@ -263,8 +263,61 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 	re->rangeFinalize(range);
 }
 
+template <typename ProcessMatch>
+static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* string, bool matchPaths, FilesOutput* output, ProcessMatch processMatch)
+{
+	if (matchPaths)
+		searchFilesRegex(header, data, data + header.pathBufferOffset, string, output, [](const FileFileEntry& e) { return e.pathOffset; }, processMatch);
+	else
+		searchFilesRegex(header, data, data + header.nameBufferOffset, string, output, [](const FileFileEntry& e) { return e.nameOffset; }, processMatch);
+}
+
+static bool isPathComponent(const char* str)
+{
+	return strchr(str, '/') != 0;
+}
+
 static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
+	std::vector<std::string> fragments = split(string, isspace);
+
+	if (fragments.empty()) return dumpFiles(header, data, output);
+
+	// sort name components first, path components last, larger components first
+	std::sort(fragments.begin(), fragments.end(),
+		[](const std::string& lhs, const std::string& rhs) -> bool {
+			bool lpath = isPathComponent(lhs.c_str());
+			bool rpath = isPathComponent(rhs.c_str());
+			return (lpath != rpath) ? lpath > rpath : lhs.length() > rhs.length();
+		});
+
+	// force literal searches
+	output->options |= SO_LITERAL;
+
+	// gather files by first component
+	std::vector<const FileFileEntry*> entries;
+
+	searchFilesRegex(header, data, fragments[0].c_str(), isPathComponent(fragments[0].c_str()), output, [&](const FileFileEntry& e) { entries.push_back(&e); });
+
+	// filter results by subsequent components
+	for (size_t i = 1; i < fragments.size(); ++i)
+	{
+		const char* query = fragments[i].c_str();
+		bool queryPath = isPathComponent(query);
+
+		std::unique_ptr<Regex> re(createRegex(query, getRegexOptions(output->options)));
+
+		entries.erase(std::remove_if(entries.begin(), entries.end(), [&](const FileFileEntry* e) -> bool {
+			const char* begin = data + (queryPath ? e->pathOffset : e->nameOffset);
+			const char* end = strchr(begin, '\n');
+			assert(end);
+
+			return re->search(begin, end - begin).size == 0; }), entries.end());
+	}
+
+	// output results
+	for (auto& e: entries)
+		processMatch(*e, data, output);
 }
 
 void searchFiles(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
@@ -299,10 +352,8 @@ void searchFiles(Output* output_, const char* file, const char* string, unsigned
 
 	if (*string == 0)
 		dumpFiles(header, data, &output);
-	if (options & SO_FILE_NAMEREGEX)
-		searchFilesRegex(header, data, data + header.nameBufferOffset, string, &output, [](const FileFileEntry& e) { return e.nameOffset; });
-	else if (options & SO_FILE_PATHREGEX)
-		searchFilesRegex(header, data, data + header.pathBufferOffset, string, &output, [](const FileFileEntry& e) { return e.pathOffset; });
+	else if (options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX))
+		searchFilesRegex(header, data, string, (options & SO_FILE_PATHREGEX) != 0, &output, [&](const FileFileEntry& e) { processMatch(e, data, &output); });
 	else
 		searchFilesSolution(header, data, string, &output);
 }
