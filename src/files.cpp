@@ -288,7 +288,7 @@ static void searchFilesSolution(const FileFileHeader& header, const char* data, 
 		[](const std::string& lhs, const std::string& rhs) -> bool {
 			bool lpath = isPathComponent(lhs.c_str());
 			bool rpath = isPathComponent(rhs.c_str());
-			return (lpath != rpath) ? lpath > rpath : lhs.length() > rhs.length();
+			return (lpath != rpath) ? lpath < rpath : lhs.length() > rhs.length();
 		});
 
 	// force literal searches
