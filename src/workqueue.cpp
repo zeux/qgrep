@@ -25,7 +25,7 @@ WorkQueue::WorkQueue(size_t workerCount, size_t memoryLimit): queue(memoryLimit)
 WorkQueue::~WorkQueue()
 {
 	for (size_t i = 0; i < workers.size(); ++i)
-		queue.push(0);
+		queue.push(std::function<void()>());
 
 	for (size_t i = 0; i < workers.size(); ++i)
 		workers[i].join();
