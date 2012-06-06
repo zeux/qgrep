@@ -4,7 +4,7 @@
 #define Mb Kb Kb
 
 // Approximate uncompressed total size of the chunk
-const size_t kChunkSize = 1 Mb;
+const size_t kChunkSize = 512 Kb;
 
 // Total amount of chunk data in flight
 const size_t kMaxQueuedChunkData = 256 Mb;
