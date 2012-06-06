@@ -37,6 +37,7 @@ struct DataChunkHeader
 	uint32_t fileCount;
 	uint32_t compressedSize;
 	uint32_t uncompressedSize;
+	uint32_t indexSize;
 };
 
 struct DataChunkFileHeader

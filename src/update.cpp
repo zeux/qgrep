@@ -87,6 +87,8 @@ public:
 		{
 			if (read(in, chunk))
 			{
+				in.seekg(chunk.indexSize, std::ios::cur);
+
 				std::unique_ptr<char[]> compressed(safeAlloc(chunk.compressedSize));
 				data.reset(safeAlloc(chunk.uncompressedSize));
 

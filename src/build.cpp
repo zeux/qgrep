@@ -7,6 +7,7 @@
 #include "project.hpp"
 #include "encoding.hpp"
 #include "files.hpp"
+#include "tribloom.hpp"
 
 #include <fstream>
 #include <vector>
@@ -180,6 +181,8 @@ private:
 	std::ofstream outData;
 	Statistics statistics;
 
+	unsigned int trigramBuffer[256*256*256/32];
+
 	static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t dataSize)
 	{
 		auto result = std::make_pair(0, 0);
@@ -295,7 +298,9 @@ private:
 		if (chunk.files.empty()) return;
 
 		std::vector<char> data = prepareChunkData(chunk);
-		writeChunk(chunk, data);
+		std::vector<char> index = prepareChunkIndex(chunk);
+
+		writeChunk(chunk, index, data);
 	}
 
 	size_t getChunkNameTotalSize(const Chunk& chunk)
@@ -359,7 +364,59 @@ private:
 		return data;
 	}
 
-	void writeChunk(const Chunk& chunk, const std::vector<char>& data)
+	size_t getChunkIndexSize(const Chunk& chunk)
+	{
+		size_t dataSize = getChunkDataTotalSize(chunk);
+
+		// data compression ratio is ~5x
+		// we want the index to be ~10% of the compressed data
+		// so index is ~50x smaller than the original data
+		size_t indexSize = dataSize / 50;
+
+		// don't bother storing tiny indices
+		return indexSize < 1024 ? 0 : indexSize;
+	}
+
+	std::vector<char> prepareChunkIndex(const Chunk& chunk)
+	{
+		size_t indexSize = getChunkIndexSize(chunk);
+
+		if (indexSize == 0) return std::vector<char>();
+
+		std::vector<char> result(indexSize);
+
+		unsigned char* data = reinterpret_cast<unsigned char*>(&result[0]);
+
+		memset(trigramBuffer, 0, sizeof(trigramBuffer));
+
+		for (size_t i = 0; i < chunk.files.size(); ++i)
+		{
+			const File& file = chunk.files[i];
+			const char* filedata = file.contents.data();
+
+			for (size_t j = 2; j < file.contents.size(); ++j)
+			{
+				char a = filedata[j - 2], b = filedata[j - 1], c = filedata[j];
+
+				// don't waste bits on trigrams that cross lines
+				if (a != '\n' && b != '\n' && c != '\n')
+				{
+					unsigned int tg = trigram(a, b, c);
+					trigramBuffer[tg / 32] |= 1u << (tg % 32);
+				}
+			}
+		}
+
+		for (unsigned int i = 0; i < 256 * 256 * 256 / 32; ++i)
+			if (trigramBuffer[i])
+				for (unsigned int j = 0; j < 32; ++j)
+					if (trigramBuffer[i] & (1u << j))
+						bloomFilterUpdate(data, indexSize, i * 32 + j);
+
+		return result;
+	}
+
+	void writeChunk(const Chunk& chunk, const std::vector<char>& index, const std::vector<char>& data)
 	{
 		std::vector<char> cdata = compressData(data);
 
@@ -367,8 +424,10 @@ private:
 		header.fileCount = chunk.files.size();
 		header.uncompressedSize = data.size();
 		header.compressedSize = cdata.size();
+		header.indexSize = index.size();
 
 		outData.write(reinterpret_cast<char*>(&header), sizeof(header));
+		if (!index.empty()) outData.write(&index[0], index.size());
 		outData.write(&cdata[0], cdata.size());
 
 		for (size_t i = 0; i < chunk.files.size(); ++i)
