@@ -17,6 +17,8 @@
 #include <memory>
 
 #include "lz4/lz4.h"
+#include "re2/prefilter.h"
+#include "re2/prefilter_tree.h"
 
 struct SearchOutput
 {
@@ -127,26 +129,23 @@ unsigned int getRegexOptions(unsigned int options)
 		(options & SO_LITERAL ? RO_LITERAL : 0);
 }
 
-std::vector<unsigned int> ngramExtract(const char* string, unsigned int options)
+typedef std::vector<unsigned int> NgramString;
+
+NgramString ngramExtract(const std::string& string)
 {
-	std::vector<unsigned int> result;
+	NgramString result;
 
-	if (options & SO_LITERAL)
+	for (size_t i = 3; i < string.length(); ++i)
 	{
-		size_t length = strlen(string);
-
-		for (size_t i = 3; i < length; ++i)
-		{
-			char a = string[i - 3], b = string[i - 2], c = string[i - 1], d = string[i];
-			unsigned int n = ngram(casefold(a), casefold(b), casefold(c), casefold(d));
-			result.push_back(n);
-		}
+		char a = string[i - 3], b = string[i - 2], c = string[i - 1], d = string[i];
+		unsigned int n = ngram(casefold(a), casefold(b), casefold(c), casefold(d));
+		result.push_back(n);
 	}
 
 	return result;
 }
 
-bool ngramExists(const std::vector<unsigned char>& index, unsigned int iterations, const std::vector<unsigned int>& search)
+bool ngramExists(const std::vector<unsigned char>& index, unsigned int iterations, const NgramString& search)
 {
 	for (size_t i = 0; i < search.size(); ++i)
 		if (!bloomFilterExists(&index[0], index.size(), search[i], iterations))
@@ -155,11 +154,54 @@ bool ngramExists(const std::vector<unsigned char>& index, unsigned int iteration
 	return true;
 }
 
+class NgramRegex
+{
+public:
+	NgramRegex(Regex* re)
+	{
+		re2::RE2* r = static_cast<RE2*>(re->getRegexObject());
+
+		std::vector<std::string> atomstr;
+
+		tree.Add(re2::Prefilter::FromRE2(r));
+		tree.Compile(&atomstr);
+
+		for (size_t i = 0; i < atomstr.size(); ++i)
+			atoms.push_back(ngramExtract(atomstr[i]));
+	}
+
+	bool match(const std::vector<unsigned char>& index, unsigned int iterations) const
+	{
+		if (atoms.empty()) return true;
+
+		std::vector<int> matched;
+
+		for (size_t i = 0; i < atoms.size(); ++i)
+			if (ngramExists(index, iterations, atoms[i]))
+				matched.push_back(i);
+
+		std::vector<int> res;
+		tree.RegexpsGivenStrings(matched, &res);
+
+		assert(res.size() <= 1);
+		return !res.empty();
+	}
+
+	bool empty() const
+	{
+		return atoms.empty();
+	}
+
+private:
+	std::vector<NgramString> atoms;
+	re2::PrefilterTree tree;
+};
+
 void searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
 {
 	SearchOutput output(output_, options);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
-	std::vector<unsigned int> ngrams = ngramExtract(string, options);
+	NgramRegex ngregex(regex.get());
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
@@ -186,7 +228,7 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 	
 	while (read(in, chunk))
 	{
-		if (ngrams.empty() || chunk.indexSize == 0)
+		if (ngregex.empty() || chunk.indexSize == 0)
 		{
 			in.seekg(chunk.indexSize, std::ios::cur);
 		}
@@ -208,7 +250,7 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 				return;
 			}
 
-			if (!ngramExists(index, chunk.indexHashIterations, ngrams))
+			if (!ngregex.match(index, chunk.indexHashIterations))
 			{
 				in.seekg(chunk.compressedSize, std::ios::cur);
 				continue;

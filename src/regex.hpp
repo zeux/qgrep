@@ -27,6 +27,8 @@ public:
     virtual void rangeFinalize(const char* data) = 0;
 
     virtual RegexMatch search(const char* data, size_t size) = 0;
+
+	virtual void* getRegexObject() = 0;
 };
 
 Regex* createRegex(const char* pattern, unsigned int options);

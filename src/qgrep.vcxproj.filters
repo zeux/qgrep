@@ -103,6 +103,12 @@
     <ClCompile Include="files.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\prefilter.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\re2\re2\prefilter_tree.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -191,6 +197,12 @@
     </ClInclude>
     <ClInclude Include="casefold.hpp">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\prefilter.h">
+      <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\re2\re2\prefilter_tree.h">
+      <Filter>extern\re2</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

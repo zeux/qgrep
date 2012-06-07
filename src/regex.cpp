@@ -98,6 +98,11 @@ public:
 
 		return result ? RegexMatch(result.data - range + data, result.size) : RegexMatch();
 	}
+
+	virtual void* getRegexObject()
+	{
+		return re.get();
+	}
 	
 private:
 	void transformRangeCasefold(char* dest, const char* begin, const char* end)
