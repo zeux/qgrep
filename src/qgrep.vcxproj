@@ -136,6 +136,7 @@
     <ClInclude Include="blockingqueue.hpp" />
     <ClInclude Include="blockpool.hpp" />
     <ClInclude Include="build.hpp" />
+    <ClInclude Include="casefold.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="encoding.hpp" />
     <ClInclude Include="files.hpp" />

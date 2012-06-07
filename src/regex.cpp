@@ -1,10 +1,12 @@
 #include "regex.hpp"
 
+#include "casefold.hpp"
+
 #include "re2/re2.h"
 
 #include <memory>
 
-static bool transformRegexLower(const char* pattern, std::string& res, bool literal)
+static bool transformRegexCasefold(const char* pattern, std::string& res, bool literal)
 {
 	res.clear();
 	
@@ -21,7 +23,7 @@ static bool transformRegexLower(const char* pattern, std::string& res, bool lite
 		}
 		else
 		{
-			res.push_back(tolower(*p));
+			res.push_back(casefold(*p));
 		}
 	}
 	
@@ -32,7 +34,7 @@ static bool transformRegexLower(const char* pattern, std::string& res, bool lite
 class RE2Regex: public Regex
 {
 public:
-	RE2Regex(const char* string, unsigned int options): lowercase(false)
+	RE2Regex(const char* string, unsigned int options): casefold(false)
 	{
 		RE2::Options opts;
 		opts.set_posix_syntax(true);
@@ -42,9 +44,9 @@ public:
 		opts.set_literal((options & RO_LITERAL) != 0);
 		
 		std::string pattern;
-		if ((options & RO_IGNORECASE) && transformRegexLower(string, pattern, (options & RO_LITERAL) != 0))
+		if ((options & RO_IGNORECASE) && transformRegexCasefold(string, pattern, (options & RO_LITERAL) != 0))
 		{
-			lowercase = true;
+			casefold = true;
 		}
 		else
 		{
@@ -55,22 +57,14 @@ public:
 		re.reset(new RE2(pattern, opts));
 		if (!re->ok())
 			throw std::runtime_error("Error parsing regular expression " + (string + (": " + re->error())));
-		
-		if (lowercase)
-		{
-			for (size_t i = 0; i < sizeof(lower); ++i)
-			{
-				lower[i] = tolower(i);
-			}
-		}
 	}
 	
 	virtual const char* rangePrepare(const char* data, size_t size)
 	{
-		if (lowercase)
+		if (casefold)
 		{
 			char* temp = new char[size];
-			transformRangeLower(temp, data, data + size);
+			transformRangeCasefold(temp, data, data + size);
 			return temp;
 		}
 
@@ -90,7 +84,7 @@ public:
 	
 	virtual void rangeFinalize(const char* data)
 	{
-		if (lowercase)
+		if (casefold)
 		{
 			delete[] data;
 		}
@@ -106,15 +100,14 @@ public:
 	}
 	
 private:
-	void transformRangeLower(char* dest, const char* begin, const char* end)
+	void transformRangeCasefold(char* dest, const char* begin, const char* end)
 	{
 		for (const char* i = begin; i != end; ++i)
-			*dest++ = lower[static_cast<unsigned char>(*i)];
+			*dest++ = ::casefold(*i);
 	}
 	
 	std::unique_ptr<RE2> re;
-	bool lowercase;
-	char lower[256];
+	bool casefold;
 };
 
 RegexMatch::RegexMatch(): data(0), size(0)

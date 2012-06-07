@@ -8,6 +8,7 @@
 #include "encoding.hpp"
 #include "files.hpp"
 #include "bloom.hpp"
+#include "casefold.hpp"
 
 #include <fstream>
 #include <vector>
@@ -450,7 +451,7 @@ private:
 				// don't waste bits on ngrams that cross lines
 				if (a != '\n' && b != '\n' && c != '\n' && d != '\n')
 				{
-					unsigned int n = ngram(a, b, c, d);
+					unsigned int n = ngram(casefold(a), casefold(b), casefold(c), casefold(d));
 					if (n != 0) ngrams.insert(n);
 				}
 			}

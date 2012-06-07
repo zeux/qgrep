@@ -189,6 +189,9 @@
     <ClInclude Include="bloom.hpp">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="casefold.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">

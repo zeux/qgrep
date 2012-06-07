@@ -10,6 +10,7 @@
 #include "blockpool.hpp"
 #include "stringutil.hpp"
 #include "bloom.hpp"
+#include "casefold.hpp"
 
 #include <fstream>
 #include <algorithm>
@@ -130,12 +131,16 @@ std::vector<unsigned int> ngramExtract(const char* string, unsigned int options)
 {
 	std::vector<unsigned int> result;
 
-	if ((options & SO_LITERAL) && (options & SO_IGNORECASE) == 0)
+	if (options & SO_LITERAL)
 	{
 		size_t length = strlen(string);
 
 		for (size_t i = 3; i < length; ++i)
-			result.push_back(ngram(string[i - 3], string[i - 2], string[i - 1], string[i]));
+		{
+			char a = string[i - 3], b = string[i - 2], c = string[i - 1], d = string[i];
+			unsigned int n = ngram(casefold(a), casefold(b), casefold(c), casefold(d));
+			result.push_back(n);
+		}
 	}
 
 	return result;
