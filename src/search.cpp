@@ -9,7 +9,7 @@
 #include "constants.hpp"
 #include "blockpool.hpp"
 #include "stringutil.hpp"
-#include "tribloom.hpp"
+#include "bloom.hpp"
 
 #include <fstream>
 #include <algorithm>
@@ -126,7 +126,7 @@ unsigned int getRegexOptions(unsigned int options)
 		(options & SO_LITERAL ? RO_LITERAL : 0);
 }
 
-std::vector<unsigned int> trigramExtract(const char* string, unsigned int options)
+std::vector<unsigned int> ngramExtract(const char* string, unsigned int options)
 {
 	std::vector<unsigned int> result;
 
@@ -134,17 +134,17 @@ std::vector<unsigned int> trigramExtract(const char* string, unsigned int option
 	{
 		size_t length = strlen(string);
 
-		for (size_t i = 2; i < length; ++i)
-			result.push_back(trigram(string[i - 2], string[i - 1], string[i]));
+		for (size_t i = 3; i < length; ++i)
+			result.push_back(ngram(string[i - 3], string[i - 2], string[i - 1], string[i]));
 	}
 
 	return result;
 }
 
-bool trigramExists(const std::vector<unsigned char>& index, const std::vector<unsigned int>& search)
+bool ngramExists(const std::vector<unsigned char>& index, unsigned int iterations, const std::vector<unsigned int>& search)
 {
 	for (size_t i = 0; i < search.size(); ++i)
-		if (!bloomFilterExists(&index[0], index.size(), search[i]))
+		if (!bloomFilterExists(&index[0], index.size(), search[i], iterations))
 			return false;
 
 	return true;
@@ -154,7 +154,7 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 {
 	SearchOutput output(output_, options);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
-	std::vector<unsigned int> trigrams = trigramExtract(string, options);
+	std::vector<unsigned int> ngrams = ngramExtract(string, options);
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
@@ -176,26 +176,34 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 	
 	// Assume 50% compression ratio (it's usually much better)
 	BlockPool chunkPool(kChunkSize * 3 / 2);
-	std::vector<unsigned char> trindex;
+	std::vector<unsigned char> index;
 	WorkQueue queue(WorkQueue::getIdealWorkerCount(), kMaxQueuedChunkData);
 	
 	while (read(in, chunk))
 	{
-		if (trigrams.empty() || chunk.indexSize == 0)
+		if (ngrams.empty() || chunk.indexSize == 0)
 		{
 			in.seekg(chunk.indexSize, std::ios::cur);
 		}
 		else
 		{
-			trindex.resize(chunk.indexSize);
-
-			if (chunk.indexSize && !read(in, &trindex[0], chunk.indexSize))
+			try
+			{
+				index.resize(chunk.indexSize);
+			}
+			catch (const std::bad_alloc&)
 			{
 				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 				return;
 			}
 
-			if (!trigramExists(trindex, trigrams))
+			if (chunk.indexSize && !read(in, &index[0], chunk.indexSize))
+			{
+				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
+				return;
+			}
+
+			if (!ngramExists(index, chunk.indexHashIterations, ngrams))
 			{
 				in.seekg(chunk.compressedSize, std::ios::cur);
 				continue;

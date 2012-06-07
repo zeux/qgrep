@@ -186,7 +186,7 @@
     <ClInclude Include="output.hpp">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="tribloom.hpp">
+    <ClInclude Include="bloom.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

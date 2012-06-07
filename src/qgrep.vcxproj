@@ -148,7 +148,7 @@
     <ClInclude Include="regex.hpp" />
     <ClInclude Include="search.hpp" />
     <ClInclude Include="stringutil.hpp" />
-    <ClInclude Include="tribloom.hpp" />
+    <ClInclude Include="bloom.hpp" />
     <ClInclude Include="update.hpp" />
     <ClInclude Include="workqueue.hpp" />
   </ItemGroup>

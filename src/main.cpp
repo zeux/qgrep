@@ -242,7 +242,7 @@ void mainImpl(Output* output, int argc, const char** argv)
 	}
 	catch (const std::exception& e)
 	{
-		output->error("%s\n", e.what());
+		output->error("Uncaught exception: %s\n", e.what());
 	}
 }
 

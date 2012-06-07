@@ -7,7 +7,7 @@
 #include "project.hpp"
 #include "encoding.hpp"
 #include "files.hpp"
-#include "tribloom.hpp"
+#include "bloom.hpp"
 
 #include <fstream>
 #include <vector>
@@ -16,6 +16,7 @@
 #include <cassert>
 #include <string>
 #include <memory>
+#include <unordered_set>
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
@@ -181,8 +182,6 @@ private:
 	std::ofstream outData;
 	Statistics statistics;
 
-	unsigned int trigramBuffer[256*256*256/32];
-
 	static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t dataSize)
 	{
 		auto result = std::make_pair(0, 0);
@@ -298,7 +297,7 @@ private:
 		if (chunk.files.empty()) return;
 
 		std::vector<char> data = prepareChunkData(chunk);
-		std::vector<char> index = prepareChunkIndex(chunk);
+		std::pair<std::vector<char>, unsigned int> index = prepareChunkIndex(chunk);
 
 		writeChunk(chunk, index, data);
 	}
@@ -377,46 +376,58 @@ private:
 		return indexSize < 1024 ? 0 : indexSize;
 	}
 
-	std::vector<char> prepareChunkIndex(const Chunk& chunk)
+	// http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html 
+	unsigned int getIndexHashIterations(unsigned int indexSize, unsigned int itemCount)
 	{
+		unsigned int m = indexSize * 8;
+		unsigned int n = itemCount;
+		double k = n == 0 ? 1.0 : 0.693147181 * static_cast<double>(m) / static_cast<double>(n);
+
+		return (k < 1) ? 1 : (k > 16) ? 16 : static_cast<unsigned int>(k);
+	}
+
+	std::pair<std::vector<char>, unsigned int> prepareChunkIndex(const Chunk& chunk)
+	{
+		// estimate index size
 		size_t indexSize = getChunkIndexSize(chunk);
 
-		if (indexSize == 0) return std::vector<char>();
+		if (indexSize == 0) return std::make_pair(std::vector<char>(), 0);
 
-		std::vector<char> result(indexSize);
-
-		unsigned char* data = reinterpret_cast<unsigned char*>(&result[0]);
-
-		memset(trigramBuffer, 0, sizeof(trigramBuffer));
+		// collect ngram data
+		std::unordered_set<unsigned int> ngrams;
 
 		for (size_t i = 0; i < chunk.files.size(); ++i)
 		{
 			const File& file = chunk.files[i];
 			const char* filedata = file.contents.data();
 
-			for (size_t j = 2; j < file.contents.size(); ++j)
+			for (size_t j = 3; j < file.contents.size(); ++j)
 			{
-				char a = filedata[j - 2], b = filedata[j - 1], c = filedata[j];
+				char a = filedata[j - 3], b = filedata[j - 2], c = filedata[j - 1], d = filedata[j];
 
-				// don't waste bits on trigrams that cross lines
-				if (a != '\n' && b != '\n' && c != '\n')
+				// don't waste bits on ngrams that cross lines
+				if (a != '\n' && b != '\n' && c != '\n' && d != '\n')
 				{
-					unsigned int tg = trigram(a, b, c);
-					trigramBuffer[tg / 32] |= 1u << (tg % 32);
+					ngrams.insert(ngram(a, b, c, d));
 				}
 			}
 		}
 
-		for (unsigned int i = 0; i < 256 * 256 * 256 / 32; ++i)
-			if (trigramBuffer[i])
-				for (unsigned int j = 0; j < 32; ++j)
-					if (trigramBuffer[i] & (1u << j))
-						bloomFilterUpdate(data, indexSize, i * 32 + j);
+		// estimate iteration count
+		unsigned int iterations = getIndexHashIterations(indexSize, ngrams.size());
 
-		return result;
+		// fill bloom filter
+		std::vector<char> result(indexSize);
+
+		unsigned char* data = reinterpret_cast<unsigned char*>(&result[0]);
+
+		for (auto n: ngrams)
+			bloomFilterUpdate(data, indexSize, n, iterations);
+
+		return std::make_pair(result, iterations);
 	}
 
-	void writeChunk(const Chunk& chunk, const std::vector<char>& index, const std::vector<char>& data)
+	void writeChunk(const Chunk& chunk, const std::pair<std::vector<char>, unsigned int>& index, const std::vector<char>& data)
 	{
 		std::vector<char> cdata = compressData(data);
 
@@ -424,10 +435,11 @@ private:
 		header.fileCount = chunk.files.size();
 		header.uncompressedSize = data.size();
 		header.compressedSize = cdata.size();
-		header.indexSize = index.size();
+		header.indexSize = index.first.size();
+		header.indexHashIterations = index.second;
 
 		outData.write(reinterpret_cast<char*>(&header), sizeof(header));
-		if (!index.empty()) outData.write(&index[0], index.size());
+		if (!index.first.empty()) outData.write(&index.first[0], index.first.size());
 		outData.write(&cdata[0], cdata.size());
 
 		for (size_t i = 0; i < chunk.files.size(); ++i)
