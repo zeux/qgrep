@@ -159,6 +159,8 @@ class NgramRegex
 public:
 	NgramRegex(Regex* re)
 	{
+		if (!re) return;
+
 		re2::RE2* r = static_cast<RE2*>(re->getRegexObject());
 
 		std::vector<std::string> atomstr;
@@ -201,7 +203,7 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 {
 	SearchOutput output(output_, options);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
-	NgramRegex ngregex(regex.get());
+	NgramRegex ngregex((options & SO_BRUTEFORCE) ? nullptr : regex.get());
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);

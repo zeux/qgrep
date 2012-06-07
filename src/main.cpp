@@ -115,6 +115,9 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 		case 'l':
 			options |= SO_LITERAL;
 			break;
+
+		case 'b':
+			options |= SO_BRUTEFORCE;
 			
 		case 'V':
 			options |= SO_VISUALSTUDIO;
@@ -228,6 +231,7 @@ void mainImpl(Output* output, int argc, const char** argv)
 				"<search-options> can include:\n"
 				"  i - case-insensitive search\n"
 				"  l - literal search (query is treated as a literal string)\n"
+				"  b - bruteforce search: skip indexing optimizations\n"
 				"  V - Visual Studio style formatting\n"
 				"  C - include column name in output\n"
 				"  Lnumber - limit output to <number> lines\n"
