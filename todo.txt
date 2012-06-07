@@ -1,7 +1,6 @@
 features:
 1. incremental update (compare mtime/size, add/remove files, don't recompress chunks unless necessary)
-2. file database and regex-based file path search
-3. open file in solution-style file path search
+3. output limit support for multiple projects
 4. output limit support for text search
 5. vim script
 6. stale file support
@@ -16,3 +15,9 @@ features:
 15. #! support in .cfg files
 16. ignore/exclude per folder in .cfg files (groups...)
 17. jobified chunk compression in builder
+
+ngram indexing improvements:
+1. support arbitrary regular expressions via filtered re
+2. investigate better table size/hash count estimation: see http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html
+3. investigate case-insensitive index
+4. investigate fourgrams instead of trigrams
