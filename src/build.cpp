@@ -386,6 +386,48 @@ private:
 		return (k < 1) ? 1 : (k > 16) ? 16 : static_cast<unsigned int>(k);
 	}
 
+	struct IntSet
+	{
+		std::vector<unsigned int> data;
+		unsigned int size;
+
+		IntSet(size_t capacity = 16): data(capacity), size(0)
+		{
+		}
+
+		void grow()
+		{
+			IntSet res(data.size() * 2);
+
+			for (size_t i = 0; i < data.size(); ++i)
+				if (data[i])
+					res.insert(data[i]);
+
+			data.swap(res.data);
+		}
+
+		void insert(unsigned int key)
+		{
+			assert(key != 0);
+
+			if (size * 2 > data.size()) grow();
+
+			unsigned int h = bloomHash2(key) & (data.size() - 1);
+
+			while (data[h] != key)
+			{
+				if (data[h] == 0)
+				{
+					data[h] = key;
+					size++;
+					break;
+				}
+
+				h = (h + 7) & (data.size() - 1);
+			}
+		}
+	};
+
 	std::pair<std::vector<char>, unsigned int> prepareChunkIndex(const Chunk& chunk)
 	{
 		// estimate index size
@@ -394,7 +436,7 @@ private:
 		if (indexSize == 0) return std::make_pair(std::vector<char>(), 0);
 
 		// collect ngram data
-		std::unordered_set<unsigned int> ngrams;
+		IntSet ngrams; // std::unordered_set<unsigned int> ngrams;
 
 		for (size_t i = 0; i < chunk.files.size(); ++i)
 		{
@@ -408,21 +450,23 @@ private:
 				// don't waste bits on ngrams that cross lines
 				if (a != '\n' && b != '\n' && c != '\n' && d != '\n')
 				{
-					ngrams.insert(ngram(a, b, c, d));
+					unsigned int n = ngram(a, b, c, d);
+					if (n != 0) ngrams.insert(n);
 				}
 			}
 		}
 
 		// estimate iteration count
-		unsigned int iterations = getIndexHashIterations(indexSize, ngrams.size());
+		unsigned int iterations = getIndexHashIterations(indexSize, ngrams.size);
 
 		// fill bloom filter
 		std::vector<char> result(indexSize);
 
 		unsigned char* data = reinterpret_cast<unsigned char*>(&result[0]);
 
-		for (auto n: ngrams)
-			bloomFilterUpdate(data, indexSize, n, iterations);
+		for (auto n: ngrams.data)
+			if (n != 0)
+				bloomFilterUpdate(data, indexSize, n, iterations);
 
 		return std::make_pair(result, iterations);
 	}
