@@ -215,7 +215,7 @@ static void processMatch(const FileFileEntry& entry, const char* data, FilesOutp
 	output->output->print("%.*s\n", static_cast<unsigned>(pathLength), path);
 }
 
-static void dumpFiles(const FileFileHeader& header, const char* data, FilesOutput* output)
+static unsigned int dumpFiles(const FileFileHeader& header, const char* data, FilesOutput* output)
 {
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
@@ -223,6 +223,8 @@ static void dumpFiles(const FileFileHeader& header, const char* data, FilesOutpu
 
 	for (unsigned int i = 0; i < count; ++i)
 		processMatch(entries[i], data, output);
+
+	return count;
 }
 
 template <typename ExtractOffset, typename ProcessMatch>
@@ -284,7 +286,7 @@ static bool isPathComponent(const char* str)
 	return strchr(str, '/') != 0;
 }
 
-static void searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
+static unsigned int searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
 	std::vector<std::string> fragments = split(string, isspace);
 
@@ -330,9 +332,11 @@ static void searchFilesSolution(const FileFileHeader& header, const char* data, 
 	// output results
 	for (auto& e: entries)
 		processMatch(*e, data, output);
+
+	return entries.size();
 }
 
-void searchFiles(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
+unsigned int searchFiles(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
 {
 	FilesOutput output(output_, options, limit);
 
@@ -341,14 +345,14 @@ void searchFiles(Output* output_, const char* file, const char* string, unsigned
 	if (!in)
 	{
 		output_->error("Error reading data file %s\n", dataPath.c_str());
-		return;
+		return 0;
 	}
 	
 	FileFileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kFileFileHeaderMagic, strlen(kFileFileHeaderMagic)) != 0)
 	{
 		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
-		return;
+		return 0;
 	}
 
 	std::unique_ptr<char[]> buffer = safeAlloc(header.compressedSize + header.uncompressedSize);
@@ -356,17 +360,23 @@ void searchFiles(Output* output_, const char* file, const char* string, unsigned
 	if (!buffer || !read(in, buffer.get(), header.compressedSize))
 	{
 		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
-		return;
+		return 0;
 	}
 
 	char* data = buffer.get() + header.compressedSize;
 	LZ4_uncompress(buffer.get(), data, header.uncompressedSize);
 
 	if (*string == 0)
-		dumpFiles(header, data, &output);
+		return dumpFiles(header, data, &output);
 	else if (options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX))
+	{
+		unsigned int result = 0;
+
 		searchFilesRegex(header, data, string, (options & SO_FILE_PATHREGEX) != 0,
-			output.options, output.limit, [&](const FileFileEntry& e) { processMatch(e, data, &output); });
+			output.options, output.limit, [&](const FileFileEntry& e) { processMatch(e, data, &output); result++; });
+
+		return result;
+	}
 	else
-		searchFilesSolution(header, data, string, &output);
+		return searchFilesSolution(header, data, string, &output);
 }

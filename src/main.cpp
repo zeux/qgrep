@@ -147,7 +147,7 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 	return std::make_pair(options, limit);
 }
 
-void processSearchCommand(Output* output, int argc, const char** argv, void (*search)(Output*, const char*, const char*, unsigned int, unsigned int))
+void processSearchCommand(Output* output, int argc, const char** argv, unsigned int (*search)(Output*, const char*, const char*, unsigned int, unsigned int))
 {
 	std::vector<std::string> paths = getProjectPaths(argv[2]);
 
@@ -165,7 +165,17 @@ void processSearchCommand(Output* output, int argc, const char** argv, void (*se
 	const char* query = argc > 3 ? argv[argc - 1] : "";
 
 	for (size_t i = 0; i < paths.size(); ++i)
-		search(output, paths[i].c_str(), query, options, limit);
+	{
+		unsigned int result = search(output, paths[i].c_str(), query, options, limit);
+
+		if (limit > 0)
+		{
+			assert(result <= limit);
+			limit -= result;
+
+			if (limit == 0) break;
+		}
+	}
 }
 
 void mainImpl(Output* output, int argc, const char** argv)

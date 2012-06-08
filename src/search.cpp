@@ -199,7 +199,7 @@ private:
 	re2::PrefilterTree tree;
 };
 
-void searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
+unsigned int searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
 {
 	SearchOutput output(output_, options);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
@@ -210,14 +210,14 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 	if (!in)
 	{
 		output_->error("Error reading data file %s\n", dataPath.c_str());
-		return;
+		return 0;
 	}
 	
 	DataFileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
 	{
 		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
-		return;
+		return 0;
 	}
 		
 	DataChunkHeader chunk;
@@ -243,13 +243,13 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 			catch (const std::bad_alloc&)
 			{
 				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
-				return;
+				return 0;
 			}
 
 			if (chunk.indexSize && !read(in, &index[0], chunk.indexSize))
 			{
 				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
-				return;
+				return 0;
 			}
 
 			if (!ngregex.match(index, chunk.indexHashIterations))
@@ -264,7 +264,7 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 		if (!data || !read(in, data.get(), chunk.compressedSize))
 		{
 			output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
-			return;
+			return 0;
 		}
 			
 		queue.push([=, &regex, &output]() {
@@ -277,4 +277,6 @@ void searchProject(Output* output_, const char* file, const char* string, unsign
 
 		chunkIndex++;
 	}
+
+	return 0;
 }
