@@ -104,6 +104,8 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 	std::string tempPath = targetPath + "_";
 
 	{
+		createPathForFile(tempPath.c_str());
+
 		std::ofstream out(tempPath.c_str(), std::ios::out | std::ios::binary);
 		if (!out)
 		{

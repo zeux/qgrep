@@ -45,6 +45,8 @@ public:
 
 	bool start(const char* path)
 	{
+        createPathForFile(path);
+
 		outData.open(path, std::ios::out | std::ios::binary);
 		if (!outData) return false;
 

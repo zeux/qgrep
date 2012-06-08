@@ -67,6 +67,16 @@ void createPath(const char* path)
 	mkdir(p.c_str());
 }
 
+void createPathForFile(const char* path)
+{
+	std::string p = path;
+
+	std::string::size_type spos = p.find_last_of("/\\");
+	if (spos != std::string::npos) p.erase(p.begin() + spos, p.end());
+
+	createPath(p.c_str());
+}
+
 bool renameFile(const char* oldpath, const char* newpath)
 {
 	return MoveFileExA(oldpath, newpath, MOVEFILE_REPLACE_EXISTING);

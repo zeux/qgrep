@@ -1,11 +1,14 @@
 #include "init.hpp"
 
 #include "output.hpp"
+#include "fileutil.hpp"
 
 #include <fstream>
 
 void initProject(Output* output, const char* name, const char* file, const char* path)
 {
+	createPathForFile(file);
+
 	std::ofstream out(file);
 	if (!out)
 	{

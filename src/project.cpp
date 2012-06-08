@@ -25,8 +25,6 @@ std::string getProjectPath(const char* name)
 
 	if (home.empty()) return name;
 
-	createPath(home.c_str());
-
 	return home + "/" + name + ".cfg";
 }
 
