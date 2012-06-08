@@ -118,6 +118,7 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 
 		case 'b':
 			options |= SO_BRUTEFORCE;
+            break;
 			
 		case 'V':
 			options |= SO_VISUALSTUDIO;
