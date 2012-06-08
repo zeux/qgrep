@@ -84,9 +84,10 @@ bool renameFile(const char* oldpath, const char* newpath)
 
 std::string replaceExtension(const char* path, const char* ext)
 {
-	const char* dot = strrchr(path, '.');
+	std::string p = path;
+	std::string::size_type pos = p.find_last_of("./\\");
 
-	return dot ? std::string(path, dot) + ext : std::string(path) + ext;
+	return (pos != std::string::npos && p[pos] == '.') ? p.substr(0, pos) + ext : p + ext;
 }
 
 static uint64_t combine(uint32_t hi, uint32_t lo)

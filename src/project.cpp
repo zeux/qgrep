@@ -21,13 +21,29 @@ static std::string getHomePath()
 	return (home ? std::string(home) : std::string(drive) + path) + "/.qgrep";
 }
 
+static bool isSlash(char ch)
+{
+	return ch == '/' || ch == '\\';
+}
+
+static bool isFilePath(const char* name)
+{
+	return isSlash(name[0]) || (name[0] == '.' && isSlash(name[1])) || (isalpha(name[0]) && name[1] == ':' && isSlash(name[3]));
+}
+
 std::string getProjectPath(const char* name)
 {
-	std::string home = getHomePath();
+	if (isFilePath(name))
+		return replaceExtension(name, ".cfg");
+	else
+	{
+		std::string home = getHomePath();
 
-	if (home.empty()) return name;
-
-	return home + "/" + name + ".cfg";
+		if (home.empty())
+			return name;
+		else
+			return home + "/" + name + ".cfg";
+	}
 }
 
 static std::vector<std::string> getProjectsByPrefix(const char* prefix)
