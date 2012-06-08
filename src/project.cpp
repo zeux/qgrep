@@ -2,11 +2,13 @@
 
 #include "output.hpp"
 #include "fileutil.hpp"
+#include "stringutil.hpp"
 #include "regex.hpp"
 
 #include <fstream>
 #include <memory>
 #include <algorithm>
+#include <cassert>
 
 static std::string getHomePath()
 {
@@ -28,7 +30,7 @@ std::string getProjectPath(const char* name)
 	return home + "/" + name + ".cfg";
 }
 
-std::vector<std::string> getProjects()
+static std::vector<std::string> getProjectsByPrefix(const char* prefix)
 {
 	std::vector<std::string> result;
 
@@ -36,18 +38,54 @@ std::vector<std::string> getProjects()
 
 	if (!homePath.empty())
 	{
-		traverseDirectory(homePath.c_str(), [&](const char* path) {
-			const char* dot = strrchr(path, '.');
-			const char* slash = strrchr(path, '/');
+		std::string path = homePath;
+		if (*prefix) (path += "/") += prefix;
 
-			if (slash < dot && strcmp(dot, ".cfg") == 0)
+		traverseDirectory(path.c_str(), [&](const char* path) {
+			const char* dot = strrchr(path, '.');
+
+			if (strcmp(dot, ".cfg") == 0)
 			{
-				result.push_back(std::string(slash + 1, dot));
+				assert(strncmp(path, homePath.c_str(), homePath.length()) == 0 && path[homePath.length()] == '/');
+
+				result.push_back(std::string(path + homePath.length() + 1, dot));
 			}
 		});
 	}
 
 	return result;
+}
+
+std::vector<std::string> getProjects()
+{
+	return getProjectsByPrefix("");
+}
+
+std::vector<std::string> getProjectPaths(const char* name)
+{
+	// grab all names
+	std::vector<std::string> names;
+	
+	for (std::string n: split(name, [](char ch) { return ch == ','; }))
+	{
+		if (n == "*" || n.back() == '/')
+		{
+			auto projects = getProjectsByPrefix(n.back() == '/' ? n.substr(0, n.length() - 1).c_str() : "");
+			names.insert(names.end(), projects.begin(), projects.end());
+		}
+		else
+		{
+			names.push_back(n);
+		}
+	}
+
+	// convert names to paths
+	std::vector<std::string> paths;
+
+	for (auto& n: names)
+		paths.push_back(getProjectPath(n.c_str()));
+
+	return paths;
 }
 
 static std::string trim(const std::string& s)

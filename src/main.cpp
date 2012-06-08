@@ -5,7 +5,6 @@
 #include "search.hpp"
 #include "project.hpp"
 #include "files.hpp"
-#include "stringutil.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,7 +117,6 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 
 		case 'b':
 			options |= SO_BRUTEFORCE;
-            break;
 			
 		case 'V':
 			options |= SO_VISUALSTUDIO;
@@ -147,16 +145,6 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 	}
 	
 	return std::make_pair(options, limit);
-}
-
-std::vector<std::string> getProjectPaths(const char* name)
-{
-	std::vector<std::string> result = strcmp(name, "*") == 0 ? getProjects() : split(name, [](char ch) { return ch == ','; });
-
-	for (size_t i = 0; i < result.size(); ++i)
-		result[i] = getProjectPath(result[i].c_str());
-
-	return result;
 }
 
 void processSearchCommand(Output* output, int argc, const char** argv, void (*search)(Output*, const char*, const char*, unsigned int, unsigned int))
