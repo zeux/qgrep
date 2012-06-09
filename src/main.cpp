@@ -152,7 +152,7 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 	std::vector<std::string> paths = getProjectPaths(argv[2]);
 
 	unsigned int options = 0;
-	unsigned int limit = 0;
+	unsigned int limit = ~0u;
 
 	for (int i = 3; i + 1 < argc; ++i)
 	{
@@ -164,17 +164,12 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 
 	const char* query = argc > 3 ? argv[argc - 1] : "";
 
-	for (size_t i = 0; i < paths.size(); ++i)
+	for (size_t i = 0; limit > 0 && i < paths.size(); ++i)
 	{
 		unsigned int result = search(output, paths[i].c_str(), query, options, limit);
 
-		if (limit > 0)
-		{
-			assert(result <= limit);
-			limit -= result;
-
-			if (limit == 0) break;
-		}
+		assert(result <= limit);
+		limit -= result;
 	}
 }
 

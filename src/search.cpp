@@ -22,11 +22,17 @@
 
 struct SearchOutput
 {
-	SearchOutput(Output* output, unsigned int options): options(options), output(output, kMaxBufferedOutput, kBufferedOutputFlushThreshold)
+	SearchOutput(Output* output, unsigned int options, unsigned int limit): options(options), limit(limit), output(output, kMaxBufferedOutput, kBufferedOutputFlushThreshold, limit)
 	{
 	}
 
+	bool isLimitReached() const
+	{
+		return output.getLineCount() >= limit;
+	}
+
 	unsigned int options;
+	unsigned int limit;
 	OrderedOutput output;
 };
 
@@ -88,12 +94,15 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
 	OrderedOutput::Chunk* chunk = output->output.begin(chunkIndex);
-	
-	for (size_t i = 0; i < fileCount; ++i)
+
+	if (!output->isLimitReached())
 	{
-		const DataChunkFileHeader& f = files[i];
-		
-		processFile(re, output, chunk, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
+		for (size_t i = 0; i < fileCount; ++i)
+		{
+			const DataChunkFileHeader& f = files[i];
+			
+			processFile(re, output, chunk, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
+		}
 	}
 
 	output->output.end(chunk);
@@ -201,7 +210,7 @@ private:
 
 unsigned int searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
 {
-	SearchOutput output(output_, options);
+	SearchOutput output(output_, options, limit);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
 	NgramRegex ngregex((options & SO_BRUTEFORCE) ? nullptr : regex.get());
 	
@@ -219,64 +228,68 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
 		return 0;
 	}
-		
-	DataChunkHeader chunk;
-	unsigned int chunkIndex = 0;
-	
-	// Assume 50% compression ratio (it's usually much better)
-	BlockPool chunkPool(kChunkSize * 3 / 2);
-	std::vector<unsigned char> index;
-	WorkQueue queue(WorkQueue::getIdealWorkerCount(), kMaxQueuedChunkData);
-	
-	while (read(in, chunk))
+
 	{
-		if (ngregex.empty() || chunk.indexSize == 0)
+		unsigned int chunkIndex = 0;
+
+		// Assume 50% compression ratio (it's usually much better)
+		BlockPool chunkPool(kChunkSize * 3 / 2);
+
+		std::vector<unsigned char> index;
+		DataChunkHeader chunk;
+
+		WorkQueue queue(WorkQueue::getIdealWorkerCount(), kMaxQueuedChunkData);
+
+		while (!output.isLimitReached() && read(in, chunk))
 		{
-			in.seekg(chunk.indexSize, std::ios::cur);
-		}
-		else
-		{
-			try
+			if (ngregex.empty() || chunk.indexSize == 0)
 			{
-				index.resize(chunk.indexSize);
+				in.seekg(chunk.indexSize, std::ios::cur);
 			}
-			catch (const std::bad_alloc&)
+			else
+			{
+				try
+				{
+					index.resize(chunk.indexSize);
+				}
+				catch (const std::bad_alloc&)
+				{
+					output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
+					return 0;
+				}
+
+				if (chunk.indexSize && !read(in, &index[0], chunk.indexSize))
+				{
+					output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
+					return 0;
+				}
+
+				if (!ngregex.match(index, chunk.indexHashIterations))
+				{
+					in.seekg(chunk.compressedSize, std::ios::cur);
+					continue;
+				}
+			}
+
+			std::shared_ptr<char> data = safeAlloc(chunkPool, chunk.compressedSize + chunk.uncompressedSize);
+
+			if (!data || !read(in, data.get(), chunk.compressedSize))
 			{
 				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 				return 0;
 			}
 
-			if (chunk.indexSize && !read(in, &index[0], chunk.indexSize))
-			{
-				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
-				return 0;
-			}
+			queue.push([=, &regex, &output]() {
+				char* compressed = data.get();
+				char* uncompressed = data.get() + chunk.compressedSize;
 
-			if (!ngregex.match(index, chunk.indexHashIterations))
-			{
-				in.seekg(chunk.compressedSize, std::ios::cur);
-				continue;
-			}
+				LZ4_uncompress(compressed, uncompressed, chunk.uncompressedSize);
+				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount);
+			}, chunk.compressedSize + chunk.uncompressedSize);
+
+			chunkIndex++;
 		}
-
-		std::shared_ptr<char> data = safeAlloc(chunkPool, chunk.compressedSize + chunk.uncompressedSize);
-		
-		if (!data || !read(in, data.get(), chunk.compressedSize))
-		{
-			output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
-			return 0;
-		}
-			
-		queue.push([=, &regex, &output]() {
-			char* compressed = data.get();
-			char* uncompressed = data.get() + chunk.compressedSize;
-
-			LZ4_uncompress(compressed, uncompressed, chunk.uncompressedSize);
-			processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount);
-		}, chunk.compressedSize + chunk.uncompressedSize);
-
-		chunkIndex++;
 	}
 
-	return 0;
+	return output.output.getLineCount();
 }

@@ -19,17 +19,34 @@ static void strprintf(std::string& result, const char* format, va_list args)
 	}
 }
 
-static void writeThreadFun(Output* output, BlockingQueue<OrderedOutput::Chunk*>& queue)
+static void writeThreadFun(Output* output, BlockingQueue<OrderedOutput::Chunk*>& queue, unsigned int limit)
 {
+	unsigned int total = 0;
+
 	while (OrderedOutput::Chunk* chunk = queue.pop())
 	{
-		output->print("%s", chunk->result.c_str());
+		std::string::size_type pos = 0;
+
+		for (unsigned int i = total; i < limit && pos < chunk->result.length(); ++i)
+		{
+			const char* line = chunk->result.c_str() + pos;
+
+			output->print("%s", line);
+			total++;
+			pos += strlen(line) + 1;
+		}
+
 		delete chunk;
 	}
 }
 
-OrderedOutput::OrderedOutput(Output* output, size_t memoryLimit, size_t flushThreshold):
-	output(output), writeQueue(memoryLimit), writeThread(std::bind(writeThreadFun, output, std::ref(writeQueue))), flushThreshold(flushThreshold), currentChunk(0)
+OrderedOutput::Chunk::Chunk(unsigned int id, unsigned int lines): id(id), lines(lines)
+{
+}
+
+OrderedOutput::OrderedOutput(Output* output, size_t memoryLimit, size_t flushThreshold, unsigned int lineLimit):
+	output(output), flushThreshold(flushThreshold), lineLimit(lineLimit), writeQueue(memoryLimit),
+	writeThread(std::bind(writeThreadFun, output, std::ref(writeQueue), lineLimit))
 {
 }
 
@@ -45,10 +62,7 @@ OrderedOutput::Chunk* OrderedOutput::begin(unsigned int id)
 {
 	assert(id >= currentChunk);
 
-	Chunk* chunk = new Chunk;
-	chunk->id = id;
-
-	return chunk;
+	return new Chunk(id, 0);
 }
 
 void OrderedOutput::write(Chunk* chunk, const char* format, ...)
@@ -58,10 +72,16 @@ void OrderedOutput::write(Chunk* chunk, const char* format, ...)
 	strprintf(chunk->result, format, args);
 	va_end(args);
 
+	chunk->result.push_back(0);
+	chunk->lines++;
+
 	if (chunk->result.size() > flushThreshold && chunk->id == currentChunk)
 	{
-		Chunk* temp = new Chunk;
-		temp->result.swap(chunk->result);
+		Chunk* temp = new Chunk(chunk->id, chunk->lines);
+		chunk->result.swap(temp->result);
+		chunk->lines = 0;
+
+		currentLine += temp->lines;
 		writeQueue.push(temp, temp->result.size());
 	}
 }
@@ -77,7 +97,6 @@ void OrderedOutput::end(Chunk* chunk)
 	{
 		Chunk* chunk = chunks.begin()->second;
 		chunks.erase(chunks.begin());
-		currentChunk++;
 
 		if (chunk->result.empty())
 		{
@@ -85,7 +104,15 @@ void OrderedOutput::end(Chunk* chunk)
 		}
 		else
 		{
+			currentLine += chunk->lines;
 			writeQueue.push(chunk, chunk->result.size());
 		}
+
+		currentChunk++;
 	}
+}
+
+unsigned int OrderedOutput::getLineCount() const
+{
+	return std::min(currentLine.load(), lineLimit);
 }

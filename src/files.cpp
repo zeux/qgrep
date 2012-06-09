@@ -219,7 +219,7 @@ static unsigned int dumpFiles(const FileFileHeader& header, const char* data, Fi
 {
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
-	unsigned int count = (output->limit == 0) ? header.fileCount : std::min(output->limit, header.fileCount);
+	unsigned int count = std::min(output->limit, header.fileCount);
 
 	for (unsigned int i = 0; i < count; ++i)
 		processMatch(entries[i], data, output);
@@ -263,7 +263,7 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 		begin = lend + 1;
 		matches++;
 
-		if (matches == limit) break;
+		if (matches >= limit) break;
 	}
 
 	re->rangeFinalize(range);
@@ -307,7 +307,7 @@ static unsigned int searchFilesSolution(const FileFileHeader& header, const char
 	std::vector<const FileFileEntry*> entries;
 
 	searchFilesRegex(header, data, fragments[0].c_str(), isPathComponent(fragments[0].c_str()),
-		options, (fragments.size() == 1) ? output->limit : 0, [&](const FileFileEntry& e) { entries.push_back(&e); });
+		options, (fragments.size() == 1) ? output->limit : ~0u, [&](const FileFileEntry& e) { entries.push_back(&e); });
 
 	// filter results by subsequent components
 	for (size_t i = 1; i < fragments.size(); ++i)
@@ -326,7 +326,7 @@ static unsigned int searchFilesSolution(const FileFileHeader& header, const char
 	}
 
 	// trim results according to limit
-	if (output->limit && entries.size() > output->limit)
+	if (entries.size() > output->limit)
 		entries.resize(output->limit);
 
 	// output results
