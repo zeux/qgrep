@@ -1,7 +1,5 @@
 features:
 1. incremental update (compare mtime/size, add/remove files, don't recompress chunks unless necessary)
-3. output limit support for multiple projects
-4. output limit support for text search
 5. vim script
 6. stale file support
 7. incremental update based on stale file list
@@ -9,15 +7,8 @@ features:
 9. recognize (?i) at the beginning of regular expression as case-insensitive marker (check that it's not toggled off later)
 10. linux support
 11. search with filename filtering
-12. project name support improvement: hierarchical project names (init should create folders), project path instead of name should work
 13. incremental update based on ntfs journal / inotify
 14. proper unicode support wrt lowercasing (i.e. sometimes we'll have to revert back to slow casefold using re2)
 15. #! support in .cfg files
 16. ignore/exclude per folder in .cfg files (groups...)
 17. jobified chunk compression in builder
-
-ngram indexing improvements:
-1. support arbitrary regular expressions via filtered re
-2. investigate better table size/hash count estimation: see http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html
-3. investigate case-insensitive index
-4. investigate fourgrams instead of trigrams
