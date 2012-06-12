@@ -227,7 +227,7 @@ void mainImpl(Output* output, int argc, const char** argv)
 				"  l - literal search (query is treated as a literal string)\n"
 				"  b - bruteforce search: skip indexing optimizations\n"
 				"  V - Visual Studio style formatting\n"
-				"  C - include column name in output\n"
+				"  C - include column number in output\n"
 				"  Lnumber - limit output to <number> lines\n"
 				"<search-options> can include additional options for file search:\n"
 				"  fn - search in file names\n"
