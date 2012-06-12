@@ -42,6 +42,7 @@ public:
 		opts.set_word_boundary(true);
 		opts.set_one_line(false);
 		opts.set_literal((options & RO_LITERAL) != 0);
+		opts.set_log_errors(false);
 		
 		std::string pattern;
 		if ((options & RO_IGNORECASE) && transformRegexCasefold(string, pattern, (options & RO_LITERAL) != 0))
