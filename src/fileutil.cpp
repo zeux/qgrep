@@ -20,31 +20,48 @@ static bool processFile(const char* name)
 	return true;
 }
 
-void traverseDirectory(const char* path, const std::function<void (const char*)>& callback)
+static void concatPathName(std::string& buf, const char* path, const char* name)
+{
+	buf = path;
+	if (*path) buf += "/";
+	buf += name;
+}
+
+static void traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char*)>& callback)
 {
 	WIN32_FIND_DATAA data;
 	HANDLE h = FindFirstFileA((std::string(path) + "/*").c_str(), &data);
 
 	if (h != INVALID_HANDLE_VALUE)
 	{
+		std::string buf, relbuf;
+
 		do
 		{
 			if (processFile(data.cFileName))
 			{
-				std::string fp = path;
-				fp += "/";
-				fp += data.cFileName;
-	
+				concatPathName(relbuf, relpath, data.cFileName);
+
 				if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-					traverseDirectory(fp.c_str(), callback);
+				{
+					concatPathName(buf, path, data.cFileName);
+					traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback);
+				}
 				else
-					callback(fp.c_str());
+				{
+					callback(relbuf.c_str());
+				}
 			}
 		}
 		while (FindNextFileA(h, &data));
 
 		FindClose(h);
 	}
+}
+
+void traverseDirectory(const char* path, const std::function<void (const char*)>& callback)
+{
+	traverseDirectoryImpl(path, "", callback);
 }
 
 void createPath(const char* path)

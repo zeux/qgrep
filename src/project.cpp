@@ -57,14 +57,14 @@ static std::vector<std::string> getProjectsByPrefix(const char* prefix)
 		std::string path = homePath;
 		if (*prefix) (path += "/") += prefix;
 
+		std::string pprefix = *prefix ? std::string(prefix) + "/" : "";
+
 		traverseDirectory(path.c_str(), [&](const char* path) {
 			const char* dot = strrchr(path, '.');
 
 			if (strcmp(dot, ".cfg") == 0)
 			{
-				assert(strncmp(path, homePath.c_str(), homePath.length()) == 0 && path[homePath.length()] == '/');
-
-				result.push_back(std::string(path + homePath.length() + 1, dot));
+				result.push_back(pprefix + std::string(path, dot));
 			}
 		});
 	}
@@ -200,9 +200,11 @@ bool getProjectFiles(Output* output, const char* path, std::vector<std::string>&
 
 	for (size_t i = 0; i < pathSet.size(); ++i)
 	{
+		std::string pathPrefix = pathSet[i] + "/";
+
 		traverseDirectory(pathSet[i].c_str(), [&](const char* path) { 
 			if (isFileAcceptable(include.get(), exclude.get(), path))
-				files.push_back(path);
+				files.push_back(pathPrefix + path);
 		});
 	}
 
