@@ -10,5 +10,4 @@ features:
 13. incremental update based on ntfs journal / inotify
 14. proper unicode support wrt lowercasing (i.e. sometimes we'll have to revert back to slow casefold using re2)
 15. #! support in .cfg files
-16. ignore/exclude per folder in .cfg files (groups...)
 17. jobified chunk compression in builder
