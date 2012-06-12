@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <cassert>
 
+#include <map>
+#include <string>
+
 static std::string getHomePath()
 {
     char* home = getenv("HOME");
@@ -104,6 +107,18 @@ std::vector<std::string> getProjectPaths(const char* name)
 	return paths;
 }
 
+struct ProjectGroup
+{
+	ProjectGroup* parent;
+
+	std::vector<std::string> paths;
+	std::vector<std::string> files;
+	std::shared_ptr<Regex> include;
+	std::shared_ptr<Regex> exclude;
+
+	std::vector<std::unique_ptr<ProjectGroup>> groups;
+};
+
 static std::string trim(const std::string& s)
 {
 	const char* pattern = " \t";
@@ -118,7 +133,7 @@ static bool extractSuffix(const std::string& str, const char* prefix, std::strin
 {
 	size_t length = strlen(prefix);
 
-	if (str.compare(0, length, prefix) == 0 && str.length() > length && isspace(str[length]))
+	if (str.compare(0, length, prefix) == 0 && (str.length() == length || isspace(str[length])))
 	{
 		suffix = trim(str.substr(length));
 		return true;
@@ -127,86 +142,160 @@ static bool extractSuffix(const std::string& str, const char* prefix, std::strin
 	return false;
 }
 
-static bool parseInput(const char* file, std::vector<std::string>& paths, std::vector<std::string>& include, std::vector<std::string>& exclude, std::vector<std::string>& files)
+static std::shared_ptr<Regex> createRegexCached(const std::string& query, std::map<std::string, std::shared_ptr<Regex>>& regexCache)
 {
-	std::ifstream in(file);
-	if (!in) return false;
+	auto p = regexCache.insert(std::make_pair(query, std::shared_ptr<Regex>()));
 
-	std::string line;
-	std::string suffix;
+	if (p.second)
+		p.first->second = std::shared_ptr<Regex>(createRegex(query.c_str(), RO_IGNORECASE));
 
-	while (std::getline(in, line))
-	{
-		line = trim(line);
-
-		// parse lines
-		if (line.empty() || line[0] == '#')
-			continue; // skip comments
-		if (extractSuffix(line, "path", suffix))
-			paths.push_back(suffix);
-		else if (extractSuffix(line, "include", suffix))
-			include.push_back(suffix);
-		else if (extractSuffix(line, "exclude", suffix))
-			exclude.push_back(suffix);
-		else
-		{
-			std::string file = trim(line);
-			if (!file.empty()) files.push_back(file);
-		}
-	}
-
-	return true;
+	return p.first->second;
 }
 
-static Regex* constructOrRE(const std::vector<std::string>& list)
+static std::shared_ptr<Regex> createOrRegexCached(const std::vector<std::string>& list, std::map<std::string, std::shared_ptr<Regex>>& regexCache)
 {
-	if (list.empty()) return 0;
+	if (list.empty()) return std::shared_ptr<Regex>();
 	
 	std::string re = "(" + list[0] + ")";
 
 	for (size_t i = 1; i < list.size(); ++i)
 		re += "|(" + list[i] + ")";
 
-	return createRegex(re.c_str(), RO_IGNORECASE);
+	return createRegexCached(re, regexCache);
 }
 
-static bool isFileAcceptable(Regex* include, Regex* exclude, const char* path)
+static std::unique_ptr<ProjectGroup> buildGroup(std::unique_ptr<ProjectGroup> group, const std::vector<std::string>& include, const std::vector<std::string>& exclude,
+	std::map<std::string, std::shared_ptr<Regex>>& regexCache)
+{
+	group->include = createOrRegexCached(include, regexCache);
+	group->exclude = createOrRegexCached(exclude, regexCache);
+	return move(group);
+}
+
+static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* file, unsigned int& lineId, ProjectGroup* parent, std::map<std::string, std::shared_ptr<Regex>>& regexCache)
+{
+	std::string line, suffix;
+	std::vector<std::string> include, exclude;
+
+	std::unique_ptr<ProjectGroup> result(new ProjectGroup);
+	result->parent = parent;
+
+	while (std::getline(in, line))
+	{
+		line = trim(line);
+		lineId++;
+
+		// parse lines
+		if (line.empty() || line[0] == '#')
+			continue; // skip comments
+		else if (extractSuffix(line, "path", suffix))
+		{
+			if (suffix.empty()) throw std::runtime_error("No path specified");
+			result->paths.push_back(suffix);
+		}
+		else if (extractSuffix(line, "file", suffix))
+		{
+			if (suffix.empty()) throw std::runtime_error("No path specified");
+			result->files.push_back(suffix);
+		}
+		else if (extractSuffix(line, "include", suffix))
+		{
+			createRegexCached(suffix, regexCache);
+			include.push_back(suffix);
+		}
+		else if (extractSuffix(line, "exclude", suffix))
+		{
+			createRegexCached(suffix, regexCache);
+			exclude.push_back(suffix);
+		}
+		else if (extractSuffix(line, "group", suffix))
+			result->groups.push_back(parseGroup(in, file, lineId, result.get(), regexCache));
+		else if (extractSuffix(line, "endgroup", suffix))
+		{
+			if (!parent) throw std::runtime_error("Mismatched endgroup");
+			return buildGroup(move(result), include, exclude, regexCache);
+		}
+		else
+		{
+			// path without any special directive
+			if (line.back() == '/' || line.back() == '\\')
+				result->paths.push_back(line);
+			else
+				result->files.push_back(line);
+		}
+	}
+
+	if (parent) throw std::runtime_error("End of file while looking for endgroup");
+	return buildGroup(move(result), include, exclude, regexCache);
+}
+
+static std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file)
+{
+	std::ifstream in(file);
+	if (!in)
+	{
+		output->error("Error reading file %s\n", file);
+		return std::unique_ptr<ProjectGroup>();
+	}
+
+	unsigned int line = 0;
+	std::map<std::string, std::shared_ptr<Regex>> regexCache;
+
+	try
+	{
+		return parseGroup(in, file, line, 0, regexCache);
+	}
+	catch (const std::exception& e)
+	{
+		output->error("%s(%d): %s\n", file, line, e.what());
+		return std::unique_ptr<ProjectGroup>();
+	}
+}
+
+static bool isFileAcceptable(ProjectGroup* group, const char* path)
 {
 	size_t length = strlen(path);
 
-	if (include && !include->search(path, length))
-		return false;
+	for (; group; group = group->parent)
+	{
+		if (group->include && !group->include->search(path, length))
+			return false;
 
-	if (exclude && exclude->search(path, length))
-		return false;
+		if (group->exclude && group->exclude->search(path, length))
+			return false;
+	}
 
 	return true;
 }
 
-bool getProjectFiles(Output* output, const char* path, std::vector<std::string>& files)
+static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vector<std::string>& files)
 {
-	std::vector<std::string> pathSet, includeSet, excludeSet, fileSet;
+	files.insert(files.end(), group->files.begin(), group->files.end());
 
-	if (!parseInput(path, pathSet, includeSet, excludeSet, fileSet))
+	for (auto& path: group->paths)
 	{
-		output->error("Error opening project file %s for reading\n", path);
-		return false;
-	}
+		std::string pathPrefix = path + "/";
 
-	std::unique_ptr<Regex> include(constructOrRE(includeSet));
-	std::unique_ptr<Regex> exclude(constructOrRE(excludeSet));
-
-	files = fileSet;
-
-	for (size_t i = 0; i < pathSet.size(); ++i)
-	{
-		std::string pathPrefix = pathSet[i] + "/";
-
-		traverseDirectory(pathSet[i].c_str(), [&](const char* path) { 
-			if (isFileAcceptable(include.get(), exclude.get(), path))
+		bool result = traverseDirectory(path.c_str(), [&](const char* path) { 
+			if (isFileAcceptable(group, path))
 				files.push_back(pathPrefix + path);
 		});
+
+		if (!result) output->error("Error reading folder %s\n", path.c_str());
 	}
+
+	for (auto& child: group->groups)
+		getProjectGroupFiles(output, child.get(), files);
+}
+
+bool getProjectFiles(Output* output, const char* path, std::vector<std::string>& files)
+{
+	std::unique_ptr<ProjectGroup> group = parseProject(output, path);
+	if (!group) return false;
+
+	files.clear();
+	
+	getProjectGroupFiles(output, group.get(), files);
 
 	std::sort(files.begin(), files.end());
 	files.erase(std::unique(files.begin(), files.end()), files.end());
