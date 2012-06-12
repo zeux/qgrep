@@ -25,7 +25,7 @@ folder, including subfolders. After that you have to build the database:
 
 And start using it:
 
-qgrep search mygame main\s*\(
+    qgrep search mygame main\s*\(
 
 Note that you'll have to rebuild the database from time to time in order to
 keep the search results current; you can run `qgrep build mygame` as a scheduled
