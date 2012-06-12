@@ -137,11 +137,11 @@ static bool parseInput(const char* file, std::vector<std::string>& paths, std::v
 
 	while (std::getline(in, line))
 	{
-		// remove comment
-		std::string::size_type shp = line.find('#');
-		if (shp != std::string::npos) line.erase(line.begin() + shp, line.end());
+		line = trim(line);
 
 		// parse lines
+		if (line.empty() || line[0] == '#')
+			continue; // skip comments
 		if (extractSuffix(line, "path", suffix))
 			paths.push_back(suffix);
 		else if (extractSuffix(line, "include", suffix))
