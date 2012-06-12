@@ -4,7 +4,7 @@
 #include <functional>
 #include <stdint.h>
 
-void traverseDirectory(const char* path, const std::function<void (const char*)>& callback);
+bool traverseDirectory(const char* path, const std::function<void (const char*)>& callback);
 void createPath(const char* path);
 void createPathForFile(const char* path);
 bool renameFile(const char* oldpath, const char* newpath);

@@ -27,7 +27,7 @@ static void concatPathName(std::string& buf, const char* path, const char* name)
 	buf += name;
 }
 
-static void traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char*)>& callback)
+static bool traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char*)>& callback)
 {
 	WIN32_FIND_DATAA data;
 	HANDLE h = FindFirstFileA((std::string(path) + "/*").c_str(), &data);
@@ -57,11 +57,13 @@ static void traverseDirectoryImpl(const char* path, const char* relpath, const s
 
 		FindClose(h);
 	}
+
+	return h != INVALID_HANDLE_VALUE;
 }
 
-void traverseDirectory(const char* path, const std::function<void (const char*)>& callback)
+bool traverseDirectory(const char* path, const std::function<void (const char*)>& callback)
 {
-	traverseDirectoryImpl(path, "", callback);
+	return traverseDirectoryImpl(path, "", callback);
 }
 
 void createPath(const char* path)
