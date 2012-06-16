@@ -133,7 +133,7 @@ void updateProject(Output* output, const char* path)
     output->print("Updating %s:\n", path);
 	output->print("Scanning project...\r");
 
-	std::vector<std::string> files;
+	std::vector<FileInfo> files;
 	if (!getProjectFiles(output, path, files))
 	{
 		return;
@@ -150,29 +150,25 @@ void updateProject(Output* output, const char* path)
 		std::unique_ptr<Builder> builder(createBuilder(output, tempPath.c_str(), files.size()));
 		if (!builder) return;
 
-		for (size_t i = 0; i < files.size(); ++i)
+		for (auto& f: files)
 		{
-			const char* path = files[i].c_str();
-
 			// skip to the file, if any
-			while (current && current.getPath() < path) current.moveNext();
+			while (current && current.getPath() < f.path) current.moveNext();
 
 			// check if the file is the same
-			uint64_t lastWriteTime, fileSize;
-
 			if (current &&
-				current.getPath() == path && current.getHeader().startLine == 0 &&
-				getFileAttributes(path, &lastWriteTime, &fileSize) && lastWriteTime == current.getHeader().timeStamp && fileSize == current.getHeader().fileSize)
+				current.getPath() == f.path && current.getHeader().startLine == 0 &&
+				f.lastWriteTime == current.getHeader().timeStamp && f.fileSize == current.getHeader().fileSize)
 			{
 				// add this file and all subsequent chunks of the same file
 				std::string contents = getCurrentFileContents(current);
 
-				builder->appendFilePart(path, 0, contents.c_str(), contents.size(), lastWriteTime, fileSize);
+				builder->appendFilePart(f.path.c_str(), 0, contents.c_str(), contents.size(), f.lastWriteTime, f.fileSize);
 			}
 			else
 			{
 				// grab file from fs
-				builder->appendFile(path);
+				builder->appendFile(f.path.c_str(), f.lastWriteTime, f.fileSize);
 			}
 		}
 	}

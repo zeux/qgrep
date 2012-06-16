@@ -139,10 +139,10 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 	}
 }
 
-void buildFiles(Output* output, const char* path, const std::vector<std::string>& files)
+void buildFiles(Output* output, const char* path, const std::vector<FileInfo>& files)
 {
 	std::vector<const char*> filesc(files.size());
-	for (size_t i = 0; i < files.size(); ++i) filesc[i] = files[i].c_str();
+	for (size_t i = 0; i < files.size(); ++i) filesc[i] = files[i].path.c_str();
 
 	buildFiles(output, path, filesc.empty() ? NULL : &filesc[0], filesc.size());
 }
@@ -152,7 +152,7 @@ void buildFiles(Output* output, const char* path)
     output->print("Building file table for %s:\n", path);
 	output->print("Scanning project...\r");
 
-	std::vector<std::string> files;
+	std::vector<FileInfo> files;
 	if (!getProjectFiles(output, path, files))
 	{
 		return;

@@ -89,11 +89,8 @@ public:
 		return result;
 	}
 
-	bool appendFile(const char* path)
+	bool appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize)
 	{
-		uint64_t lastWriteTime, fileSize;
-		if (!getFileAttributes(path, &lastWriteTime, &fileSize)) return false;
-
 		std::ifstream in(path);
 		if (!in) return false;
 
@@ -510,9 +507,9 @@ Builder::~Builder()
 	delete impl;
 }
 
-void Builder::appendFile(const char* path)
+void Builder::appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize)
 {
-	if (!impl->appendFile(path))
+	if (!impl->appendFile(path, lastWriteTime, fileSize))
 		output->error("Error reading file %s\n", path);
 
 	printStatistics();
@@ -555,7 +552,7 @@ void buildProject(Output* output, const char* path)
     output->print("Building %s:\n", path);
 	output->print("Scanning project...\r");
 
-	std::vector<std::string> files;
+	std::vector<FileInfo> files;
 	if (!getProjectFiles(output, path, files))
 	{
 		return;
@@ -570,11 +567,9 @@ void buildProject(Output* output, const char* path)
 		std::unique_ptr<Builder> builder(createBuilder(output, tempPath.c_str(), files.size()));
 		if (!builder) return;
 
-		for (size_t i = 0; i < files.size(); ++i)
+		for (auto& f: files)
 		{
-			const char* path = files[i].c_str();
-
-			builder->appendFile(path);
+			builder->appendFile(f.path.c_str(), f.lastWriteTime, f.fileSize);
 		}
 	}
 

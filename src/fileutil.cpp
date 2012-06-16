@@ -1,10 +1,16 @@
 #include "fileutil.hpp"
 
 #include <string>
+#include <vector>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <direct.h>
+
+static uint64_t combine(uint32_t hi, uint32_t lo)
+{
+	return (static_cast<uint64_t>(hi) << 32) | lo;
+}
 
 static bool processFile(const char* name)
 {
@@ -27,16 +33,34 @@ static void concatPathName(std::string& buf, const char* path, const char* name)
 	buf += name;
 }
 
-static bool traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char*)>& callback)
+static bool readDirectory(const char* path, std::vector<WIN32_FIND_DATAA>& result)
 {
+	std::string query = std::string(path) + "/*";
+
 	WIN32_FIND_DATAA data;
-	HANDLE h = FindFirstFileA((std::string(path) + "/*").c_str(), &data);
+	HANDLE h = FindFirstFileA(query.c_str(), &data);
 
 	if (h != INVALID_HANDLE_VALUE)
 	{
+		do result.push_back(data);
+		while (FindNextFileA(h, &data));
+
+		FindClose(h);
+	}
+
+	return h != INVALID_HANDLE_VALUE;
+}
+
+static bool traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
+{
+	std::vector<WIN32_FIND_DATAA> contents;
+	contents.reserve(16);
+
+	if (readDirectory(path, contents))
+	{
 		std::string buf, relbuf;
 
-		do
+		for (auto& data: contents)
 		{
 			if (processFile(data.cFileName))
 			{
@@ -49,19 +73,25 @@ static bool traverseDirectoryImpl(const char* path, const char* relpath, const s
 				}
 				else
 				{
-					callback(relbuf.c_str());
+					uint64_t mtime = combine(data.ftLastWriteTime.dwHighDateTime, data.ftLastWriteTime.dwLowDateTime);
+					uint64_t size = combine(data.nFileSizeHigh, data.nFileSizeLow);
+					callback(relbuf.c_str(), mtime, size);
 				}
 			}
 		}
-		while (FindNextFileA(h, &data));
 
-		FindClose(h);
+		return true;
 	}
 
-	return h != INVALID_HANDLE_VALUE;
+	return false;
 }
 
-bool traverseDirectory(const char* path, const std::function<void (const char*)>& callback)
+bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback)
+{
+	return traverseDirectoryImpl(path, "", [&](const char* name, uint64_t, uint64_t) { callback(name); });
+}
+
+bool traverseDirectoryMeta(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
 	return traverseDirectoryImpl(path, "", callback);
 }
@@ -98,7 +128,7 @@ void createPathForFile(const char* path)
 
 bool renameFile(const char* oldpath, const char* newpath)
 {
-	return MoveFileExA(oldpath, newpath, MOVEFILE_REPLACE_EXISTING);
+	return !!MoveFileExA(oldpath, newpath, MOVEFILE_REPLACE_EXISTING);
 }
 
 std::string replaceExtension(const char* path, const char* ext)
@@ -107,11 +137,6 @@ std::string replaceExtension(const char* path, const char* ext)
 	std::string::size_type pos = p.find_last_of("./\\");
 
 	return (pos != std::string::npos && p[pos] == '.') ? p.substr(0, pos) + ext : p + ext;
-}
-
-static uint64_t combine(uint32_t hi, uint32_t lo)
-{
-	return (static_cast<uint64_t>(hi) << 32) | lo;
 }
 
 bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)

@@ -268,17 +268,25 @@ static bool isFileAcceptable(ProjectGroup* group, const char* path)
 	return true;
 }
 
-static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vector<std::string>& files)
+static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vector<FileInfo>& files)
 {
-	files.insert(files.end(), group->files.begin(), group->files.end());
+	for (auto& path: group->files)
+	{
+		uint64_t mtime, size;
+
+		if (getFileAttributes(path.c_str(), &mtime, &size))
+			files.push_back(FileInfo(path, mtime, size));
+		else
+			output->error("Error reading metadata for file %s\n", path);
+	}
 
 	for (auto& path: group->paths)
 	{
 		std::string pathPrefix = path + "/";
 
-		bool result = traverseDirectory(path.c_str(), [&](const char* path) { 
+		bool result = traverseDirectoryMeta(path.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) { 
 			if (isFileAcceptable(group, path))
-				files.push_back(pathPrefix + path);
+				files.push_back(FileInfo(pathPrefix + path, mtime, size));
 		});
 
 		if (!result) output->error("Error reading folder %s\n", path.c_str());
@@ -288,7 +296,7 @@ static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vecto
 		getProjectGroupFiles(output, child.get(), files);
 }
 
-bool getProjectFiles(Output* output, const char* path, std::vector<std::string>& files)
+bool getProjectFiles(Output* output, const char* path, std::vector<FileInfo>& files)
 {
 	std::unique_ptr<ProjectGroup> group = parseProject(output, path);
 	if (!group) return false;
@@ -297,8 +305,8 @@ bool getProjectFiles(Output* output, const char* path, std::vector<std::string>&
 	
 	getProjectGroupFiles(output, group.get(), files);
 
-	std::sort(files.begin(), files.end());
-	files.erase(std::unique(files.begin(), files.end()), files.end());
+	std::sort(files.begin(), files.end(), [](const FileInfo& l, const FileInfo& r) { return l.path < r.path; });
+	files.erase(std::unique(files.begin(), files.end(), [](const FileInfo& l, const FileInfo& r) { return l.path == r.path; }), files.end());
 
 	return true;
 }
