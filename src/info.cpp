@@ -53,6 +53,7 @@ struct ProjectInfo
 
 	Statistics<unsigned int> chunkCompressedSizeExceptLast;
 	Statistics<unsigned int> chunkCompressedSize;
+	Statistics<double> chunkCompressionRatio;
 
 	unsigned int indexChunkCount;
 	unsigned long long indexTotalSize;
@@ -160,6 +161,7 @@ static void processChunkData(Output* output, ProjectInfo& info, const DataChunkH
 	// update chunk size stats
 	info.chunkSizeExceptLast = info.chunkSize;
 	info.chunkCompressedSizeExceptLast = info.chunkCompressedSize;
+	info.chunkCompressionRatio.update(static_cast<double>(header.uncompressedSize) / static_cast<double>(header.compressedSize));
 
 	info.chunkSize.update(header.uncompressedSize);
 	info.chunkCompressedSize.update(header.compressedSize);
@@ -281,11 +283,14 @@ void printProjectInfo(Output* output, const char* path)
 			FI(static_cast<unsigned long long>(info.chunkSize.average())),
 			lastChunkSize(info.chunkSizeExceptLast.min, info.chunkSize.min).c_str());
 
-		output->print("Chunks (compressed): ratio %.2f (%s bytes, [%s..%s] (avg %s) bytes per chunk%s)\n",
-			info.chunkCompressedSize.total == 0 ? 1.0 : static_cast<double>(info.chunkSize.total) / static_cast<double>(info.chunkCompressedSize.total),
+		output->print("Chunks (compressed): %s bytes, [%s..%s] (avg %s) bytes per chunk%s\n",
 			FI(info.chunkCompressedSize.total), FI(info.chunkCompressedSizeExceptLast.min), FI(info.chunkCompressedSize.max),
 			FI(static_cast<unsigned long long>(info.chunkCompressedSize.average())),
 			lastChunkSize(info.chunkCompressedSizeExceptLast.min, info.chunkCompressedSize.min).c_str());
+
+		output->print("Chunk compression ratio: %.2f ([%.2f..%.2f] (avg %.2f) per chunk)\n",
+			info.chunkCompressedSize.total == 0 ? 1.0 : static_cast<double>(info.chunkSize.total) / static_cast<double>(info.chunkCompressedSize.total),
+			info.chunkCompressionRatio.min, info.chunkCompressionRatio.max, info.chunkCompressionRatio.average());
 
 		output->print("Index: %s chunks (%s bytes, hash iterations [%d..%d] (avg %.1f), filled ratio [%.1f%%..%.1f%%] (avg %.1f%%))\n",
 			FI(info.indexChunkCount), FI(info.indexTotalSize),
