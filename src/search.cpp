@@ -11,6 +11,7 @@
 #include "stringutil.hpp"
 #include "bloom.hpp"
 #include "casefold.hpp"
+#include "streamutil.hpp"
 
 #include <fstream>
 #include <algorithm>
@@ -106,17 +107,6 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 	}
 
 	output->output.end(chunk);
-}
-
-inline bool read(std::istream& in, void* data, size_t size)
-{
-	in.read(static_cast<char*>(data), size);
-	return in.gcount() == size;
-}
-
-template <typename T> inline bool read(std::istream& in, T& value)
-{
-	return read(in, &value, sizeof(T));
 }
 
 unsigned int getRegexOptions(unsigned int options)

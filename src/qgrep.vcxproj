@@ -154,6 +154,7 @@
     <ClInclude Include="format.hpp" />
     <ClInclude Include="regex.hpp" />
     <ClInclude Include="search.hpp" />
+    <ClInclude Include="streamutil.hpp" />
     <ClInclude Include="stringutil.hpp" />
     <ClInclude Include="bloom.hpp" />
     <ClInclude Include="update.hpp" />

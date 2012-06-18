@@ -7,6 +7,7 @@
 #include "search.hpp"
 #include "regex.hpp"
 #include "stringutil.hpp"
+#include "streamutil.hpp"
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
@@ -159,17 +160,6 @@ void buildFiles(Output* output, const char* path)
 	}
 
 	buildFiles(output, path, files);
-}
-
-inline bool read(std::istream& in, void* data, size_t size)
-{
-	in.read(static_cast<char*>(data), size);
-	return in.gcount() == size;
-}
-
-template <typename T> inline bool read(std::istream& in, T& value)
-{
-	return read(in, &value, sizeof(T));
 }
 
 struct FilesOutput

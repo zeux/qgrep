@@ -210,6 +210,9 @@
     <ClInclude Include="info.hpp">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="streamutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">

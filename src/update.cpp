@@ -6,6 +6,7 @@
 #include "fileutil.hpp"
 #include "project.hpp"
 #include "files.hpp"
+#include "streamutil.hpp"
 
 #include <fstream>
 #include <memory>
@@ -14,17 +15,6 @@
 #include <string>
 
 #include "lz4/lz4.h"
-
-inline bool read(std::istream& in, void* data, size_t size)
-{
-	in.read(static_cast<char*>(data), size);
-	return in.gcount() == size;
-}
-
-template <typename T> inline bool read(std::istream& in, T& value)
-{
-	return read(in, &value, sizeof(T));
-}
 
 class FileDataIterator
 {
