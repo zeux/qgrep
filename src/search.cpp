@@ -74,6 +74,9 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 
 	while (RegexMatch match = re->rangeSearch(begin, end - begin))
 	{
+		// discard zero-length matches at the end (.* results in an extra line for every file part otherwise)
+		if (match.data == end) break;
+
 		// update line counter
 		line += 1 + countLines(begin, match.data);
 		
