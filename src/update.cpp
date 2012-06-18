@@ -26,18 +26,6 @@ template <typename T> inline bool read(std::istream& in, T& value)
 	return read(in, &value, sizeof(T));
 }
 
-inline char* safeAlloc(size_t size)
-{
-	try
-	{
-		return new char[size];
-	}
-	catch (const std::bad_alloc&)
-	{
-		return nullptr;
-	}
-}
-
 class FileDataIterator
 {
 public:
@@ -89,8 +77,8 @@ public:
 			{
 				in.seekg(chunk.indexSize, std::ios::cur);
 
-				std::unique_ptr<char[]> compressed(safeAlloc(chunk.compressedSize));
-				data.reset(safeAlloc(chunk.uncompressedSize));
+				std::unique_ptr<char[]> compressed(new (std::nothrow) char[chunk.compressedSize]);
+				data.reset(new (std::nothrow) char[chunk.uncompressedSize]);
 
 				if (data && compressed && read(in, compressed.get(), chunk.compressedSize))
 				{

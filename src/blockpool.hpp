@@ -11,6 +11,7 @@ public:
 	~BlockPool();
 
 	std::shared_ptr<char> allocate(size_t size);
+	std::shared_ptr<char> allocate(size_t size, std::nothrow_t);
 
 private:
     size_t blockSize;

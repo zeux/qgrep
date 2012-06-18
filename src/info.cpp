@@ -22,18 +22,6 @@ template <typename T> inline bool read(std::istream& in, T& value)
 	return read(in, &value, sizeof(T));
 }
 
-inline char* safeAlloc(size_t size)
-{
-	try
-	{
-		return new char[size];
-	}
-	catch (const std::bad_alloc&)
-	{
-		return nullptr;
-	}
-}
-
 struct ProjectInfo
 {
 	unsigned int chunkCount;
@@ -206,7 +194,7 @@ static bool processFile(Output* output, ProjectInfo& info, const char* path)
 	{
 		if (chunk.indexSize)
 		{
-			std::unique_ptr<char[]> index(safeAlloc(chunk.indexSize));
+			std::unique_ptr<char[]> index(new (std::nothrow) char[chunk.indexSize]);
 
 			if (!index || !read(in, index.get(), chunk.indexSize))
 			{
@@ -217,7 +205,7 @@ static bool processFile(Output* output, ProjectInfo& info, const char* path)
 			processChunkIndex(output, info, chunk, index.get(), chunkIndex);
 		}
 
-		std::unique_ptr<char[]> data(safeAlloc(chunk.compressedSize + chunk.uncompressedSize));
+		std::unique_ptr<char[]> data(new (std::nothrow) char[chunk.compressedSize + chunk.uncompressedSize]);
 
 		if (!data || !read(in, data.get(), chunk.compressedSize))
 		{

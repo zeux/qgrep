@@ -41,3 +41,15 @@ std::shared_ptr<char> BlockPool::allocate(size_t size)
 		blocks.push_back(block);
 	});
 }
+
+std::shared_ptr<char> BlockPool::allocate(size_t size, std::nothrow_t)
+{
+	try
+	{
+		return allocate(size);
+	}
+	catch (const std::bad_alloc&)
+	{
+		return std::shared_ptr<char>();
+	}
+}

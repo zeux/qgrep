@@ -119,18 +119,6 @@ template <typename T> inline bool read(std::istream& in, T& value)
 	return read(in, &value, sizeof(T));
 }
 
-std::shared_ptr<char> safeAlloc(BlockPool& pool, size_t size)
-{
-	try
-	{
-		return pool.allocate(size);
-	}
-	catch (const std::bad_alloc&)
-	{
-		return std::shared_ptr<char>();
-	}
-}
-
 unsigned int getRegexOptions(unsigned int options)
 {
 	return
@@ -271,7 +259,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				}
 			}
 
-			std::shared_ptr<char> data = safeAlloc(chunkPool, chunk.compressedSize + chunk.uncompressedSize);
+			std::shared_ptr<char> data = chunkPool.allocate(chunk.compressedSize + chunk.uncompressedSize, std::nothrow);
 
 			if (!data || !read(in, data.get(), chunk.compressedSize))
 			{

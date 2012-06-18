@@ -172,18 +172,6 @@ template <typename T> inline bool read(std::istream& in, T& value)
 	return read(in, &value, sizeof(T));
 }
 
-std::unique_ptr<char[]> safeAlloc(size_t size)
-{
-	try
-	{
-		return std::unique_ptr<char[]>(new char[size]);
-	}
-	catch (const std::bad_alloc&)
-	{
-		return std::unique_ptr<char[]>();
-	}
-}
-
 struct FilesOutput
 {
 	FilesOutput(Output* output, unsigned int options, unsigned int limit): output(output), options(options), limit(limit)
@@ -355,7 +343,7 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 		return 0;
 	}
 
-	std::unique_ptr<char[]> buffer = safeAlloc(header.compressedSize + header.uncompressedSize);
+	std::unique_ptr<char[]> buffer(new (std::nothrow) char[header.compressedSize + header.uncompressedSize]);
 
 	if (!buffer || !read(in, buffer.get(), header.compressedSize))
 	{
