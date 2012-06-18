@@ -9,31 +9,55 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <type_traits>
 
 #include "lz4/lz4.h"
+
+template <typename T> struct Statistics
+{
+	unsigned int count;
+	T min, max;
+
+	typename std::conditional<
+		std::is_floating_point<T>::value,
+		double,
+		typename std::conditional<
+			std::is_signed<T>::value,
+			long long,
+			unsigned long long>::type>::type total;
+
+	Statistics(): count(0), min(0), max(0), total(0)
+	{
+	}
+
+	void update(T value)
+	{
+		min = (count == 0) ? value : std::min(min, value);
+		max = (count == 0) ? value : std::max(max, value);
+		total += value;
+		count++;
+	}
+
+	double average() const
+	{
+		return count == 0 ? 0 : static_cast<double>(total) / static_cast<double>(count);
+	}
+};
 
 struct ProjectInfo
 {
 	unsigned int chunkCount;
 
-	unsigned int chunkMinSizeExceptLast;
-	unsigned int chunkMinSize;
-	unsigned int chunkMaxSize;
-	unsigned long long chunkTotalSize;
+	Statistics<unsigned int> chunkSizeExceptLast;
+	Statistics<unsigned int> chunkSize;
 
-	unsigned int chunkMinCompressedSizeExceptLast;
-	unsigned int chunkMinCompressedSize;
-	unsigned int chunkMaxCompressedSize;
-	unsigned long long chunkTotalCompressedSize;
+	Statistics<unsigned int> chunkCompressedSizeExceptLast;
+	Statistics<unsigned int> chunkCompressedSize;
 
 	unsigned int indexChunkCount;
 	unsigned long long indexTotalSize;
-	unsigned int indexHashIterationsMin;
-	unsigned int indexHashIterationsMax;
-	unsigned int indexHashIterationsTotal;
-	double indexFilledMin;
-	double indexFilledMax;
-	double indexFilledTotal;
+	Statistics<unsigned int> indexHashIterations;
+	Statistics<double> indexFilled;
 
 	unsigned long long lineCount;
 	unsigned int lineMaxSize;
@@ -113,11 +137,7 @@ inline unsigned int popcount(unsigned char v)
 
 static void processChunkIndex(Output* output, ProjectInfo& info, const DataChunkHeader& header, const char* data)
 {
-	bool firstChunk = info.indexChunkCount == 0;
-
-	info.indexHashIterationsMin = firstChunk ? header.indexHashIterations : std::min(info.indexHashIterationsMin, header.indexHashIterations);
-	info.indexHashIterationsMax = std::max(info.indexHashIterationsMax, header.indexHashIterations);
-	info.indexHashIterationsTotal += header.indexHashIterations;
+	info.indexHashIterations.update(header.indexHashIterations);
 
 	unsigned int filled = 0;
 
@@ -126,9 +146,7 @@ static void processChunkIndex(Output* output, ProjectInfo& info, const DataChunk
 
 	double filledRatio = static_cast<double>(filled) / static_cast<double>(header.indexSize * 8);
 
-	info.indexFilledMin = firstChunk ? filledRatio : std::min(info.indexFilledMin, filledRatio);
-	info.indexFilledMax = filledRatio;
-	info.indexFilledTotal += filledRatio;
+	info.indexFilled.update(filledRatio);
 
 	info.indexTotalSize += header.indexSize;
 
@@ -140,18 +158,11 @@ static void processChunkData(Output* output, ProjectInfo& info, const DataChunkH
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
 	// update chunk size stats
-	bool firstChunk = info.chunkCount == 0;
+	info.chunkSizeExceptLast = info.chunkSize;
+	info.chunkCompressedSizeExceptLast = info.chunkCompressedSize;
 
-	info.chunkMinSizeExceptLast = info.chunkMinSize;
-	info.chunkMinCompressedSizeExceptLast = info.chunkMinCompressedSize;
-
-	info.chunkMinSize = firstChunk ? header.uncompressedSize : std::min(info.chunkMinSize, header.uncompressedSize);
-	info.chunkMaxSize = std::max(info.chunkMaxSize, header.uncompressedSize);
-	info.chunkTotalSize += header.uncompressedSize;
-
-	info.chunkMinCompressedSize = firstChunk ? header.compressedSize : std::min(info.chunkMinCompressedSize, header.compressedSize);
-	info.chunkMaxCompressedSize = std::max(info.chunkMaxCompressedSize, header.compressedSize);
-	info.chunkTotalCompressedSize += header.compressedSize;
+	info.chunkSize.update(header.uncompressedSize);
+	info.chunkCompressedSize.update(header.compressedSize);
 
 	info.chunkCount++;
 
@@ -255,8 +266,8 @@ void printProjectInfo(Output* output, const char* path)
 	{
 		if (info.chunkCount <= 1)
 		{
-			info.chunkMinSizeExceptLast = info.chunkMinSize;
-			info.chunkMinCompressedSizeExceptLast = info.chunkMinCompressedSize;
+			info.chunkSizeExceptLast = info.chunkSize;
+			info.chunkCompressedSizeExceptLast = info.chunkCompressedSize;
 		}
 
 	#define FI(v) formatInteger(v).c_str()
@@ -264,22 +275,22 @@ void printProjectInfo(Output* output, const char* path)
 		output->print("Files: %s (%s file parts)\n", FI(info.fileCount), FI(info.filePartCount));
 		output->print("File data: %s bytes\n", FI(info.fileTotalSize));
 		output->print("Lines: %s (longest line: %s bytes in %s)\n", FI(info.lineCount), FI(info.lineMaxSize), info.lineMaxSizeFile.c_str());
-		output->print("Chunks (data): %s (%s bytes, [%s..%s] (avg %s) bytes per chunk%s)\n",
-			FI(info.chunkCount), FI(info.chunkTotalSize), FI(info.chunkMinSizeExceptLast), FI(info.chunkMaxSize),
-			FI(info.chunkTotalSize / (info.chunkCount == 0 ? 1 : info.chunkCount)),
-			lastChunkSize(info.chunkMinSizeExceptLast, info.chunkMinSize).c_str());
-		output->print("Chunks (compressed): ratio %.2f (%s bytes, [%s..%s] (avg %s) bytes per chunk%s)\n",
-			info.chunkTotalCompressedSize == 0 ? 1.0 : static_cast<double>(info.chunkTotalSize) / static_cast<double>(info.chunkTotalCompressedSize),
-			FI(info.chunkTotalCompressedSize), FI(info.chunkMinCompressedSizeExceptLast), FI(info.chunkMaxCompressedSize),
-			FI(info.chunkTotalCompressedSize / (info.chunkCount == 0 ? 1 : info.chunkCount)),
-			lastChunkSize(info.chunkMinCompressedSizeExceptLast, info.chunkMinCompressedSize).c_str());
 
-		double invIndexChunks = info.indexChunkCount == 0 ? 0.0 : 1.0 / static_cast<double>(info.indexChunkCount);
+		output->print("Chunks (data): %s (%s bytes, [%s..%s] (avg %s) bytes per chunk%s)\n",
+			FI(info.chunkCount), FI(info.chunkSize.total), FI(info.chunkSizeExceptLast.min), FI(info.chunkSize.max),
+			FI(static_cast<unsigned long long>(info.chunkSize.average())),
+			lastChunkSize(info.chunkSizeExceptLast.min, info.chunkSize.min).c_str());
+
+		output->print("Chunks (compressed): ratio %.2f (%s bytes, [%s..%s] (avg %s) bytes per chunk%s)\n",
+			info.chunkCompressedSize.total == 0 ? 1.0 : static_cast<double>(info.chunkSize.total) / static_cast<double>(info.chunkCompressedSize.total),
+			FI(info.chunkCompressedSize.total), FI(info.chunkCompressedSizeExceptLast.min), FI(info.chunkCompressedSize.max),
+			FI(static_cast<unsigned long long>(info.chunkCompressedSize.average())),
+			lastChunkSize(info.chunkCompressedSizeExceptLast.min, info.chunkCompressedSize.min).c_str());
 
 		output->print("Index: %s chunks (%s bytes, hash iterations [%d..%d] (avg %.1f), filled ratio [%.1f%%..%.1f%%] (avg %.1f%%))\n",
 			FI(info.indexChunkCount), FI(info.indexTotalSize),
-			info.indexHashIterationsMin, info.indexHashIterationsMax, static_cast<double>(info.indexHashIterationsTotal) * invIndexChunks,
-			info.indexFilledMin * 100, info.indexFilledMax * 100, info.indexFilledTotal * invIndexChunks * 100);
+			info.indexHashIterations.min, info.indexHashIterations.max, info.indexHashIterations.average(),
+			info.indexFilled.min * 100, info.indexFilled.max * 100, info.indexFilled.average() * 100);
 
 	#undef FI
 	}
