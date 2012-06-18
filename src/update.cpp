@@ -16,94 +16,157 @@
 
 #include "lz4/lz4.h"
 
-class FileDataIterator
+struct UpdateFileIterator
 {
-public:
-	FileDataIterator(const char* path): file(0)
+	const FileInfo& operator*() const
 	{
-		in.open(path, std::ios::in | std::ios::binary);
+		assert(index < files.size());
+		return files[index];
+	}
 
-		DataFileHeader header;
-		if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
-		{
-			in.close();
-		}
-
-		chunk.fileCount = 0;
-		
-		moveNext();
+	const FileInfo* operator->() const
+	{
+		return &**this;
 	}
 
 	operator bool() const
 	{
-		return file < chunk.fileCount;
+		return index < files.size();
 	}
 
-	const DataChunkFileHeader& getHeader() const
+	UpdateFileIterator& operator++()
 	{
-		assert(*this);
-		return reinterpret_cast<const DataChunkFileHeader*>(data.get())[file];
+		assert(index < files.size());
+		index++;
+		return *this;
 	}
 
-	std::string getPath() const
+	UpdateFileIterator& operator+=(unsigned int diff)
 	{
-		const DataChunkFileHeader& header = getHeader();
-		return std::string(data.get() + header.nameOffset, header.nameLength);
+		assert(index + diff <= files.size());
+		index += diff;
+		return *this;
 	}
 
-	const char* getData() const
+	const std::vector<FileInfo>& files;
+	size_t index;
+};
+
+static int comparePath(const FileInfo& info, const DataChunkFileHeader& file, const char* data)
+{
+	return info.path.compare(0, info.path.length(), data + file.nameOffset, file.nameLength);
+}
+
+static bool isFileCurrent(const FileInfo& info, const DataChunkFileHeader& file, const char* data)
+{
+	assert(comparePath(info, file, data) == 0);
+	return info.lastWriteTime == file.timeStamp && info.fileSize == file.fileSize;
+}
+
+static bool isChunkCurrent(UpdateFileIterator& fileit, const DataChunkHeader& chunk, const DataChunkFileHeader* files, const char* data, bool firstFileIsSuffix)
+{
+	// if first file in the chunk is not the first file part, then the chunk is current iff we added this file before and the rest is current
+	// so we can just start comparison 1 entry before
+	size_t back = firstFileIsSuffix ? 1 : 0;
+	if (fileit.index < back || fileit.index - back + chunk.fileCount > fileit.files.size()) return false;
+
+	for (size_t i = 0; i < chunk.fileCount; ++i)
 	{
-		const DataChunkFileHeader& header = getHeader();
-		return data.get() + header.dataOffset;
+		const DataChunkFileHeader& f = files[i];
+		const FileInfo& info = fileit.files[fileit.index - back + i];
+
+		if (comparePath(info, f, data) != 0 || !isFileCurrent(info, f, data))
+			return false;
 	}
 
-	void moveNext()
+	return true;
+}
+
+static void processChunkData(Output* output, Builder* builder, UpdateFileIterator& fileit, const DataChunkHeader& chunk, const char* data, const char* compressed, const char* index)
+{
+	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
+
+	// if chunk is fully up-to-date, we can try adding it directly and skipping chunk recompression
+	assert(chunk.fileCount > 0);
+
+	bool firstFileIsSuffix = files[0].startLine > 0;
+
+	if (isChunkCurrent(fileit, chunk, files, data, firstFileIsSuffix) && builder->appendChunk(chunk, compressed, index, firstFileIsSuffix))
 	{
-		if (file + 1 < chunk.fileCount)
-			file++;
-		else
+		fileit += chunk.fileCount - firstFileIsSuffix;
+		return;
+	}
+
+	// as a special case, first file in the chunk can be a part of an existing file
+	if (files[0].startLine > 0 && fileit.index > 0)
+	{
+		// in this case, if the file is current then we only added the part before this in the previous chunk processing, so just add the next part
+		const DataChunkFileHeader& f = files[0];
+		const FileInfo* prev = &fileit.files[fileit.index - 1];
+
+		if (comparePath(*prev, f, data) == 0 && isFileCurrent(*prev, f, data))
 		{
-			if (read(in, chunk))
-			{
-				in.seekg(chunk.indexSize, std::ios::cur);
-
-				std::unique_ptr<char[]> compressed(new (std::nothrow) char[chunk.compressedSize]);
-				data.reset(new (std::nothrow) char[chunk.uncompressedSize]);
-
-				if (data && compressed && read(in, compressed.get(), chunk.compressedSize))
-				{
-					LZ4_uncompress(compressed.get(), data.get(), chunk.uncompressedSize);
-					file = 0;
-					return;
-				}
-			}
-
-			file = 0;
-			chunk.fileCount = 0;
-			in.close();
+			builder->appendFilePart(prev->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, prev->lastWriteTime, prev->fileSize);
 		}
 	}
 
-private:
-	std::ifstream in;
-	DataChunkHeader chunk;
-	std::unique_ptr<char[]> data;
-	unsigned int file;
-};
-
-std::string getCurrentFileContents(FileDataIterator& it)
-{
-	std::string path = it.getPath();
-	std::string contents;
-
-	do
+	for (size_t i = 0; i < chunk.fileCount; ++i)
 	{
-		contents.insert(contents.end(), it.getData(), it.getData() + it.getHeader().dataSize);
-		it.moveNext();
-	}
-	while (it && it.getPath() == path);
+		const DataChunkFileHeader& f = files[i];
 
-	return contents;
+		// add all files before the file
+		while (fileit && comparePath(*fileit, f, data) < 0)
+		{
+			builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
+			++fileit;
+		}
+
+		// check if file exists
+		if (fileit && comparePath(*fileit, f, data) == 0)
+		{
+			// check if we can reuse the data from qgrep db
+			if (isFileCurrent(*fileit, f, data))
+				builder->appendFilePart(fileit->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, fileit->lastWriteTime, fileit->fileSize);
+			else
+				builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
+
+			++fileit;
+		}
+	}
+}
+
+static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fileit, const char* path)
+{
+	std::ifstream in(path, std::ios::in | std::ios::binary);
+	if (!in) return true;
+
+	DataFileHeader header;
+	if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
+	{
+		output->error("Error reading data file %s: malformed header\n", path);
+		return false;
+	}
+
+	DataChunkHeader chunk;
+
+	while (read(in, chunk))
+	{
+		std::unique_ptr<char[]> index(new (std::nothrow) char[chunk.indexSize]);
+		std::unique_ptr<char[]> data(new (std::nothrow) char[chunk.compressedSize + chunk.uncompressedSize]);
+
+		if (!index || !data || !read(in, index.get(), chunk.indexSize) || !read(in, data.get(), chunk.compressedSize))
+		{
+			output->error("Error reading data file %s: malformed chunk\n", path);
+			return false;
+		}
+
+		char* uncompressed = data.get() + chunk.compressedSize;
+
+		LZ4_uncompress(data.get(), uncompressed, chunk.uncompressedSize);
+		processChunkData(output, builder, fileit, chunk, uncompressed, data.get(), index.get());
+	}
+
+	return true;
 }
 
 void updateProject(Output* output, const char* path)
@@ -123,31 +186,19 @@ void updateProject(Output* output, const char* path)
 	std::string tempPath = targetPath + "_";
 
 	{
-		FileDataIterator current(targetPath.c_str());
-
 		std::unique_ptr<Builder> builder(createBuilder(output, tempPath.c_str(), files.size()));
 		if (!builder) return;
 
-		for (auto& f: files)
+		UpdateFileIterator fileit = {files, 0};
+
+		// update contents using existing database (if any)
+		if (!processFile(output, builder.get(), fileit, targetPath.c_str())) return;
+
+		// update all unprocessed files
+		while (fileit)
 		{
-			// skip to the file, if any
-			while (current && current.getPath() < f.path) current.moveNext();
-
-			// check if the file is the same
-			if (current &&
-				current.getPath() == f.path && current.getHeader().startLine == 0 &&
-				f.lastWriteTime == current.getHeader().timeStamp && f.fileSize == current.getHeader().fileSize)
-			{
-				// add this file and all subsequent chunks of the same file
-				std::string contents = getCurrentFileContents(current);
-
-				builder->appendFilePart(f.path.c_str(), 0, contents.c_str(), contents.size(), f.lastWriteTime, f.fileSize);
-			}
-			else
-			{
-				// grab file from fs
-				builder->appendFile(f.path.c_str(), f.lastWriteTime, f.fileSize);
-			}
+			builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
+			++fileit;
 		}
 	}
 
