@@ -5,6 +5,7 @@
 #include "search.hpp"
 #include "project.hpp"
 #include "files.hpp"
+#include "info.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -210,6 +211,13 @@ void mainImpl(Output* output, int argc, const char** argv)
 			for (size_t i = 0; i < projects.size(); ++i)
 				output->print("%s\n", projects[i].c_str());
 		}
+		else if (argc > 2 && strcmp(argv[1], "info") == 0)
+		{
+			std::vector<std::string> paths = getProjectPaths(argv[2]);
+
+			for (size_t i = 0; i < paths.size(); ++i)
+				printProjectInfo(output, paths[i].c_str());
+		}
 		else
 		{
 			output->error("Usage:\n"
@@ -218,6 +226,7 @@ void mainImpl(Output* output, int argc, const char** argv)
 				"qgrep search <project-list> <search-options> <query>\n"
 				"qgrep files <project-list>\n"
 				"qgrep files <project-list> <search-options> <query>\n"
+				"qgrep info <project-list>\n"
 				"qgrep projects\n"
 				"\n"
 				"<project> is either a project name (stored in ~/.qgrep) or a project path\n"

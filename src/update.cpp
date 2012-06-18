@@ -26,7 +26,7 @@ template <typename T> inline bool read(std::istream& in, T& value)
 	return read(in, &value, sizeof(T));
 }
 
-char* safeAlloc(size_t size)
+inline char* safeAlloc(size_t size)
 {
 	try
 	{

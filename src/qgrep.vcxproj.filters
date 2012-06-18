@@ -109,6 +109,9 @@
     <ClCompile Include="..\extern\re2\re2\prefilter_tree.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>
+    <ClCompile Include="info.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -203,6 +206,9 @@
     </ClInclude>
     <ClInclude Include="..\extern\re2\re2\prefilter_tree.h">
       <Filter>extern\re2</Filter>
+    </ClInclude>
+    <ClInclude Include="info.hpp">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
