@@ -111,12 +111,11 @@ inline unsigned int popcount(unsigned char v)
 		((v >> 7) & 1);
 }
 
-static void processChunkIndex(Output* output, ProjectInfo& info, const DataChunkHeader& header, const char* data, unsigned int chunkIndex)
+static void processChunkIndex(Output* output, ProjectInfo& info, const DataChunkHeader& header, const char* data)
 {
-	info.indexChunkCount++;
-	info.indexTotalSize += header.indexSize;
+	bool firstChunk = info.indexChunkCount == 0;
 
-	info.indexHashIterationsMin = chunkIndex == 0 ? header.indexHashIterations : std::min(info.indexHashIterationsMin, header.indexHashIterations);
+	info.indexHashIterationsMin = firstChunk ? header.indexHashIterations : std::min(info.indexHashIterationsMin, header.indexHashIterations);
 	info.indexHashIterationsMax = std::max(info.indexHashIterationsMax, header.indexHashIterations);
 	info.indexHashIterationsTotal += header.indexHashIterations;
 
@@ -127,24 +126,30 @@ static void processChunkIndex(Output* output, ProjectInfo& info, const DataChunk
 
 	double filledRatio = static_cast<double>(filled) / static_cast<double>(header.indexSize * 8);
 
-	info.indexFilledMin = chunkIndex == 0 ? filledRatio : std::min(info.indexFilledMin, filledRatio);
+	info.indexFilledMin = firstChunk ? filledRatio : std::min(info.indexFilledMin, filledRatio);
 	info.indexFilledMax = filledRatio;
 	info.indexFilledTotal += filledRatio;
+
+	info.indexTotalSize += header.indexSize;
+
+	info.indexChunkCount++;
 }
 
-static void processChunkData(Output* output, ProjectInfo& info, const DataChunkHeader& header, const char* data, unsigned int chunkIndex)
+static void processChunkData(Output* output, ProjectInfo& info, const DataChunkHeader& header, const char* data)
 {
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
 	// update chunk size stats
+	bool firstChunk = info.chunkCount == 0;
+
 	info.chunkMinSizeExceptLast = info.chunkMinSize;
 	info.chunkMinCompressedSizeExceptLast = info.chunkMinCompressedSize;
 
-	info.chunkMinSize = chunkIndex == 0 ? header.uncompressedSize : std::min(info.chunkMinSize, header.uncompressedSize);
+	info.chunkMinSize = firstChunk ? header.uncompressedSize : std::min(info.chunkMinSize, header.uncompressedSize);
 	info.chunkMaxSize = std::max(info.chunkMaxSize, header.uncompressedSize);
 	info.chunkTotalSize += header.uncompressedSize;
 
-	info.chunkMinCompressedSize = chunkIndex == 0 ? header.compressedSize : std::min(info.chunkMinCompressedSize, header.compressedSize);
+	info.chunkMinCompressedSize = firstChunk ? header.compressedSize : std::min(info.chunkMinCompressedSize, header.compressedSize);
 	info.chunkMaxCompressedSize = std::max(info.chunkMaxCompressedSize, header.compressedSize);
 	info.chunkTotalCompressedSize += header.compressedSize;
 
@@ -178,7 +183,6 @@ static bool processFile(Output* output, ProjectInfo& info, const char* path)
 	}
 
 	DataChunkHeader chunk;
-	unsigned int chunkIndex = 0;
 
 	while (read(in, chunk))
 	{
@@ -192,7 +196,7 @@ static bool processFile(Output* output, ProjectInfo& info, const char* path)
 				return false;
 			}
 
-			processChunkIndex(output, info, chunk, index.get(), chunkIndex);
+			processChunkIndex(output, info, chunk, index.get());
 		}
 
 		std::unique_ptr<char[]> data(new (std::nothrow) char[chunk.compressedSize + chunk.uncompressedSize]);
@@ -206,9 +210,7 @@ static bool processFile(Output* output, ProjectInfo& info, const char* path)
 		char* uncompressed = data.get() + chunk.compressedSize;
 
 		LZ4_uncompress(data.get(), uncompressed, chunk.uncompressedSize);
-		processChunkData(output, info, chunk, uncompressed, chunkIndex);
-
-		chunkIndex++;
+		processChunkData(output, info, chunk, uncompressed);
 	}
 
 	return true;
