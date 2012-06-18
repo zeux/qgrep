@@ -17,6 +17,8 @@ public:
 	void appendFilePart(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize);
 	bool appendChunk(const DataChunkHeader& header, const void* compressedData, const void* index, bool firstFileIsSuffix);
 
+	unsigned int flush();
+
 private:
     BuilderImpl* impl;
 	Output* output;

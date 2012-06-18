@@ -27,6 +27,7 @@ class Builder::BuilderImpl
 public:
 	struct Statistics
 	{
+		size_t chunkCount;
 		size_t fileCount;
 		uint64_t fileSize;
 		uint64_t resultSize;
@@ -535,6 +536,8 @@ private:
 		if (!index.first.empty()) outData.write(&index.first[0], index.first.size());
 		outData.write(&cdata[0], cdata.size());
 
+		statistics.chunkCount++;
+
 		for (size_t i = 0; i < chunk.files.size(); ++i)
 			if (chunk.files[i].startLine == 0)
 				statistics.fileCount++;
@@ -549,6 +552,7 @@ private:
 		outData.write(index, header.indexSize);
 		outData.write(compressedData, header.compressedSize);
 
+		statistics.chunkCount++;
 		statistics.fileCount += header.fileCount - firstFileIsSuffix;
 		statistics.fileSize += header.uncompressedSize;
 		statistics.resultSize += header.compressedSize;
@@ -590,6 +594,13 @@ bool Builder::appendChunk(const DataChunkHeader& header, const void* compressedD
 	}
 
 	return false;
+}
+
+unsigned int Builder::flush()
+{
+	impl->flush();
+
+	return impl->getStatistics().chunkCount;
 }
 
 void Builder::printStatistics()
