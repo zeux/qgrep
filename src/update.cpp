@@ -16,6 +16,14 @@
 
 #include "lz4/lz4.h"
 
+struct UpdateStatistics
+{
+	unsigned int filesAdded;
+	unsigned int filesRemoved;
+	unsigned int filesChanged;
+	unsigned int chunksPreserved;
+};
+
 struct UpdateFileIterator
 {
 	const FileInfo& operator*() const
@@ -82,7 +90,8 @@ static bool isChunkCurrent(UpdateFileIterator& fileit, const DataChunkHeader& ch
 	return true;
 }
 
-static void processChunkData(Output* output, Builder* builder, UpdateFileIterator& fileit, const DataChunkHeader& chunk, const char* data, const char* compressed, const char* index)
+static void processChunkData(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats,
+	const DataChunkHeader& chunk, const char* data, const char* compressed, const char* index)
 {
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
@@ -94,6 +103,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 	if (isChunkCurrent(fileit, chunk, files, data, firstFileIsSuffix) && builder->appendChunk(chunk, compressed, index, firstFileIsSuffix))
 	{
 		fileit += chunk.fileCount - firstFileIsSuffix;
+		stats.chunksPreserved++;
 		return;
 	}
 
@@ -119,6 +129,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 		{
 			builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
 			++fileit;
+			stats.filesAdded++;
 		}
 
 		// check if file exists
@@ -128,14 +139,21 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 			if (isFileCurrent(*fileit, f, data))
 				builder->appendFilePart(fileit->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, fileit->lastWriteTime, fileit->fileSize);
 			else
+			{
 				builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
+				stats.filesChanged++;
+			}
 
 			++fileit;
+		}
+		else if (f.startLine == 0)
+		{
+			stats.filesRemoved++;
 		}
 	}
 }
 
-static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fileit, const char* path)
+static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats, const char* path)
 {
 	std::ifstream in(path, std::ios::in | std::ios::binary);
 	if (!in) return true;
@@ -163,10 +181,21 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 		char* uncompressed = data.get() + chunk.compressedSize;
 
 		LZ4_uncompress(data.get(), uncompressed, chunk.uncompressedSize);
-		processChunkData(output, builder, fileit, chunk, uncompressed, data.get(), index.get());
+		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data.get(), index.get());
 	}
 
 	return true;
+}
+
+static void printStatistics(Output* output, const UpdateStatistics& stats, unsigned int totalChunks)
+{
+	if (stats.filesAdded) output->print("+%d ", stats.filesAdded);
+	if (stats.filesRemoved) output->print("-%d ", stats.filesRemoved);
+	if (stats.filesChanged) output->print("*%d ", stats.filesChanged);
+
+	output->print("%s; %d/%d chunks updated\n",
+		(stats.filesAdded || stats.filesRemoved || stats.filesChanged) ? "files" : "No changes",
+		totalChunks - stats.chunksPreserved, totalChunks);
 }
 
 void updateProject(Output* output, const char* path)
@@ -185,6 +214,9 @@ void updateProject(Output* output, const char* path)
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";
 
+	UpdateStatistics stats = {};
+	unsigned int totalChunks = 0;
+
 	{
 		std::unique_ptr<Builder> builder(createBuilder(output, tempPath.c_str(), files.size()));
 		if (!builder) return;
@@ -192,17 +224,21 @@ void updateProject(Output* output, const char* path)
 		UpdateFileIterator fileit = {files, 0};
 
 		// update contents using existing database (if any)
-		if (!processFile(output, builder.get(), fileit, targetPath.c_str())) return;
+		if (!processFile(output, builder.get(), fileit, stats, targetPath.c_str())) return;
 
 		// update all unprocessed files
 		while (fileit)
 		{
 			builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
 			++fileit;
+			stats.filesAdded++;
 		}
+
+		totalChunks = builder->flush();
 	}
 
 	output->print("\n");
+	printStatistics(output, stats, totalChunks);
 	
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
