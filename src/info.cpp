@@ -76,22 +76,15 @@ static std::pair<size_t, size_t> getLineStatistics(const char* data, size_t size
 	size_t count = 0;
 	size_t maxLength = 0;
 
-	size_t last = 0;
-
-	// enumerate all lines
-	for (size_t i = 0; i < size; ++i)
-		if (data[i] == '\n')
-		{
-			count++;
-			maxLength = std::max(maxLength, i - last);
-			last = i + 1;
-		}
-
-	// include last line even if it does not end with \n
-	if (last < size)
+	for (size_t last = 0; last < size; )
 	{
+		const char* next = static_cast<const char*>(memchr(data + last, '\n', size - last));
+		if (!next) next = data + size;
+
 		count++;
-		maxLength = std::max(maxLength, size - last);
+		maxLength = std::max(maxLength, (next - data) - last);
+
+		last = (next - data) + 1;
 	}
 
 	return std::make_pair(count, maxLength);
