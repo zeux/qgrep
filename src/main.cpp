@@ -216,7 +216,10 @@ void mainImpl(Output* output, int argc, const char** argv)
 			std::vector<std::string> paths = getProjectPaths(argv[2]);
 
 			for (size_t i = 0; i < paths.size(); ++i)
+			{
+				if (i != 0) output->print("\n");
 				printProjectInfo(output, paths[i].c_str());
+			}
 		}
 		else
 		{
