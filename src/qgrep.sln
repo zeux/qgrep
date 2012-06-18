@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 11
+# Visual Studio 2012
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "qgrep", "qgrep.vcxproj", "{6827D800-E969-478D-BF86-2B821F084585}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "qgrepexe", "qgrepexe.vcxproj", "{9572807B-AD09-027C-B16E-8F40437E35C9}"
