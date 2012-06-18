@@ -268,7 +268,7 @@ void printProjectInfo(Output* output, const char* path)
 			FI(info.chunkCount), FI(info.chunkTotalSize), FI(info.chunkMinSizeExceptLast), FI(info.chunkMaxSize),
 			FI(info.chunkTotalSize / (info.chunkCount == 0 ? 1 : info.chunkCount)),
 			lastChunkSize(info.chunkMinSizeExceptLast, info.chunkMinSize).c_str());
-		output->print("Chunks (compressed): ratio %f (%s bytes, [%s..%s] (avg %s) bytes per chunk%s)\n",
+		output->print("Chunks (compressed): ratio %.2f (%s bytes, [%s..%s] (avg %s) bytes per chunk%s)\n",
 			info.chunkTotalCompressedSize == 0 ? 1.0 : static_cast<double>(info.chunkTotalSize) / static_cast<double>(info.chunkTotalCompressedSize),
 			FI(info.chunkTotalCompressedSize), FI(info.chunkMinCompressedSizeExceptLast), FI(info.chunkMaxCompressedSize),
 			FI(info.chunkTotalCompressedSize / (info.chunkCount == 0 ? 1 : info.chunkCount)),
