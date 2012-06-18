@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 class Output;
+struct DataChunkHeader;
 
 class Builder
 {
@@ -14,6 +15,7 @@ public:
 
 	void appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize);
 	void appendFilePart(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize);
+	bool appendChunk(const DataChunkHeader& header, const void* compressedData, const void* index, bool firstFileIsSuffix);
 
 private:
     BuilderImpl* impl;

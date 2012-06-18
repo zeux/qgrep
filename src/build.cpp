@@ -60,16 +60,32 @@ public:
 
 	void appendFilePart(const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
 	{
-		File file;
+		if (!pendingFiles.empty() && pendingFiles.back().name == path)
+		{
+			File& file = pendingFiles.back();
 
-		file.name = path;
-		file.startLine = startLine;
-		file.timeStamp = lastWriteTime;
-		file.fileSize = fileSize;
-		file.contents = std::vector<char>(data, data + dataSize);
+			assert(file.startLine < startLine);
+			assert(file.timeStamp == lastWriteTime && file.fileSize == fileSize);
+			assert(file.contents.offset + file.contents.count == file.contents.storage->size());
 
-		pendingFiles.emplace_back(file);
-		pendingSize += dataSize;
+			file.contents.storage->insert(file.contents.storage->end(), data, data + dataSize);
+			file.contents.count += dataSize;
+
+			pendingSize += dataSize;
+		}
+		else
+		{
+			File file;
+
+			file.name = path;
+			file.startLine = startLine;
+			file.timeStamp = lastWriteTime;
+			file.fileSize = fileSize;
+			file.contents = std::vector<char>(data, data + dataSize);
+
+			pendingFiles.emplace_back(file);
+			pendingSize += dataSize;
+		}
 
 		flushIfNeeded();
 	}
@@ -106,6 +122,39 @@ public:
 		{
 			return false;
 		}
+	}
+
+	bool appendChunk(const DataChunkHeader& header, const char* compressedData, const char* index, bool firstFileIsSuffix)
+	{
+		flushIfNeeded();
+
+		// Because of the logic in flushIfNeeded, we should now have kChunkSize * m pending data, where m is in [0..2)
+		// Moreover, usually m is in [1..2), since flushIfNeeded leaves kChunkSize worth of data. We can try to either
+		// flush the entire pending set as one chunk, or do it in two chunks. Let's pick m=1.5 as a split decision point,
+		// with m=0.75 (1.5/2) as a point when we refuse to append the chunk.
+		const size_t kChunkMaxSize = kChunkSize * 3 / 2;
+		const size_t kChunkMinSize = kChunkMaxSize / 2;
+
+		if (pendingSize > 0)
+		{
+			// Assumptions above are invalid for some reason, bail out
+			if (pendingSize > kChunkSize * 2) return false;
+
+			// Never leave chunks that are too small
+			if (pendingSize < kChunkMinSize) return false;
+			
+			// Never make chunks that are too big
+			if (pendingSize > kChunkMaxSize) flushChunk(pendingSize / 2);
+
+			assert(pendingSize < kChunkMaxSize);
+			flushChunk(pendingSize);
+		}
+
+		// We should be good to go now
+		assert(pendingSize == 0 && pendingFiles.empty());
+		writeChunk(header, compressedData, index, firstFileIsSuffix);
+
+		return true;
 	}
 
 	void flushIfNeeded()
@@ -482,7 +531,7 @@ private:
 		header.indexSize = index.first.size();
 		header.indexHashIterations = index.second;
 
-		outData.write(reinterpret_cast<char*>(&header), sizeof(header));
+		outData.write(reinterpret_cast<const char*>(&header), sizeof(header));
 		if (!index.first.empty()) outData.write(&index.first[0], index.first.size());
 		outData.write(&cdata[0], cdata.size());
 
@@ -492,6 +541,17 @@ private:
 
 		statistics.fileSize += data.size();
 		statistics.resultSize += cdata.size();
+	}
+
+	void writeChunk(const DataChunkHeader& header, const char* compressedData, const char* index, bool firstFileIsSuffix)
+	{
+		outData.write(reinterpret_cast<const char*>(&header), sizeof(header));
+		outData.write(index, header.indexSize);
+		outData.write(compressedData, header.compressedSize);
+
+		statistics.fileCount += header.fileCount - firstFileIsSuffix;
+		statistics.fileSize += header.uncompressedSize;
+		statistics.resultSize += header.compressedSize;
 	}
 };
 
@@ -519,6 +579,17 @@ void Builder::appendFilePart(const char* path, unsigned int startLine, const voi
 {
 	impl->appendFilePart(path, startLine, static_cast<const char*>(data), dataSize, lastWriteTime, fileSize);
 	printStatistics();
+}
+
+bool Builder::appendChunk(const DataChunkHeader& header, const void* compressedData, const void* index, bool firstFileIsSuffix)
+{
+	if (impl->appendChunk(header, static_cast<const char*>(compressedData), static_cast<const char*>(index), firstFileIsSuffix))
+	{
+		printStatistics();
+		return true;
+	}
+
+	return false;
 }
 
 void Builder::printStatistics()
