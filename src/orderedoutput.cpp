@@ -33,7 +33,8 @@ OrderedOutput::Chunk::Chunk(unsigned int id, unsigned int lines): id(id), lines(
 
 OrderedOutput::OrderedOutput(Output* output, size_t memoryLimit, size_t flushThreshold, unsigned int lineLimit):
 	output(output), flushThreshold(flushThreshold), lineLimit(lineLimit), writeQueue(memoryLimit),
-	writeThread(std::bind(writeThreadFun, output, std::ref(writeQueue), lineLimit))
+	writeThread(std::bind(writeThreadFun, output, std::ref(writeQueue), lineLimit)),
+	currentChunk(0), currentLine(0)
 {
 }
 
