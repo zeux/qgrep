@@ -15,7 +15,8 @@
 
 static std::string getHomePath()
 {
-    char* home = getenv("HOME");
+    char* qghome = getenv("QGREP_HOME");
+    char* home = qghome ? qghome : getenv("HOME");
 	const char* drive = getenv("HOMEDRIVE");
 	const char* path = getenv("HOMEPATH");
 
