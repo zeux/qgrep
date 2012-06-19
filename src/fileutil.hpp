@@ -2,7 +2,6 @@
 
 #include <string>
 #include <functional>
-#include <stdint.h>
 
 bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback);
 bool traverseDirectoryMeta(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback);

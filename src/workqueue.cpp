@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "workqueue.hpp"
 
 #include <functional>

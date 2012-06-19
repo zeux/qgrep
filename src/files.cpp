@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "files.hpp"
 
 #include "output.hpp"
@@ -13,7 +14,6 @@
 #include "lz4/lz4hc.h"
 
 #include <fstream>
-#include <cassert>
 #include <memory>
 #include <algorithm>
 

@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "build.hpp"
 
 #include "output.hpp"
@@ -14,10 +15,11 @@
 #include <vector>
 #include <list>
 #include <numeric>
-#include <cassert>
 #include <string>
 #include <memory>
 #include <unordered_set>
+
+#include <string.h>
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"

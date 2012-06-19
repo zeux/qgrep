@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "init.hpp"
 
 #include "output.hpp"

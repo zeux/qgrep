@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "regex.hpp"
 
 #include "casefold.hpp"
@@ -5,6 +6,7 @@
 #include "re2/re2.h"
 
 #include <memory>
+#include <stdexcept>
 
 static bool transformRegexCasefold(const char* pattern, std::string& res, bool literal)
 {

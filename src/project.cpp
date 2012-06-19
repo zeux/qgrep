@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "project.hpp"
 
 #include "output.hpp"
@@ -8,8 +9,7 @@
 #include <fstream>
 #include <memory>
 #include <algorithm>
-#include <cassert>
-
+#include <stdexcept>
 #include <map>
 #include <string>
 
@@ -278,7 +278,7 @@ static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vecto
 		if (getFileAttributes(path.c_str(), &mtime, &size))
 			files.push_back(FileInfo(path, mtime, size));
 		else
-			output->error("Error reading metadata for file %s\n", path);
+			output->error("Error reading metadata for file %s\n", path.c_str());
 	}
 
 	for (auto& path: group->paths)

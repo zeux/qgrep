@@ -1,3 +1,5 @@
+#include "common.hpp"
+
 #include "output.hpp"
 #include "init.hpp"
 #include "build.hpp"
@@ -6,13 +8,12 @@
 #include "project.hpp"
 #include "files.hpp"
 #include "info.hpp"
+#include "stringutil.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <cassert>
-#include <cstdarg>
 #include <mutex>
 
 namespace re2 { int RunningOnValgrind() { return 0; } }
@@ -46,38 +47,27 @@ public:
 
 	virtual void print(const char* message, ...)
 	{
+		std::unique_lock<std::mutex> lock(mutex);
+
 		va_list l;
 		va_start(l, message);
-		strprintf(message, l);
+		strprintf(result, message, l);
 		va_end(l);
 	}
 
 	virtual void error(const char* message, ...)
 	{
+		std::unique_lock<std::mutex> lock(mutex);
+
 		va_list l;
 		va_start(l, message);
-		strprintf(message, l);
+		strprintf(result, message, l);
 		va_end(l);
 	}
 
 private:
 	std::string& result;
 	std::mutex mutex;
-
-	void strprintf(const char* format, va_list args)
-	{
-		int count = _vsnprintf_c(0, 0, format, args);
-		assert(count >= 0);
-
-		if (count > 0)
-		{
-			std::unique_lock<std::mutex> lock(mutex);
-
-			size_t offset = result.size();
-			result.resize(offset + count);
-			_vsnprintf(&result[offset], count, format, args);
-		}
-	}
 };
 
 
@@ -256,27 +246,37 @@ void mainImpl(Output* output, int argc, const char** argv)
 	}
 }
 
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-void pinModule()
+static void pinModule()
 {
 	static HMODULE module;
 	static BOOL result = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, (LPCWSTR)&module, &module);
 }
 
-extern "C" __declspec(dllexport) void entryPointConsole(int argc, const char** argv)
+#define DLLEXPORT extern "C" __declspec(dllexport)
+#else
+static void pinModule()
+{
+}
+
+#define DLLEXPORT
+#endif
+
+DLLEXPORT void entryPointConsole(int argc, const char** argv)
 {
 	StandardOutput output;
 	mainImpl(&output, argc, argv);
 }
 
-extern "C" __declspec(dllexport) const char* entryPointVim(const char* args)
+DLLEXPORT const char* entryPointVim(const char* args)
 {
 	pinModule();
 
 	std::vector<const char*> argv;
-	argv.push_back("qgrep.dll");
+	argv.push_back("qgrep");
 
 	std::string argstr = args;
 	argstr += '\n';

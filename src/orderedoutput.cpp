@@ -1,23 +1,10 @@
+#include "common.hpp"
 #include "orderedoutput.hpp"
 
 #include "output.hpp"
+#include "stringutil.hpp"
 
 #include <functional>
-#include <cassert>
-#include <cstdarg>
-
-static void strprintf(std::string& result, const char* format, va_list args)
-{
-	int count = _vsnprintf_c(0, 0, format, args);
-	assert(count >= 0);
-
-	if (count > 0)
-	{
-		size_t offset = result.size();
-		result.resize(offset + count);
-		_vsnprintf(&result[offset], count, format, args);
-	}
-}
 
 static void writeThreadFun(Output* output, BlockingQueue<OrderedOutput::Chunk*>& queue, unsigned int limit)
 {

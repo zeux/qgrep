@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "fileutil.hpp"
 
 void createPath(const char* path)

@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "update.hpp"
 
 #include "output.hpp"
@@ -10,9 +11,10 @@
 
 #include <fstream>
 #include <memory>
-#include <cassert>
 #include <vector>
 #include <string>
+
+#include <string.h>
 
 #include "lz4/lz4.h"
 

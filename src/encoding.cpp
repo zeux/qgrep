@@ -1,7 +1,7 @@
+#include "common.hpp"
 #include "encoding.hpp"
 
-#include <cassert>
-#include <cstdint>
+#include <string.h>
 
 inline uint16_t endianSwap(uint16_t value)
 {

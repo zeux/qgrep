@@ -1,6 +1,6 @@
-#include "blockpool.hpp"
+#include "common.hpp"
 
-#include <cassert>
+#include "blockpool.hpp"
 
 static char* pop(std::vector<char*>& v)
 {

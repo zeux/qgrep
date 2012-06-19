@@ -1,5 +1,6 @@
 #ifdef _WIN32
 
+#include "common.hpp"
 #include "fileutil.hpp"
 
 #include <string>

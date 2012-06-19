@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-
 const char kFileFileHeaderMagic[] = "QGF0";
 
 struct FileFileHeader

@@ -3,6 +3,9 @@
 #include <vector>
 #include <string>
 
+#include <string.h>
+#include <stdarg.h>
+
 struct BackSlashTransformer
 {
 	char operator()(char ch) const
@@ -62,3 +65,5 @@ template <typename Pred> inline std::vector<std::string> split(const char* str, 
 
 	return result;
 }
+
+void strprintf(std::string& result, const char* format, va_list args);

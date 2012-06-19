@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "search.hpp"
 
 #include "output.hpp"

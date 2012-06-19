@@ -23,8 +23,6 @@ public:
 
 		itemsNotFull.wait(lock, [&]() { return !(totalSize != 0 && totalSize + size > totalSizeLimit); });
 
-		bool wasEmpty = items.empty();
-
 		Item item = {value, size};
 		items.push(item);
 		totalSize += size;

@@ -1,0 +1,124 @@
+#ifndef _WIN32
+
+#include "common.hpp"
+#include "fileutil.hpp"
+
+#include <string>
+#include <vector>
+
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+static bool processFile(const char* name)
+{
+	if (name[0] == '.')
+	{
+		// pseudo-folders
+		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) return false;
+	
+		// VCS folders
+		if (strcmp(name, ".svn") == 0 || strcmp(name, ".hg") == 0 || strcmp(name, ".git") == 0) return false;
+	}
+
+	return true;
+}
+
+static void concatPathName(std::string& buf, const char* path, const char* name)
+{
+	buf = path;
+	if (*path) buf += "/";
+	buf += name;
+}
+
+static bool readDirectory(const char* path, std::vector<dirent>& result)
+{
+	if (DIR* dir = opendir(path))
+	{
+		while (dirent* entry = readdir(dir))
+			result.push_back(*entry);
+
+		closedir(dir);
+
+		return true;
+	}
+
+	return false;
+}
+
+static bool traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, bool needsStat)
+{
+	std::vector<dirent> contents;
+	contents.reserve(16);
+
+	if (readDirectory(path, contents))
+	{
+		std::string buf, relbuf;
+
+		for (auto& data: contents)
+		{
+			if (processFile(data.d_name))
+			{
+				concatPathName(relbuf, relpath, data.d_name);
+
+				if (data.d_type == DT_DIR)
+				{
+					concatPathName(buf, path, data.d_name);
+					traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback, needsStat);
+				}
+				else
+				{
+					uint64_t mtime = 0, size = 0;
+
+					if (needsStat)
+					{
+						concatPathName(buf, path, data.d_name);
+						getFileAttributes(buf.c_str(), &mtime, &size);
+					}
+
+					callback(relbuf.c_str(), mtime, size);
+				}
+			}
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback)
+{
+	return traverseDirectoryImpl(path, "", [&](const char* name, uint64_t, uint64_t) { callback(name); }, false);
+}
+
+bool traverseDirectoryMeta(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
+{
+	return traverseDirectoryImpl(path, "", callback, true);
+}
+
+bool renameFile(const char* oldpath, const char* newpath)
+{
+	return rename(oldpath, newpath) == 0;
+}
+
+bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)
+{
+	struct stat st;
+
+	if (stat(path, &st) == 0)
+	{
+		*mtime = st.st_mtime;
+		*size = st.st_size;
+		return true;
+	}
+
+	return false;
+}
+
+void createDirectory(const char* path)
+{
+	mkdir(path, 0755);
+}
+
+#endif
