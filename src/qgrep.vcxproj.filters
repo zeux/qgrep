@@ -115,6 +115,9 @@
     <ClCompile Include="fileutil_win.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="stringutil.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -214,6 +217,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="streamutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="common.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

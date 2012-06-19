@@ -123,6 +123,7 @@
     <ClCompile Include="project.cpp" />
     <ClCompile Include="regex.cpp" />
     <ClCompile Include="search.cpp" />
+    <ClCompile Include="stringutil.cpp" />
     <ClCompile Include="update.cpp" />
     <ClCompile Include="workqueue.cpp" />
   </ItemGroup>
@@ -143,6 +144,7 @@
     <ClInclude Include="blockpool.hpp" />
     <ClInclude Include="build.hpp" />
     <ClInclude Include="casefold.hpp" />
+    <ClInclude Include="common.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="encoding.hpp" />
     <ClInclude Include="files.hpp" />
