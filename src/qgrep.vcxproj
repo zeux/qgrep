@@ -115,6 +115,7 @@
     <ClCompile Include="encoding.cpp" />
     <ClCompile Include="files.cpp" />
     <ClCompile Include="fileutil.cpp" />
+    <ClCompile Include="fileutil_win.cpp" />
     <ClCompile Include="info.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="main.cpp" />

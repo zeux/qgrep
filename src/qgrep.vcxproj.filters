@@ -112,6 +112,9 @@
     <ClCompile Include="info.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="fileutil_win.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
