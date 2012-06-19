@@ -1,5 +1,4 @@
 features:
-1. incremental update (compare mtime/size, add/remove files, don't recompress chunks unless necessary)
 5. vim script
 6. stale file support
 7. incremental update based on stale file list
@@ -7,7 +6,7 @@ features:
 9. recognize (?i) at the beginning of regular expression as case-insensitive marker (check that it's not toggled off later)
 10. linux support
 11. search with filename filtering
-13. incremental update based on ntfs journal / inotify
+13. incremental update based on ntfs journal / fsevents / inotify
 14. proper unicode support wrt lowercasing (i.e. sometimes we'll have to revert back to slow casefold using re2)
 15. #! support in .cfg files
 17. jobified chunk compression in builder
