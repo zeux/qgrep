@@ -27,6 +27,9 @@ public:
 		va_start(l, message);
 		vfprintf(stdout, message, l);
 		va_end(l);
+
+		// treat \r as a newline as a form of line buffering
+		if (strchr(message, '\r')) fflush(stdout);
 	}
 
 	virtual void error(const char* message, ...)
