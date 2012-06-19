@@ -1,11 +1,8 @@
 CC=gcc
 CXX=g++
-CFLAGS=-c -Wall
-CXXFLAGS=-c -std=c++0x -Wall -Iextern -Iextern/re2 -DHAVE_PTHREAD -DHAVE_RWLOCK
-LDFLAGS=-pthread
-
-CFLAGS+=-O3
-CXXFLAGS+=-O3
+CFLAGS=-c -Wall -fPIC -O3
+CXXFLAGS=$(CFLAGS) -std=c++0x -Iextern -Iextern/re2 -DHAVE_PTHREAD -DHAVE_RWLOCK
+LDFLAGS=-pthread -pie -Wl,--dynamic-list=src/qgrep.dynlist
 
 SOURCES=
 

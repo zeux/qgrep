@@ -256,7 +256,7 @@ static void pinModule()
 	static BOOL result = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, (LPCWSTR)&module, &module);
 }
 
-#define DLLEXPORT extern "C" __declspec(dllexport)
+#define DLLEXPORT __declspec(dllexport)
 #else
 static void pinModule()
 {
@@ -265,13 +265,13 @@ static void pinModule()
 #define DLLEXPORT
 #endif
 
-DLLEXPORT void entryPointConsole(int argc, const char** argv)
+extern "C" DLLEXPORT void entryPointConsole(int argc, const char** argv)
 {
 	StandardOutput output;
 	mainImpl(&output, argc, argv);
 }
 
-DLLEXPORT const char* entryPointVim(const char* args)
+extern "C" DLLEXPORT const char* entryPointVim(const char* args)
 {
 	pinModule();
 

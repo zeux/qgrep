@@ -1,5 +1,6 @@
+extern "C"
 #ifdef _WIN32
-extern "C" __declspec(dllimport)
+__declspec(dllimport)
 #endif
 void entryPointConsole(int argc, const char** argv);
 
