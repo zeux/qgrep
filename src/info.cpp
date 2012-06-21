@@ -109,7 +109,7 @@ static void processFilePart(Output* output, ProjectInfo& info, const char* path,
 	std::pair<size_t, size_t> ls = getLineStatistics(data, size);
 
 	info.lineCount += ls.first;
-	info.lineMaxSize = std::max(info.lineMaxSize, ls.second);
+	info.lineMaxSize = std::max<unsigned int>(info.lineMaxSize, ls.second);
 
 	if (info.lineMaxSize == ls.second) info.lineMaxSizeFile = path;
 
