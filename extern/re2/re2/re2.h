@@ -813,11 +813,12 @@ class RE2_API RE2::Arg {
 };
 
 // We're required to export template classes when using MSVC.
+#ifdef _MSC_VER
 template class RE2_API VariadicFunction2<bool, const StringPiece&, const RE2&, RE2::Arg, RE2::FullMatchN>;
 template class RE2_API VariadicFunction2<bool, const StringPiece&, const RE2&, RE2::Arg, RE2::PartialMatchN>;
 template class RE2_API VariadicFunction2<bool, StringPiece*, const RE2&, RE2::Arg, RE2::ConsumeN>;
 template class RE2_API VariadicFunction2<bool, StringPiece*, const RE2&, RE2::Arg, RE2::FindAndConsumeN>;
-
+#endif
 
 inline RE2::Arg::Arg() : arg_(NULL), parser_(parse_null) { }
 inline RE2::Arg::Arg(void* p) : arg_(p), parser_(parse_null) { }
