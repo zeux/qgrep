@@ -3,11 +3,17 @@
 
 #ifdef _MSC_VER
 	#define vsnprintf _vsnprintf_c
+	#define va_copy(l, r) l = r
 #endif
 
 void strprintf(std::string& result, const char* format, va_list args)
 {
-	int count = vsnprintf(0, 0, format, args);
+	// copy arglist before use so that we can use it again below
+	va_list temp;
+	va_copy(temp, args);
+	int count = vsnprintf(0, 0, format, temp);
+	va_end(temp);
+
 	assert(count >= 0);
 
 	if (count > 0)
