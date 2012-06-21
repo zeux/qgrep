@@ -1,8 +1,14 @@
 CC=gcc
-CXX=g++
 CFLAGS=-c -Wall -fPIC -O3
 CXXFLAGS=$(CFLAGS) -std=c++0x -Iextern -Iextern/re2 -DHAVE_PTHREAD -DHAVE_RWLOCK
-LDFLAGS=-pthread -pie -Wl,--dynamic-list=src/qgrep.dynlist
+LDFLAGS=-pie -lpthread -lstdc++
+
+ifeq ($(shell uname),Darwin)
+# Use gcc from MacPorts on OS X (clang from Xcode crashes on lambdas)
+CC=gcc-mp-4.7
+else
+LDFLAGS+=-Wl,--dynamic-list=src/qgrep.dynlist
+endif
 
 SOURCES=
 
@@ -17,15 +23,15 @@ EXECUTABLE=qgrep
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CXX) $(LDFLAGS) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
 obj/%.cc.o: %.cc
 	mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CC) $(CXXFLAGS) $< -o $@
 
 obj/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CC) $(CXXFLAGS) $< -o $@
 
 obj/%.c.o: %.c
 	mkdir -p $(dir $@)
