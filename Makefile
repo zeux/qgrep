@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-c -Wall -fPIC -O3
+CFLAGS=-c -Wall -fPIC -O3 -msse2
 CXXFLAGS=$(CFLAGS) -std=c++0x -Iextern -Iextern/re2 -DHAVE_PTHREAD -DHAVE_RWLOCK
 LDFLAGS=-pie -lpthread -lstdc++
 
