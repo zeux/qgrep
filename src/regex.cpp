@@ -67,7 +67,7 @@ public:
 		if (casefold)
 		{
 			char* temp = new char[size];
-			transformRangeCasefold(temp, data, data + size);
+			casefoldRange(temp, data, data + size);
 			return temp;
 		}
 
@@ -108,12 +108,6 @@ public:
 	}
 	
 private:
-	void transformRangeCasefold(char* dest, const char* begin, const char* end)
-	{
-		for (const char* i = begin; i != end; ++i)
-			*dest++ = ::casefold(*i);
-	}
-	
 	std::unique_ptr<RE2> re;
 	bool casefold;
 };
