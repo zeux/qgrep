@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-c -Wall -fPIC -O3 -msse2
-CXXFLAGS=$(CFLAGS) -std=c++0x -Iextern -Iextern/re2 -DHAVE_PTHREAD -DHAVE_RWLOCK
+CFLAGS=-c -Wall -fPIC -O3 -msse2 -DUSE_SSE2 -DHAVE_PTHREAD -DHAVE_RWLOCK
+CXXFLAGS=$(CFLAGS) -std=c++0x -Iextern -Iextern/re2
 LDFLAGS=-pie -lpthread -lstdc++
 
 ifeq ($(shell uname),Darwin)
