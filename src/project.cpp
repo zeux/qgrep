@@ -281,16 +281,19 @@ static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vecto
 			output->error("Error reading metadata for file %s\n", path.c_str());
 	}
 
-	for (auto& path: group->paths)
+	for (auto& folder: group->paths)
 	{
-		std::string pathPrefix = path + "/";
+		std::string buf;
 
-		bool result = traverseDirectoryMeta(path.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) { 
+		bool result = traverseDirectoryMeta(folder.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) { 
 			if (isFileAcceptable(group, path))
-				files.push_back(FileInfo(pathPrefix + path, mtime, size));
+			{
+				joinPaths(buf, folder.c_str(), path);
+				files.push_back(FileInfo(buf, mtime, size));
+			}
 		});
 
-		if (!result) output->error("Error reading folder %s\n", path.c_str());
+		if (!result) output->error("Error reading folder %s\n", folder.c_str());
 	}
 
 	for (auto& child: group->groups)
