@@ -10,27 +10,6 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-static bool processFile(const char* name)
-{
-	if (name[0] == '.')
-	{
-		// pseudo-folders
-		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) return false;
-	
-		// VCS folders
-		if (strcmp(name, ".svn") == 0 || strcmp(name, ".hg") == 0 || strcmp(name, ".git") == 0) return false;
-	}
-
-	return true;
-}
-
-static void concatPathName(std::string& buf, const char* path, const char* name)
-{
-	buf = path;
-	if (*path) buf += "/";
-	buf += name;
-}
-
 static bool readDirectory(const char* path, std::vector<dirent>& result)
 {
 	if (DIR* dir = opendir(path))
@@ -57,13 +36,13 @@ static bool traverseDirectoryImpl(const char* path, const char* relpath, const s
 
 		for (auto& data: contents)
 		{
-			if (processFile(data.d_name))
+			if (traverseFileNeeded(data.d_name))
 			{
-				concatPathName(relbuf, relpath, data.d_name);
+				joinPaths(relbuf, relpath, data.d_name);
 
 				if (data.d_type == DT_DIR)
 				{
-					concatPathName(buf, path, data.d_name);
+					joinPaths(buf, path, data.d_name);
 					traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback, needsStat);
 				}
 				else
@@ -72,7 +51,7 @@ static bool traverseDirectoryImpl(const char* path, const char* relpath, const s
 
 					if (needsStat)
 					{
-						concatPathName(buf, path, data.d_name);
+						joinPaths(buf, path, data.d_name);
 						getFileAttributes(buf.c_str(), &mtime, &size);
 					}
 

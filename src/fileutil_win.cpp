@@ -14,27 +14,6 @@ static uint64_t combine(uint32_t hi, uint32_t lo)
 	return (static_cast<uint64_t>(hi) << 32) | lo;
 }
 
-static bool processFile(const char* name)
-{
-	if (name[0] == '.')
-	{
-		// pseudo-folders
-		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) return false;
-	
-		// VCS folders
-		if (strcmp(name, ".svn") == 0 || strcmp(name, ".hg") == 0 || strcmp(name, ".git") == 0) return false;
-	}
-
-	return true;
-}
-
-static void concatPathName(std::string& buf, const char* path, const char* name)
-{
-	buf = path;
-	if (*path) buf += "/";
-	buf += name;
-}
-
 static bool readDirectory(const char* path, std::vector<WIN32_FIND_DATAA>& result)
 {
 	std::string query = std::string(path) + "/*";
@@ -64,13 +43,13 @@ static bool traverseDirectoryImpl(const char* path, const char* relpath, const s
 
 		for (auto& data: contents)
 		{
-			if (processFile(data.cFileName))
+			if (traverseFileNeeded(data.cFileName))
 			{
-				concatPathName(relbuf, relpath, data.cFileName);
+				joinPaths(relbuf, relpath, data.cFileName);
 
 				if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 				{
-					concatPathName(buf, path, data.cFileName);
+					joinPaths(buf, path, data.cFileName);
 					traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback);
 				}
 				else
