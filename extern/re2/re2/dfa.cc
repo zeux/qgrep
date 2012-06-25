@@ -26,6 +26,7 @@
 #include "util/atomicops.h"
 #include "util/flags.h"
 #include "util/sparse_set.h"
+#include "util/stringops.h"
 
 DEFINE_flag(bool RE2_EXPORT, re2_dfa_bail_when_slow, true,
             "Whether the RE2 DFA should bail out early "
@@ -1312,7 +1313,7 @@ inline bool DFA::InlinedSearchLoop(SearchParams* params,
       // If firstbyte isn't found, we can skip to the end
       // of the string.
       if (run_forward) {
-        if ((p = BytePtr(memchr(p, params->firstbyte, ep - p))) == NULL) {
+        if ((p = BytePtr(re2::memchr(p, params->firstbyte, ep - p))) == NULL) {
           p = ep;
           break;
         }

@@ -28,6 +28,7 @@
 #include "re2/regexp.h"
 #include "util/sparse_array.h"
 #include "util/sparse_set.h"
+#include "util/stringops.h"
 
 namespace re2 {
 
@@ -568,7 +569,7 @@ bool NFA::Search(const StringPiece& text, const StringPiece& const_context,
       // use memchr to search for the byte quickly.
       if (!anchored && first_byte_ >= 0 && runq->size() == 0 &&
           p < text.end() && (p[0] & 0xFF) != first_byte_) {
-        p = reinterpret_cast<const char*>(memchr(p, first_byte_,
+        p = reinterpret_cast<const char*>(re2::memchr(p, first_byte_,
                                                  text.end() - p));
         if (p == NULL) {
           p = text.end();
