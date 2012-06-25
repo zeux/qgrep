@@ -1,8 +1,6 @@
 #pragma once
 
-#define CASEFOLD_SSE 1
-
-#if CASEFOLD_SSE
+#ifdef USE_SSE2
 #include <emmintrin.h>
 #endif
 
@@ -31,7 +29,7 @@ inline char casefold(char ch)
 	return kCaseFoldASCII[static_cast<unsigned char>(ch)];
 }
 
-#if CASEFOLD_SSE
+#ifdef USE_SSE2
 inline void casefoldRange(char* dest, const char* begin, const char* end)
 {
 	if (end - begin < 64)

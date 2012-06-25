@@ -1,29 +1,20 @@
 #ifndef RE2_UTIL_STRINGOPS_H_
 #define RE2_UTIL_STRINGOPS_H_
 
-#define STRINGOPS_SSE 1
-
 #include <string.h>
 
-#if STRINGOPS_SSE
+#ifdef USE_SSE2
 #include <emmintrin.h>
-#endif
 
-#ifdef _MSC_VER
-#include <intrin.h>
-#pragma intrinsic(_BitScanForward)
-
-inline int __builtin_ctz (unsigned int x)
-{
-	unsigned long r;
-	_BitScanForward(&r, x);
-	return r;
-}
+#   ifdef _MSC_VER
+#       include <intrin.h>
+#       pragma intrinsic(_BitScanForward)
+#   endif
 #endif
 
 namespace re2 {
 
-#if STRINGOPS_SSE
+#ifdef USE_SSE2
 inline const void * memchr ( const void * ptr, int value, size_t num )
 {
 	const unsigned char* data = static_cast<const unsigned char*>(ptr);
@@ -39,13 +30,19 @@ inline const void * memchr ( const void * ptr, int value, size_t num )
 		if (mask == 0)
 			;
 		else
+        {
+        #ifdef _MSC_VER
+            unsigned long r;
+            _BitScanForward(&r, mask);
+			return data + r;
+        #else
 			return data + __builtin_ctz(mask);
+        #endif
+        }
 
 		data += 16;
 		num -= 16;
 	}
-
-	num+=0;
 
 	while (num && *data != value)
 	{
