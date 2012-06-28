@@ -9,6 +9,7 @@
 #include "regex.hpp"
 #include "stringutil.hpp"
 #include "streamutil.hpp"
+#include "casefold.hpp"
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
@@ -16,6 +17,30 @@
 #include <fstream>
 #include <memory>
 #include <algorithm>
+
+#define NOMINMAX
+#include <Windows.h>
+
+struct Timer
+{
+	Timer(const char* name): name(name)
+	{
+		QueryPerformanceCounter(&timer);
+	}
+
+	~Timer()
+	{
+		LARGE_INTEGER end, freq;
+		QueryPerformanceCounter(&end);
+		QueryPerformanceFrequency(&freq);
+
+		printf("%s: %f ms\n", name, (double)(end.QuadPart - timer.QuadPart) / freq.QuadPart * 1000);
+	}
+
+	const char* name;
+    LARGE_INTEGER timer;
+};
+
 
 static std::vector<char> compressData(const std::vector<char>& data)
 {
@@ -266,6 +291,8 @@ static bool isPathComponent(const char* str)
 
 static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
+	Timer timer(__FUNCTION__);
+
 	std::vector<std::string> fragments = split(string, isspace);
 
 	if (fragments.empty()) return dumpFiles(header, data, output);
@@ -314,6 +341,89 @@ static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const 
 	return entries.size();
 }
 
+class RankMatcherCommandT
+{
+public:
+	RankMatcherCommandT(const char* query)
+	{
+		// initialize casefolded query
+		cfquery.resize(strlen(query));
+
+		for (size_t i = 0; i < cfquery.size(); ++i)
+			cfquery[i] = casefold(query[i]);
+
+		// fill table
+		memset(index, 0, sizeof(index));
+		memset(freq, 0, sizeof(freq));
+		tableSize = 1;
+
+		for (size_t i = 0; i < cfquery.size(); ++i)
+		{
+			unsigned char ch = static_cast<unsigned char>(cfquery[i]);
+			if (index[ch] == 0) index[ch] = tableSize++;
+
+			freq[index[ch]]++;
+		}
+	}
+
+	bool prefilter(const char* path, size_t length)
+	{
+		int pfreq[257];
+		memset(pfreq, 0, sizeof(int) * tableSize);
+
+		for (size_t i = 0; i < length; ++i)
+		{
+			unsigned char ch = static_cast<unsigned char>(casefold(path[i]));
+
+            pfreq[index[ch]]++;
+		}
+
+		for (int i = 1; i < tableSize; ++i)
+			if (pfreq[i] < freq[i])
+				return false;
+
+		return true;
+	}
+
+private:
+	std::string cfquery;
+
+	int index[256]; // index[i] == -1 if symbol is not present in query, and == idx in table if it is
+
+	int tableSize;
+	int freq[257];
+};
+
+static float rankMatchCommandT(const char* path, size_t pathOffset, size_t pathLength, size_t lastMatch, const char* pattern, float baseScore)
+{
+	float bestScore = 0.f;
+
+	for (size_t i = pathOffset; i < pathLength; ++i)
+		if (casefold(path[i]) == casefold(pattern[0]))
+		{
+			float restScore = pattern[1] ? rankMatchCommandT(path, i + 1, pathLength, i, pattern + 1, baseScore) : baseScore;
+
+			if (restScore > 0.f)
+			{
+                size_t distance = i - lastMatch;
+
+                float charScore = baseScore;
+
+                if (distance > 1 && lastMatch != ~0u)
+                {
+                    charScore *= 1.f / distance;
+                    if (path[i] != pattern[0]) charScore *= 0.8f;
+                }
+
+				float score = charScore + restScore;
+
+				if (bestScore < score) bestScore = score;
+			}
+		}
+
+	return bestScore;
+}
+
 static unsigned int searchFilesCommandT(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
 	std::string regex;
@@ -326,9 +436,34 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 
 	unsigned int result = 0;
 
+	{ Timer timer("searchFilesRegex");
 	searchFilesRegex(header, data, regex.c_str(), true,
 		output->options | RO_IGNORECASE, output->limit,
 		[&](const FileFileEntry& e) { processMatch(e, data, output); result++; });
+	}
+
+	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
+
+	RankMatcherCommandT matcher(string);
+
+	{ Timer timer("rankAllMatches");
+	for (size_t i = 0; i < header.fileCount; ++i)
+	{
+		const FileFileEntry& e = entries[i];
+
+		const char* path = data + e.pathOffset;
+		const char* pathe = strchr(path, '\n');
+
+		if (matcher.prefilter(path, pathe - path))
+		{
+            float score = rankMatchCommandT(path, 0, pathe - path, ~0u, string, 1.f / (pathe - path));
+
+            if (score > 0.f)
+            {
+                printf("%f: %.*s\n", score, pathe - path, path);
+            }
+		}
+	} }
 
 	return result;
 }
