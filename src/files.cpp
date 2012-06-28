@@ -366,7 +366,7 @@ public:
 		}
 	}
 
-	bool prefilter(const char* path, size_t length)
+	bool prefilter(const char* path, size_t length, std::vector<std::pair<int, char>>& res)
 	{
 		int pfreq[257];
 		memset(pfreq, 0, sizeof(int) * tableSize);
@@ -391,7 +391,50 @@ public:
 			if (pfreq[i] < freq[i])
 				return false;
 
+		res.clear();
+
+		for (const char* i = begin; i != end; ++i)
+		{
+			unsigned char ch = static_cast<unsigned char>(casefold(*i));
+
+			if (index[ch]) res.push_back(std::make_pair(i - begin, ch));
+		}
+
 		return true;
+	}
+
+    float rank(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, float baseScore)
+    {
+        float bestScore = 0.f;
+
+        for (size_t i = pathOffset; i < pathLength; ++i)
+            if (path[i].second == pattern[0])
+            {
+                float restScore = pattern[1] ? rank(path, i + 1, pathLength, path[i].first, pattern + 1, baseScore) : baseScore;
+
+                if (restScore > 0.f)
+                {
+                    int distance = path[i].first - lastMatch;
+
+                    float charScore = baseScore;
+
+                    if (distance > 1 && lastMatch != ~0u)
+                    {
+                        charScore *= 1.f / distance;
+                    }
+
+                    float score = charScore + restScore;
+
+                    if (bestScore < score) bestScore = score;
+                }
+            }
+
+        return bestScore;
+    }
+
+    float rank(const std::vector<std::pair<int, char>>& buf, float baseScore)
+    {
+		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), baseScore);
 	}
 
 private:
@@ -456,6 +499,8 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 	RankMatcherCommandT matcher(string);
 
 	{ Timer timer("rankAllMatches");
+
+	std::vector<std::pair<int, char>> buf;
 	for (size_t i = 0; i < header.fileCount; ++i)
 	{
 		const FileFileEntry& e = entries[i];
@@ -463,9 +508,9 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 		const char* path = data + e.pathOffset;
 		const char* pathe = strchr(path, '\n');
 
-		if (matcher.prefilter(path, pathe - path))
+		if (matcher.prefilter(path, pathe - path, buf))
 		{
-            float score = rankMatchCommandT(path, 0, pathe - path, ~0u, string, 1.f / (pathe - path));
+            float score = matcher.rank(buf, 1.f / (pathe - path));
 
             if (score > 0.f)
             {
