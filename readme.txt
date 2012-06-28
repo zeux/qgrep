@@ -166,21 +166,34 @@ Search options can contain all options that are used for regular searches
 (although not all options make sense for file searches); in addition, you can
 select a search style using the following options
 
-    fn - search in file names using a regular expression (unless l flag is used)
     fp - search in file paths using a regular expression (unless l flag is used)
-    fs - search in file names/paths using a space-delimited literal query (*)
+         This option is the default.
 
-Note that fs option is the default one. The query is a space-delimited lists of
-literal components; if a component contains a slash, it is used to filter files
-by path; otherwise it is used to filter files by name. For example:
+    fn - search in file names using a regular expression (unless l flag is used)
 
-    render/ manager.c
+    fs - search in file names/paths using a space-delimited literal query
+         The query is a space-delimited lists of literal components; if a component
+         contains a slash, it is used to filter files by path; otherwise it is used
+         to filter files by name. For example: 
 
-Gets all files that contain render/ in their path and manager.c in their name,
-i.e.
+            render/ manager.c
 
-    D:\MyGame\Source/render/lightmanager.cpp
-    D:\MyGame\Source/render/manager.c
+         matches with:
+
+            D:\MyGame\Source/render/lightmanager.cpp
+            D:\MyGame\Source/render/manager.c
+
+    ft - search in file paths using a Command-T like fuzzy matching with ranking.
+         All letters from a query have to exist in the file path in the same order,
+         and the distance between letters in the match determines the score. For
+         example:
+
+            src/r/lmanager
+
+         matches with:
+
+            D:\MyGame\Source/render/lightmanager.cpp
+            D:\MyGame\Source/network/lobby/manager.cpp
 
 7. Feedback
 

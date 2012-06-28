@@ -85,7 +85,10 @@ unsigned int parseSearchFileOption(char opt)
 		return SO_FILE_PATHREGEX;
 
 	case 's':
-		return 0; // default
+		return SO_FILE_VISUALASSIST;
+
+	case 't':
+		return SO_FILE_COMMANDT;
 
 	default:
 		throw std::runtime_error(std::string("Unknown search option 'f") + opt + "'");
@@ -154,6 +157,11 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 
 		options |= p.first;
 		if (p.second >= 0) limit = p.second;
+	}
+
+	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT)) == 0)
+	{
+		options |= SO_FILE_PATHREGEX;
 	}
 
 	const char* query = argc > 3 ? argv[argc - 1] : "";
@@ -235,10 +243,11 @@ void mainImpl(Output* output, int argc, const char** argv)
 				"  C - include column number in output\n"
 				"  Lnumber - limit output to <number> lines\n"
 				"<search-options> can include additional options for file search:\n"
+				"  fp - search in file paths (default)\n"
 				"  fn - search in file names\n"
-				"  fp - search in file paths\n"
-				"  fs - search in file names/paths using a space-delimited literal query (default)\n"
+				"  fs - search in file names/paths using a space-delimited literal query\n"
 				"       paths are grepped for components with slashes, names are grepped for the rest\n"
+				"  ft - search in file paths using a Command-T like fuzzy search with ranking\n"
 				"<query> is a regular expression\n"
 				);
 		}

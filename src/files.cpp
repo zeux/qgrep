@@ -264,7 +264,7 @@ static bool isPathComponent(const char* str)
 	return strchr(str, '/') != 0;
 }
 
-static unsigned int searchFilesSolution(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
+static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
 	std::vector<std::string> fragments = split(string, isspace);
 
@@ -314,6 +314,25 @@ static unsigned int searchFilesSolution(const FileFileHeader& header, const char
 	return entries.size();
 }
 
+static unsigned int searchFilesCommandT(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
+{
+	std::string regex;
+
+	for (const char* s = string; *s; ++s)
+	{
+		if (s != string) regex += ".*";
+		regex += *s;
+	}
+
+	unsigned int result = 0;
+
+	searchFilesRegex(header, data, regex.c_str(), true,
+		output->options | RO_IGNORECASE, output->limit,
+		[&](const FileFileEntry& e) { processMatch(e, data, output); result++; });
+
+	return result;
+}
+
 unsigned int searchFiles(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
 {
 	FilesOutput output(output_, options, limit);
@@ -355,6 +374,13 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 
 		return result;
 	}
+	else if (options & SO_FILE_VISUALASSIST)
+		return searchFilesVisualAssist(header, data, string, &output);
+	else if (options & SO_FILE_COMMANDT)
+		return searchFilesCommandT(header, data, string, &output);
 	else
-		return searchFilesSolution(header, data, string, &output);
+	{
+		output_->error("Unknown file search type\n");
+		return 0;
+	}
 }
