@@ -371,9 +371,18 @@ public:
 		int pfreq[257];
 		memset(pfreq, 0, sizeof(int) * tableSize);
 
-		for (size_t i = 0; i < length; ++i)
+		const char* begin = path;
+		const char* end = path + length;
+
+		while (begin != end && casefold(begin[0]) != cfquery.front()) begin++;
+		while (begin != end && casefold(end[-1]) != cfquery.back()) end--;
+
+		if (end - begin < (int)cfquery.size())
+			return false;
+
+		for (const char* i = begin; i != end; ++i)
 		{
-			unsigned char ch = static_cast<unsigned char>(casefold(path[i]));
+			unsigned char ch = static_cast<unsigned char>(casefold(*i));
 
             pfreq[index[ch]]++;
 		}
