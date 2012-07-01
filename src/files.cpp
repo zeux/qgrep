@@ -426,7 +426,6 @@ private:
 		for (size_t y = 0; y < pathLength; ++y)
 		{
 			std::pair<float, int>* cacheRow = cache + y * patternLength;
-			std::pair<float, int>* cacheRowPrev = (y == 0) ? nullptr : cacheRow - patternLength;
 
 			// score for first row
 			if (y == 0)
@@ -436,6 +435,8 @@ private:
 			}
 			else
 			{
+				std::pair<float, int>* cacheRowPrev = cacheRow - patternLength;
+
 				// score for first column
 				cacheRow[0] = (path[y].second == pattern[0]) ? std::make_pair(baseScore, path[y].first) : cacheRowPrev[0];
 				
@@ -458,7 +459,7 @@ private:
 
 						float score = last.first + charScore;
 
-						if (score > r.first) r = std::make_pair(score, path[y].first);
+						if (score >= r.first) r = std::make_pair(score, path[y].first);
 					}
 
 					cacheRow[x] = r;
@@ -525,7 +526,7 @@ static float rankMatchCommandT(const char* path, size_t pathOffset, size_t pathL
 	for (size_t i = pathOffset; i < pathLength; ++i)
 		if (casefold(path[i]) == casefold(pattern[0]))
 		{
-			float restScore = pattern[1] ? rankMatchCommandT(path, i + 1, pathLength, i, pattern + 1, baseScore) : baseScore;
+			float restScore = pattern[1] ? rankMatchCommandT(path, i + 1, pathLength, i, pattern + 1, baseScore) : FLT_MIN;
 
 			if (restScore > 0.f)
 			{
@@ -536,7 +537,7 @@ static float rankMatchCommandT(const char* path, size_t pathOffset, size_t pathL
                 if (distance > 1 && lastMatch != ~0u)
                 {
                     charScore *= 1.f / distance;
-                    if (path[i] != pattern[0]) charScore *= 0.8f;
+                    // if (path[i] != pattern[0]) charScore *= 0.8f;
                 }
 
 				float score = charScore + restScore;
@@ -624,8 +625,15 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 
 	for (auto& m: matches)
 	{
-		output->output->print("%f: ", m.first);
-		processMatch(*m.second, data, output);
+		const FileFileEntry& e = *m.second;
+		// float rms = rankMatchCommandT(data + e.pathOffset, 0, strchr(data + e.pathOffset, '\n') - (data + e.pathOffset), ~0u, string, 1.f / strlen(string));
+
+		// if (fabsf(rms - m.first) > 0.001f)
+		{
+			// output->output->print("%f/%f: ", m.first, rms);
+			output->output->print("%f: ", m.first);
+			processMatch(*m.second, data, output);
+		}
 	}
 
 	return matches.size();
