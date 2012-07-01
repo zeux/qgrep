@@ -403,14 +403,18 @@ public:
 		return true;
 	}
 
-    float rank(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, float baseScore)
+    float rank(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, float baseScore, float* cache)
     {
+		float& cv = cache[patternOffset * pathLength + pathOffset];
+
+		if (cv >= 0) return cv;
+
         float bestScore = 0.f;
 
         for (size_t i = pathOffset; i < pathLength; ++i)
-            if (path[i].second == pattern[0])
+            if (path[i].second == pattern[patternOffset])
             {
-                float restScore = pattern[1] ? rank(path, i + 1, pathLength, path[i].first, pattern + 1, baseScore) : baseScore;
+                float restScore = pattern[patternOffset + 1] ? rank(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, baseScore, cache) : baseScore;
 
                 if (restScore > 0.f)
                 {
@@ -429,12 +433,16 @@ public:
                 }
             }
 
-        return bestScore;
+        return cv = bestScore;
     }
 
     float rank(const std::vector<std::pair<int, char>>& buf, float baseScore)
     {
-		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), baseScore);
+		static std::vector<float> cache;
+		cache.clear();
+		cache.resize(buf.size() * cfquery.size(), -1.f);
+
+		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, baseScore, &cache[0]);
 	}
 
 private:
