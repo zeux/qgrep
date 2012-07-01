@@ -395,23 +395,34 @@ public:
         for (size_t i = pathOffset; i < pathLength; ++i)
             if (path[i].second == pattern[patternOffset])
             {
-                float restScore = pattern[patternOffset + 1] ? rank(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, baseScore, cache) : baseScore;
+				int distance = path[i].first - lastMatch;
 
-                if (restScore > 0.f)
-                {
-                    int distance = path[i].first - lastMatch;
+				float charScore = baseScore;
 
-                    float charScore = baseScore;
+				if (distance > 1 && lastMatch != ~0u)
+				{
+					charScore *= 1.f / distance;
+				}
 
-                    if (distance > 1 && lastMatch != ~0u)
-                    {
-                        charScore *= 1.f / distance;
-                    }
+				if (pattern[patternOffset + 1])
+				{
+					float restScore = rank(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, baseScore, cache);
 
-                    float score = charScore + restScore;
+					if (restScore > 0.f)
+					{
+						float score = charScore + restScore;
 
-                    if (bestScore < score) bestScore = score;
-                }
+						if (bestScore < score) bestScore = score;
+					}
+				}
+				else
+				{
+					float score = charScore;
+
+					if (bestScore < score) bestScore = score;
+
+					break;
+				}
             }
 
         return cv = bestScore;
@@ -433,7 +444,7 @@ public:
 		cache.clear();
 		cache.resize(buf.size() * cfquery.size(), -1.f);
 
-		float baseScore = 1.f / static_cast<float>(size);
+		float baseScore = 1.f / static_cast<float>(cfquery.size());
 
 		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, baseScore, &cache[0]);
 	}
