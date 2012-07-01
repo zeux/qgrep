@@ -382,7 +382,7 @@ public:
 		return true;
 	}
 	
-    float rank(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, float baseScore, float* cache)
+    static float rank(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, size_t patternLength, float baseScore, float* cache)
     {
 		if (pathOffset == pathLength) return 0.f;
 
@@ -392,7 +392,9 @@ public:
 
         float bestScore = 0.f;
 
-        for (size_t i = pathOffset; i < pathLength; ++i)
+		size_t patternRest = patternLength - patternOffset - 1;
+
+        for (size_t i = pathOffset; i + patternRest < pathLength; ++i)
             if (path[i].second == pattern[patternOffset])
             {
 				int distance = path[i].first - lastMatch;
@@ -404,9 +406,9 @@ public:
 					charScore *= 1.f / distance;
 				}
 
-				if (pattern[patternOffset + 1])
+				if (patternOffset + 1 < patternLength)
 				{
-					float restScore = rank(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, baseScore, cache);
+					float restScore = rank(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, patternLength, baseScore, cache);
 
 					if (restScore > 0.f)
 					{
@@ -446,7 +448,7 @@ public:
 
 		float baseScore = 1.f / static_cast<float>(cfquery.size());
 
-		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, baseScore, &cache[0]);
+		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, cfquery.size(), baseScore, &cache[0]);
 	}
 
 private:
