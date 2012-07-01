@@ -34,7 +34,7 @@ struct Timer
 		QueryPerformanceCounter(&end);
 		QueryPerformanceFrequency(&freq);
 
-		printf("%s: %f ms\n", name, (double)(end.QuadPart - timer.QuadPart) / freq.QuadPart * 1000);
+		fprintf(stderr, "%s: %f ms\n", name, (double)(end.QuadPart - timer.QuadPart) / freq.QuadPart * 1000);
 	}
 
 	const char* name;
