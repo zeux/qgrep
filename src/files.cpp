@@ -381,54 +381,6 @@ public:
 
 		return true;
 	}
-	
-    static float rank(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, size_t patternLength, float baseScore, float* cache)
-    {
-		if (pathOffset == pathLength) return 0.f;
-
-		float& cv = cache[patternOffset * pathLength + pathOffset];
-
-		if (cv >= 0) return cv;
-
-        float bestScore = 0.f;
-
-		size_t patternRest = patternLength - patternOffset - 1;
-
-        for (size_t i = pathOffset; i + patternRest < pathLength; ++i)
-            if (path[i].second == pattern[patternOffset])
-            {
-				int distance = path[i].first - lastMatch;
-
-				float charScore = baseScore;
-
-				if (distance > 1 && lastMatch != ~0u)
-				{
-					charScore *= 1.f / distance;
-				}
-
-				if (patternOffset + 1 < patternLength)
-				{
-					float restScore = rank(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, patternLength, baseScore, cache);
-
-					if (restScore > 0.f)
-					{
-						float score = charScore + restScore;
-
-						if (bestScore < score) bestScore = score;
-					}
-				}
-				else
-				{
-					float score = charScore;
-
-					if (bestScore < score) bestScore = score;
-
-					break;
-				}
-            }
-
-        return cv = bestScore;
-    }
 
     float rank(const char* data, size_t size)
     {
@@ -453,12 +405,60 @@ public:
 
 		float baseScore = 1.f / static_cast<float>(cfquery.size());
 
-		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, cfquery.size(), baseScore, &cache[0]);
+		return rankRecursive(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, cfquery.size(), baseScore, &cache[0]);
 	}
 
 private:
 	std::string cfquery;
 	bool table[256];
+	
+    static float rankRecursive(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, size_t patternLength, float baseScore, float* cache)
+    {
+		if (pathOffset == pathLength) return 0.f;
+
+		float& cv = cache[pathOffset * patternLength + patternOffset];
+
+		if (cv >= 0) return cv;
+
+        float bestScore = 0.f;
+
+		size_t patternRest = patternLength - patternOffset - 1;
+
+        for (size_t i = pathOffset; i + patternRest < pathLength; ++i)
+            if (path[i].second == pattern[patternOffset])
+            {
+				int distance = path[i].first - lastMatch;
+
+				float charScore = baseScore;
+
+				if (distance > 1 && lastMatch != ~0u)
+				{
+					charScore *= 1.f / distance;
+				}
+
+				if (patternOffset + 1 < patternLength)
+				{
+					float restScore = rankRecursive(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, patternLength, baseScore, cache);
+
+					if (restScore > 0.f)
+					{
+						float score = charScore + restScore;
+
+						if (bestScore < score) bestScore = score;
+					}
+				}
+				else
+				{
+					float score = charScore;
+
+					if (bestScore < score) bestScore = score;
+
+					break;
+				}
+            }
+
+        return cv = bestScore;
+    }
 };
 
 static float rankMatchCommandT(const char* path, size_t pathOffset, size_t pathLength, size_t lastMatch, const char* pattern, float baseScore)
