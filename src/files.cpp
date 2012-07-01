@@ -541,11 +541,13 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 		}
 	}
 
+	auto compareMatches = [](const Match& l, const Match& r) { return l.first == r.first ? l.second < r.second : l.first > r.first; };
+
 	if (matches.size() <= output->limit)
-		std::sort(matches.begin(), matches.end(), [](const Match& l, const Match& r) { return l.first > r.first; });
+		std::sort(matches.begin(), matches.end(), compareMatches);
 	else
 	{
-		std::partial_sort(matches.begin(), matches.begin() + output->limit, matches.end(), [](const Match& l, const Match& r) { return l.first > r.first; });
+		std::partial_sort(matches.begin(), matches.begin() + output->limit, matches.end(), compareMatches);
 		matches.resize(output->limit);
 	}
 
