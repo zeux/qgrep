@@ -195,6 +195,8 @@ select a search style using the following options
             D:\MyGame\Source/render/lightmanager.cpp
             D:\MyGame\Source/network/lobby/manager.cpp
 
+    fT - search in file paths using a Command-T like fuzzy matching without ranking.
+
 7. Feedback
 
 You can report bugs, feature requests, submit patches and download new versions
