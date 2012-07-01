@@ -353,58 +353,28 @@ public:
 			cfquery[i] = casefold(query[i]);
 
 		// fill table
-		memset(index, 0, sizeof(index));
-		memset(freq, 0, sizeof(freq));
-		tableSize = 1;
+		memset(table, 0, sizeof(table));
 
 		for (size_t i = 0; i < cfquery.size(); ++i)
 		{
 			unsigned char ch = static_cast<unsigned char>(cfquery[i]);
-			if (index[ch] == 0) index[ch] = tableSize++;
 
-			freq[index[ch]]++;
+			table[ch] = true;
 		}
-	}
-
-	bool prefilter(const char* data, size_t size)
-	{
-		int pfreq[257];
-		memset(pfreq, 0, sizeof(int) * tableSize);
-
-		const char* begin = data;
-		const char* end = data + size;
-
-		while (begin != end && casefold(begin[0]) != cfquery.front()) begin++;
-		while (begin != end && casefold(end[-1]) != cfquery.back()) end--;
-
-		if (end - begin < (int)cfquery.size())
-			return false;
-
-		for (const char* i = begin; i != end; ++i)
-		{
-			unsigned char ch = static_cast<unsigned char>(casefold(*i));
-
-            pfreq[index[ch]]++;
-		}
-
-		for (int i = 1; i < tableSize; ++i)
-			if (pfreq[i] < freq[i])
-				return false;
-
-		return true;
 	}
 
 	bool match(const char* data, size_t size)
 	{
 		const char* pattern = cfquery.c_str();
 
+		const char* begin = data;
 		const char* end = data + size;
 
 		while (*pattern)
 		{
-			while (data != end && casefold(*data) != *pattern) data++;
+			while (begin != end && casefold(*begin) != *pattern) begin++;
 
-			if (data == end) return false;
+			if (begin == end) return false;
 
 			pattern++;
 		}
@@ -456,7 +426,7 @@ public:
 		{
 			unsigned char ch = static_cast<unsigned char>(casefold(data[i]));
 
-			if (index[ch]) buf.push_back(std::make_pair(i, ch));
+			if (table[ch]) buf.push_back(std::make_pair(i, ch));
 		}
 
 		static std::vector<float> cache;
@@ -470,11 +440,7 @@ public:
 
 private:
 	std::string cfquery;
-
-	int index[256]; // index[i] == -1 if symbol is not present in query, and == idx in table if it is
-
-	int tableSize;
-	int freq[257];
+	bool table[256];
 };
 
 static float rankMatchCommandT(const char* path, size_t pathOffset, size_t pathLength, size_t lastMatch, const char* pattern, float baseScore)
@@ -555,7 +521,7 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 		const char* path = data + e.pathOffset;
 		const char* pathe = strchr(path, '\n');
 
-		if (matcher.prefilter(path, pathe - path))
+		if (matcher.match(path, pathe - path))
 		{
             float score = matcher.rank(path, pathe - path);
 
