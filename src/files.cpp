@@ -434,6 +434,11 @@ public:
     {
 		static std::vector<std::pair<int, char>> buf;
 
+		while (size > 0 && casefold(data[0]) != cfquery.front()) data++, size--;
+		while (size > 0 && casefold(data[size - 1]) != cfquery.back()) size--;
+
+		if (size < cfquery.size()) return 0;
+
 		buf.clear();
 		for (size_t i = 0; i < size; ++i)
 		{
