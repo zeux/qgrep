@@ -366,13 +366,13 @@ public:
 		}
 	}
 
-	bool prefilter(const char* path, size_t length, std::vector<std::pair<int, char>>& res)
+	bool prefilter(const char* data, size_t size)
 	{
 		int pfreq[257];
 		memset(pfreq, 0, sizeof(int) * tableSize);
 
-		const char* begin = path;
-		const char* end = path + length;
+		const char* begin = data;
+		const char* end = data + size;
 
 		while (begin != end && casefold(begin[0]) != cfquery.front()) begin++;
 		while (begin != end && casefold(end[-1]) != cfquery.back()) end--;
@@ -391,20 +391,31 @@ public:
 			if (pfreq[i] < freq[i])
 				return false;
 
-		res.clear();
+		return true;
+	}
 
-		for (const char* i = begin; i != end; ++i)
+	bool match(const char* data, size_t size)
+	{
+		const char* pattern = cfquery.c_str();
+
+		const char* end = data + size;
+
+		while (*pattern)
 		{
-			unsigned char ch = static_cast<unsigned char>(casefold(*i));
+			while (data != end && casefold(*data) != *pattern) data++;
 
-			if (index[ch]) res.push_back(std::make_pair(i - begin, ch));
+			if (data == end) return false;
+
+			pattern++;
 		}
 
 		return true;
 	}
-
+	
     float rank(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, float baseScore, float* cache)
     {
+		if (pathOffset == pathLength) return 0.f;
+
 		float& cv = cache[patternOffset * pathLength + pathOffset];
 
 		if (cv >= 0) return cv;
@@ -436,11 +447,23 @@ public:
         return cv = bestScore;
     }
 
-    float rank(const std::vector<std::pair<int, char>>& buf, float baseScore)
+    float rank(const char* data, size_t size)
     {
+		static std::vector<std::pair<int, char>> buf;
+
+		buf.clear();
+		for (size_t i = 0; i < size; ++i)
+		{
+			unsigned char ch = static_cast<unsigned char>(casefold(data[i]));
+
+			if (index[ch]) buf.push_back(std::make_pair(i, ch));
+		}
+
 		static std::vector<float> cache;
 		cache.clear();
 		cache.resize(buf.size() * cfquery.size(), -1.f);
+
+		float baseScore = 1.f / static_cast<float>(size);
 
 		return rank(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, baseScore, &cache[0]);
 	}
@@ -506,6 +529,22 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 
 	RankMatcherCommandT matcher(string);
 
+
+	{ Timer timer("searchFilesManual");
+	for (size_t i = 0; i < header.fileCount; ++i)
+	{
+		const FileFileEntry& e = entries[i];
+
+		const char* path = data + e.pathOffset;
+		const char* pathe = strchr(path, '\n');
+
+		if (matcher.match(path, pathe - path))
+		{
+			printf("%.*s\n", pathe - path, path);
+		}
+	}
+	}
+
 	{ Timer timer("rankAllMatches");
 
 	std::vector<std::pair<int, char>> buf;
@@ -516,9 +555,9 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 		const char* path = data + e.pathOffset;
 		const char* pathe = strchr(path, '\n');
 
-		if (matcher.prefilter(path, pathe - path, buf))
+		if (matcher.prefilter(path, pathe - path))
 		{
-            float score = matcher.rank(buf, 1.f / (pathe - path));
+            float score = matcher.rank(path, pathe - path);
 
             if (score > 0.f)
             {
