@@ -399,19 +399,76 @@ public:
 			if (table[ch]) buf.push_back(std::make_pair(i, ch));
 		}
 
+		float baseScore = 1.f / static_cast<float>(cfquery.size());
+
+	#if 1
 		static std::vector<float> cache;
 		cache.clear();
 		cache.resize(buf.size() * cfquery.size(), -1.f);
 
-		float baseScore = 1.f / static_cast<float>(cfquery.size());
-
 		return rankRecursive(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, cfquery.size(), baseScore, &cache[0]);
+	#else
+		static std::vector<std::pair<float, int>> cache;
+		cache.clear();
+		cache.resize(buf.size() * cfquery.size());
+
+		return rankTable(&buf[0], buf.size(), cfquery.c_str(), cfquery.size(), baseScore, &cache[0]);
+	#endif
 	}
 
 private:
 	std::string cfquery;
 	bool table[256];
 	
+    static float rankTable(const std::pair<int, char>* path, size_t pathLength, const char* pattern, size_t patternLength, float baseScore, std::pair<float, int>* cache)
+    {
+		// cache[x, y] = score for path[0:y] using pattern[0:x], ranges are inclusive
+		for (size_t y = 0; y < pathLength; ++y)
+		{
+			std::pair<float, int>* cacheRow = cache + y * patternLength;
+			std::pair<float, int>* cacheRowPrev = (y == 0) ? nullptr : cacheRow - patternLength;
+
+			// score for first row
+			if (y == 0)
+			{
+				cacheRow[0] = (path[0].second == pattern[0]) ? std::make_pair(baseScore, path[0].first) : std::make_pair(0.f, -1);
+				for (size_t x = 0; x < patternLength; ++x) cacheRow[x] = std::make_pair(0.f, -1);
+			}
+			else
+			{
+				// score for first column
+				cacheRow[0] = (path[y].second == pattern[0]) ? std::make_pair(baseScore, path[y].first) : cacheRowPrev[0];
+				
+				// score for the rest
+				for (size_t x = 1; x < patternLength; ++x)
+				{
+					std::pair<float, int> r = cacheRowPrev[x];
+
+					if (path[y].second == pattern[x])
+					{
+						std::pair<float, int> last = cacheRow[x - 1];
+						int distance = path[y].first - last.second;
+
+						float charScore = baseScore;
+
+						if (distance > 1 && last.second != -1)
+						{
+							charScore *= 1.f / distance;
+						}
+
+						float score = last.first + charScore;
+
+						if (score > r.first) r = std::make_pair(score, path[y].first);
+					}
+
+					cacheRow[x] = r;
+				}
+			}
+		}
+
+		return cache[pathLength * patternLength - 1].first;
+	}
+
     static float rankRecursive(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, size_t patternLength, float baseScore, float* cache)
     {
 		if (pathOffset == pathLength) return 0.f;
