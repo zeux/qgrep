@@ -88,6 +88,9 @@ unsigned int parseSearchFileOption(char opt)
 		return SO_FILE_VISUALASSIST;
 
 	case 't':
+		return SO_FILE_COMMANDT_RANKED;
+
+	case 'T':
 		return SO_FILE_COMMANDT;
 
 	default:
@@ -159,7 +162,7 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 		if (p.second >= 0) limit = p.second;
 	}
 
-	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT)) == 0)
+	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT | SO_FILE_COMMANDT_RANKED)) == 0)
 	{
 		options |= SO_FILE_PATHREGEX;
 	}
@@ -248,6 +251,7 @@ void mainImpl(Output* output, int argc, const char** argv)
 				"  fs - search in file names/paths using a space-delimited literal query\n"
 				"       paths are grepped for components with slashes, names are grepped for the rest\n"
 				"  ft - search in file paths using a Command-T like fuzzy search with ranking\n"
+				"  fT - search in file paths using a Command-T like fuzzy search without ranking\n"
 				"<query> is a regular expression\n"
 				);
 		}

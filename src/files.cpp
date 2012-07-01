@@ -591,10 +591,9 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 	else if (options & SO_FILE_VISUALASSIST)
 		return searchFilesVisualAssist(header, data, string, &output);
 	else if (options & SO_FILE_COMMANDT)
-	{
-		searchFilesCommandT(header, data, string, &output);
+		return searchFilesCommandT(header, data, string, &output);
+	else if (options & SO_FILE_COMMANDT_RANKED)
 		return searchFilesCommandTRanked(header, data, string, &output);
-	}
 	else
 	{
 		output_->error("Unknown file search type\n");
