@@ -475,28 +475,14 @@ static float rankMatchCommandT(const char* path, size_t pathOffset, size_t pathL
 
 static unsigned int searchFilesCommandT(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
-	std::string regex;
-
-	for (const char* s = string; *s; ++s)
-	{
-		if (s != string) regex += ".*";
-		regex += *s;
-	}
-
-	unsigned int result = 0;
-
-	{ Timer timer("searchFilesRegex");
-	searchFilesRegex(header, data, regex.c_str(), true,
-		output->options | RO_IGNORECASE, output->limit,
-		[&](const FileFileEntry& e) { processMatch(e, data, output); result++; });
-	}
-
-	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
+	Timer timer(__FUNCTION__);
 
 	RankMatcherCommandT matcher(string);
 
+	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
-	{ Timer timer("searchFilesManual");
+	unsigned int matches = 0;
+
 	for (size_t i = 0; i < header.fileCount; ++i)
 	{
 		const FileFileEntry& e = entries[i];
@@ -506,14 +492,28 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 
 		if (matcher.match(path, pathe - path))
 		{
-			printf("%.*s\n", pathe - path, path);
+			matches++;
+			processMatch(e, data, output);
+
+			if (matches >= output->limit) break;
 		}
 	}
-	}
 
-	{ Timer timer("rankAllMatches");
+	return matches;
+}
 
-	std::vector<std::pair<int, char>> buf;
+static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
+{
+	Timer timer(__FUNCTION__);
+
+	RankMatcherCommandT matcher(string);
+
+	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
+
+	typedef std::pair<float, const FileFileEntry*> Match;
+
+	std::vector<Match> matches;
+
 	for (size_t i = 0; i < header.fileCount; ++i)
 	{
 		const FileFileEntry& e = entries[i];
@@ -524,15 +524,27 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 		if (matcher.match(path, pathe - path))
 		{
             float score = matcher.rank(path, pathe - path);
+			assert(score > 0.f);
 
-            if (score > 0.f)
-            {
-                printf("%f: %.*s\n", score, pathe - path, path);
-            }
+			matches.push_back(std::make_pair(score, &e));
 		}
-	} }
+	}
 
-	return result;
+	if (matches.size() <= output->limit)
+		std::sort(matches.begin(), matches.end(), [](const Match& l, const Match& r) { return l.first > r.first; });
+	else
+	{
+		std::partial_sort(matches.begin(), matches.begin() + output->limit, matches.end(), [](const Match& l, const Match& r) { return l.first > r.first; });
+		matches.resize(output->limit);
+	}
+
+	for (auto& m: matches)
+	{
+		output->output->print("%f: ", m.first);
+		processMatch(*m.second, data, output);
+	}
+
+	return matches.size();
 }
 
 unsigned int searchFiles(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
@@ -579,7 +591,10 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 	else if (options & SO_FILE_VISUALASSIST)
 		return searchFilesVisualAssist(header, data, string, &output);
 	else if (options & SO_FILE_COMMANDT)
-		return searchFilesCommandT(header, data, string, &output);
+	{
+		searchFilesCommandT(header, data, string, &output);
+		return searchFilesCommandTRanked(header, data, string, &output);
+	}
 	else
 	{
 		output_->error("Unknown file search type\n");
