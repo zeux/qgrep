@@ -524,6 +524,7 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 	typedef std::pair<float, const FileFileEntry*> Match;
 
 	std::vector<Match> matches;
+	unsigned int perfectMatches = 0;
 
 	for (size_t i = 0; i < header.fileCount; ++i)
 	{
@@ -538,6 +539,12 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 			assert(score > 0.f);
 
 			matches.push_back(std::make_pair(score, &e));
+
+			if (score >= 0.999f)
+			{
+				perfectMatches++;
+				if (perfectMatches >= output->limit) break;
+			}
 		}
 	}
 
