@@ -23,16 +23,23 @@ function! s:renderResults(lines)
     call setline(1, a:lines)
 endfunction
 
-function! s:renderStatus(matches)
-    let str = '%#LineNr#qgrep%* '
+function! s:renderStatus(matches, uptime, retime)
+    let res = []
+
+    call add(res, "qgrep")
 
     if a:matches < 128
-        let str .= printf("%d matches", a:matches)
+        call add(res, printf("%d matches", a:matches))
     else
-        let str .= printf("%d+ matches", a:matches)
+        call add(res, printf("%d+ matches", a:matches))
     endif
 
-    let &l:statusline = str
+    call add(res, printf("update %.f ms", a:uptime))
+    call add(res, printf("render %.f ms", a:retime))
+
+    let groups = ["LineNr", "None"]
+
+    let &l:statusline = join(map(copy(res), '"%#" . groups[v:key % 2] . "# " . v:val . " %*"'), '')
 endfunction
 
 function! s:hixform(text, pattern)
@@ -53,13 +60,20 @@ function! s:hixform(text, pattern)
     return res
 endfunction
 
+function! s:diffms(start, end)
+    return str2float(reltimestr(reltime(a:start, a:end))) * 1000
+endfunction
+
 function! s:updateResults(pattern)
+    let start = reltime()
     let qgrep = expand('$VIM') . '\ext\qgrep.dll'
     let qgrep_args = printf("files\nea\nft\nL%d\nft\n%s", 128, a:pattern)
     let results = split(libcall(qgrep, 'entryPointVim', qgrep_args), "\n")
+    let mid = reltime()
     call map(results, 's:hixform(v:val, a:pattern)')
     call s:renderResults(results)
-    call s:renderStatus(len(results))
+    let end = reltime()
+    call s:renderStatus(len(results), s:diffms(start, mid), s:diffms(mid, end))
 endfunction
 
 function! s:prompt(input, onkey)
