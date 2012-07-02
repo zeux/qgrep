@@ -376,6 +376,7 @@ public:
 
 			if (begin == end) return false;
 
+			begin++;
 			pattern++;
 		}
 
