@@ -18,30 +18,6 @@
 #include <memory>
 #include <algorithm>
 
-#define NOMINMAX
-#include <Windows.h>
-
-struct Timer
-{
-	Timer(const char* name): name(name)
-	{
-		QueryPerformanceCounter(&timer);
-	}
-
-	~Timer()
-	{
-		LARGE_INTEGER end, freq;
-		QueryPerformanceCounter(&end);
-		QueryPerformanceFrequency(&freq);
-
-		fprintf(stderr, "%s: %f ms\n", name, (double)(end.QuadPart - timer.QuadPart) / freq.QuadPart * 1000);
-	}
-
-	const char* name;
-    LARGE_INTEGER timer;
-};
-
-
 static std::vector<char> compressData(const std::vector<char>& data)
 {
 	std::vector<char> cdata(LZ4_compressBound(data.size()));
@@ -291,8 +267,6 @@ static bool isPathComponent(const char* str)
 
 static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
-	Timer timer(__FUNCTION__);
-
 	std::vector<std::string> fragments = split(string, isspace);
 
 	if (fragments.empty()) return dumpFiles(header, data, output);
@@ -520,40 +494,8 @@ private:
     }
 };
 
-static float rankMatchCommandT(const char* path, size_t pathOffset, size_t pathLength, size_t lastMatch, const char* pattern, float baseScore)
-{
-	float bestScore = 0.f;
-
-	for (size_t i = pathOffset; i < pathLength; ++i)
-		if (casefold(path[i]) == casefold(pattern[0]))
-		{
-			float restScore = pattern[1] ? rankMatchCommandT(path, i + 1, pathLength, i, pattern + 1, baseScore) : FLT_MIN;
-
-			if (restScore > 0.f)
-			{
-                size_t distance = i - lastMatch;
-
-                float charScore = baseScore;
-
-                if (distance > 1 && lastMatch != ~0u)
-                {
-                    charScore *= 1.f / distance;
-                    // if (path[i] != pattern[0]) charScore *= 0.8f;
-                }
-
-				float score = charScore + restScore;
-
-				if (bestScore < score) bestScore = score;
-			}
-		}
-
-	return bestScore;
-}
-
 static unsigned int searchFilesCommandT(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
-	Timer timer(__FUNCTION__);
-
 	RankMatcherCommandT matcher(string);
 
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
@@ -581,8 +523,6 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 
 static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
-	Timer timer(__FUNCTION__);
-
 	RankMatcherCommandT matcher(string);
 
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
@@ -627,14 +567,8 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 	for (auto& m: matches)
 	{
 		const FileFileEntry& e = *m.second;
-		// float rms = rankMatchCommandT(data + e.pathOffset, 0, strchr(data + e.pathOffset, '\n') - (data + e.pathOffset), ~0u, string, 1.f / strlen(string));
 
-		// if (fabsf(rms - m.first) > 0.001f)
-		{
-			// output->output->print("%f/%f: ", m.first, rms);
-			output->output->print("%f: ", m.first);
-			processMatch(*m.second, data, output);
-		}
+		processMatch(e, data, output);
 	}
 
 	return matches.size();
