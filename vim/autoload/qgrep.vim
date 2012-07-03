@@ -110,6 +110,13 @@ function! s:onMoveLine(state, type)
     let state = a:state
     execute 'keepjumps' 'normal!' a:type
     let state.line = line('.')
+
+    " make sure there are no empty lines on screen
+    let empty = winheight(0) - (line('w$') - line('w0') + 1)
+
+    if empty > 0
+        execute 'keepjumps' 'normal!' (empty . "\<c-y>")
+    endif
 endfunction
 
 function! s:prompt(input)
