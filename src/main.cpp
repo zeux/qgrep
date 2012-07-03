@@ -126,6 +126,10 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 			options |= SO_COLUMNNUMBER;
 			break;
 
+		case 'H':
+			options |= SO_HIGHLIGHT;
+			break;
+
 		case 'L':
 			{
 				char* end = 0;
