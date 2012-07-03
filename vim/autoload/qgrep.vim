@@ -104,24 +104,6 @@ function! s:renderStatus(state, matches, uptime, retime)
     let &l:statusline = join(map(copy(res), '"%#" . groups[v:key % 2] . "# " . v:val . " %*"'), '')
 endfunction
 
-function! s:hixform(text, pattern)
-    let ltext = tolower(a:text)
-    let lpattern = tolower(a:pattern)
-    let i = 0
-    let last = -1
-    let res = ''
-    while i < len(a:pattern)
-        let pos = stridx(ltext, strpart(lpattern, i, 1), last == -1 ? last : last + 1)
-        let res .= strpart(a:text, last + 1, pos - last - 1)
-        let res .= "\x16"
-        let res .= strpart(a:text, pos, 1)
-        let i += 1
-        let last = pos
-    endwhile
-    let res .= strpart(a:text, last + 1)
-    return res
-endfunction
-
 function! s:diffms(start, end)
     return str2float(reltimestr(reltime(a:start, a:end))) * 1000
 endfunction
@@ -130,9 +112,8 @@ function! s:updateResults(state)
     let state = a:state
     let [pattern, cmd] = s:splitPattern(state.pattern)
     let start = reltime()
-    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, 'L'.state.limit, pattern])
+    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, 'H', 'L'.state.limit, pattern])
     let mid = reltime()
-    call map(results, 's:hixform(v:val, pattern)')
     call s:renderResults(results)
     call cursor(state.line, 1)
     let end = reltime()
