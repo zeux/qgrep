@@ -51,7 +51,7 @@ function! s:hixform(text, pattern)
     while i < len(a:pattern)
         let pos = stridx(ltext, strpart(lpattern, i, 1), last == -1 ? last : last + 1)
         let res .= strpart(a:text, last + 1, pos - last - 1)
-        let res .= "\b"
+        let res .= "\x16"
         let res .= strpart(a:text, pos, 1)
         let i += 1
         let last = pos
@@ -64,100 +64,127 @@ function! s:diffms(start, end)
     return str2float(reltimestr(reltime(a:start, a:end))) * 1000
 endfunction
 
-function! s:updateResults(pattern)
+function! s:updateResults(state)
+    let pattern = a:state.pattern
     let start = reltime()
     let qgrep = expand('$VIM') . '\ext\qgrep.dll'
-    let qgrep_args = printf("files\nea\nft\nL%d\nft\n%s", 128, a:pattern)
+    let qgrep_args = printf("files\nea\nft\nL%d\nft\n%s", 128, pattern)
     let results = split(libcall(qgrep, 'entryPointVim', qgrep_args), "\n")
     let mid = reltime()
-    call map(results, 's:hixform(v:val, a:pattern)')
+    call map(results, 's:hixform(v:val, pattern)')
     call s:renderResults(results)
+    call cursor(a:state.line, 1)
     let end = reltime()
     call s:renderStatus(len(results), s:diffms(start, mid), s:diffms(mid, end))
+
+    " modifiable???
 endfunction
 
-function! s:prompt(input, onkey)
-    let str = ""
-    let cur = 0
+function! s:onPatternChanged(state)
+    call s:updateResults(a:state)
+endfunction
+
+function! s:onInsertChar(state, char)
+    let state = a:state
+    let state.pattern = strpart(state.pattern, 0, state.cursor) . a:char . strpart(state.pattern, state.cursor)
+    let state.cursor += 1
+    call s:onPatternChanged(state)
+endfunction
+
+function! s:onDeleteChar(state, offset)
+    let state = a:state
+    let state.pattern = strpart(state.pattern, 0, state.cursor + a:offset) . strpart(state.pattern, state.cursor + a:offset + 1)
+    if state.cursor > 0 && a:offset < 0
+        let state.cursor -= 1
+    endif
+    call s:onPatternChanged(state)
+endfunction
+
+function! s:onMoveCursor(state, diff)
+    let state = a:state
+    let state.cursor += a:diff
+    let state.cursor = max([0, min([state.cursor, len(state.pattern)])])
+endfunction
+
+function! s:onMoveLine(state, type)
+    let state = a:state
+    execute 'keepjumps' 'normal!' a:type
+    let state.line = line('.')
+endfunction
+
+function! s:prompt(input)
+    let state = {}
+    let state.cursor = 0
+    let state.pattern = ''
+    let state.line = 0
+
+    let keymap = {
+        \ 'onDeleteChar(-1)':   ['<bs>', '<c-]>'],
+        \ 'onDeleteChar(0)':    ['<del>'],
+        \ 'onMoveLine("j")':    ['<c-j>', '<down>'],
+        \ 'onMoveLine("k")':    ['<c-k>', '<up>'],
+        \ 'onMoveLine("gg")':   ['<Home>', '<kHome>'],
+        \ 'onMoveLine("G")':    ['<End>', '<kEnd>'],
+        \ 'onMoveLine("\<c-b>")':    ['<PageUp>', '<kPageUp>'],
+        \ 'onMoveLine("\<c-f>")':    ['<PageDown>', '<kPageDown>'],
+        \ 'onMoveCursor(-1)':   ['<c-h>', '<left>', '<c-^>'],
+        \ 'onMoveCursor(+1)':   ['<c-l>', '<right>'],
+        \ }
+
+    call s:updateResults(state)
 
     while 1
-        call s:updateResults(str)
-        call s:renderPrompt(a:input, str, cur)
+        call s:renderPrompt(a:input, state.pattern, state.cursor)
 
         " get input
         let ch = getchar()
 
         if type(ch) == type(0) && ch >= 32
-            " regular character
-            let str = strpart(str, 0, cur) . nr2char(ch) . strpart(str, cur)
-            let cur += 1
+            call s:onInsertChar(state, nr2char(ch))
         else
-            " special character
             let ch = (type(ch) == type(0)) ? nr2char(ch) : ch
 
-            if ch == "\<Esc>"
-                break
-            elseif ch == "\<Left>"
-                if cur > 0
-                    let cur -= 1
-                endif
-            elseif ch == "\<Right>"
-                if cur < len(str)
-                    let cur += 1
-                endif
-            elseif ch == "\<BS>"
-                if cur > 0
-                    let str = strpart(str, 0, cur - 1) . strpart(str, cur)
-                    let cur -= 1
-                endif
-            elseif ch == "\<Del>"
-                if cur < len(str)
-                    let str = strpart(str, 0, cur) . strpart(str, cur + 1)
-                endif
-            elseif a:onkey(ch, str) == 1
+            if ch ==# "\<Esc>"
                 break
             endif
+
+            for [k,v] in items(keymap)
+                for kp in v
+                    if ch ==# eval('"\' . kp . '"')
+                        let pos = stridx(k, '(')
+                        let expr = '<SID>' . strpart(k, 0, pos + 1) . 'state, ' . strpart(k, pos + 1)
+                        call eval(expr)
+                    endif
+                endfor
+            endfor
         endif
     endwhile
-
-    return str
-endfunction
-
-function! s:onkeydummy(ch, str)
-    if a:ch == "\<Up>"
-        keepjumps normal! k
-    elseif a:ch == "\<Down>"
-        keepjumps normal! j
-    endif
 endfunction
 
 function! s:open()
 	silent! keepalt botright 1new Qgrep
     syntax clear
-    syntax match Identifier /\b\@<=./
-    syntax match Ignore /\b/ conceal
-    setlocal conceallevel=3
-    setlocal concealcursor=nvic
-    setlocal cursorline
+    syntax match Identifier /\%x16\@<=./
+    syntax match Ignore /\%x16/ conceal
 
-    setlocal number
-    setlocal noswapfile
-    setlocal nobuflisted
-    setlocal nowrap
-    setlocal nolist
-    setlocal nospell
-    setlocal nocursorcolumn
-    setlocal winfixheight
-    setlocal nofoldenable
-    setlocal textwidth=0
-    setlocal buftype=nofile
     setlocal bufhidden=unload
-
-	if v:version > 702
-        setlocal norelativenumber
-        setlocal noundofile
-        setlocal colorcolumn=0
-	endif
+    setlocal nobuflisted
+    setlocal buftype=nofile
+    setlocal colorcolumn=0
+    setlocal concealcursor=n
+    setlocal conceallevel=2
+    setlocal nocursorcolumn
+    setlocal cursorline
+    setlocal foldcolumn=0
+    setlocal nofoldenable
+    setlocal nolist
+    setlocal number
+    setlocal numberwidth=4
+    setlocal norelativenumber
+    setlocal nospell
+    setlocal noswapfile
+    setlocal winfixheight
+    setlocal nowrap
 endfunction
 
 function! s:close()
@@ -166,7 +193,7 @@ endfunction
 
 function! qgrep#prompt(input)
     noautocmd call s:open()
-    call s:prompt(a:input, function("<SID>onkeydummy"))
+    call s:prompt(a:input)
     noautocmd call s:close()
 endfunction
 
