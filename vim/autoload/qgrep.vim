@@ -1,28 +1,37 @@
 " User dictionary
 let g:Qgrep = {
     \ 'qgrep': 'libcall:'.expand('<sfile>:h:h').'/qgrep',
+    \ 'project': '*',
+    \ 'searchtype': 'ft',
     \ 'limit': 128
     \ }
 
 " Global options
 let s:globalopts = {
-    \ 'mouse': 'n', 'guicursor': 'a:blinkon0', 'mousef': 0, 'imdisable': 1,
+    \ 'guicursor': 'a:blinkon0',
     \ 'hlsearch': 0,
+    \ 'imdisable': 1,
+    \ 'mouse': 'n',
+    \ 'mousef': 0,
+    \ 'showcmd': 0,
+    \ 'timeout': 1,
+    \ 'timeoutlen': 0,
     \ }
 
 " Key mappings
 let s:keymap = {
-    \ 'onDeleteChar(%s, -1)':   ['<BS>', '<C-]>'],
-    \ 'onDeleteChar(%s, 0)':    ['<Del>'],
-    \ 'onMoveLine(%s, "j")':    ['<C-j>', '<Down>'],
-    \ 'onMoveLine(%s, "k")':    ['<C-k>', '<Up>'],
-    \ 'onMoveLine(%s, "gg")':   ['<Home>', '<kHome>'],
-    \ 'onMoveLine(%s, "G")':    ['<End>', '<kEnd>'],
-    \ 'onMoveLine(%s, "pk")':   ['<PageUp>', '<kPageUp>'],
-    \ 'onMoveLine(%s, "pj")':   ['<PageDown>', '<kPageDown>'],
-    \ 'onMoveCursor(%s, -1)':   ['<C-h>', '<Left>', '<C-^>'],
-    \ 'onMoveCursor(%s, +1)':   ['<C-l>', '<Right>'],
-    \ 'close()':                ['<Esc>', '<C-c>'],
+    \ 's:onDeleteChar(%s, -1)': ['<BS>', '<C-]>'],
+    \ 's:onDeleteChar(%s, 0)':  ['<Del>'],
+    \ 's:onMoveLine(%s, "j")':  ['<C-j>', '<Down>'],
+    \ 's:onMoveLine(%s, "k")':  ['<C-k>', '<Up>'],
+    \ 's:onMoveLine(%s, "gg")': ['<Home>', '<kHome>'],
+    \ 's:onMoveLine(%s, "G")':  ['<End>', '<kEnd>'],
+    \ 's:onMoveLine(%s, "pk")': ['<PageUp>', '<kPageUp>'],
+    \ 's:onMoveLine(%s, "pj")': ['<PageDown>', '<kPageDown>'],
+    \ 's:onMoveCursor(%s, -1)': ['<C-h>', '<Left>', '<C-^>'],
+    \ 's:onMoveCursor(%s, +1)': ['<C-l>', '<Right>'],
+    \ 'qgrep#close()':          ['<Esc>', '<C-c>'],
+    \ 'qgrep#selectProject()':  ['<C-q>'],
     \ }
 
 function! s:state()
@@ -41,7 +50,7 @@ function! s:renderPrompt(state)
     let cursor = state.cursor
 
     redraw
-    call s:echoHighlight('Comment', '>>>')
+    call s:echoHighlight('Comment', '>>> ')
     call s:echoHighlight('Normal', strpart(text, 0, cursor))
     call s:echoHighlight('Constant', strpart(text, cursor, 1))
     call s:echoHighlight('Normal', strpart(text, cursor + 1))
@@ -68,6 +77,7 @@ function! s:renderStatus(state, matches, uptime, retime)
     let res = []
 
     call add(res, "qgrep")
+    call add(res, g:Qgrep.project)
 
     if a:matches < a:state.limit
         call add(res, printf("%d matches", a:matches))
@@ -109,7 +119,7 @@ function! s:updateResults(state)
     let state = a:state
     let pattern = state.pattern
     let start = reltime()
-    let results = qgrep#execute(['files', 'ea', 'ft', 'L'.state.limit, pattern])
+    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, 'L'.state.limit, pattern])
     let mid = reltime()
     call map(results, 's:hixform(v:val, pattern)')
     call s:renderResults(results)
@@ -207,8 +217,9 @@ function! s:initKeys(stateexpr)
     " special keys
     for [expr, keys] in items(s:keymap)
         let expr = stridx(expr, '%s') < 0 ? expr : printf(expr, a:stateexpr)
+        let expr = expr[0:1] == 's:' ? '<SID>'.expr[2:] : expr
         for key in keys
-            execute 'nnoremap <buffer> <silent>' key ':call <SID>'.expr '<CR>'
+            execute 'nnoremap <buffer> <silent>' key ':call' expr '<CR>'
         endfor
     endfor
 endfunction
@@ -218,7 +229,7 @@ function! s:open()
     let state.cursor = 0
     let state.pattern = ''
     let state.line = 0
-    let state.limit = 128
+    let state.limit = g:Qgrep.limit
 
     let s:state = state
 
@@ -253,6 +264,12 @@ function! qgrep#close()
     noautocmd call s:close()
 endfunction
 
+function! qgrep#update()
+    if exists('s:state')
+        call s:onPatternChanged(s:state)
+    endif
+endfunction
+
 function! qgrep#execute(args)
     let path = g:Qgrep.qgrep
 
@@ -269,6 +286,22 @@ function! qgrep#execute(args)
     catch
         return []
     endtry
+endfunction
+
+function! qgrep#selectProject()
+    let projects = qgrep#execute(['projects'])
+
+    let lines = copy(projects)
+    call map(lines, 'printf("%2d. %s", v:key + 1, v:val)')
+    call insert(lines, 'Select project (*):')
+
+    let choice = inputlist(lines)
+    if choice >= 0 && choice <= len(projects)
+        let project = (choice == 0) ? '*' : projects[choice - 1]
+        let g:Qgrep.project = project
+
+        call qgrep#update()
+    endif
 endfunction
 
 if has('autocmd')
