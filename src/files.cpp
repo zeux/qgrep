@@ -174,15 +174,8 @@ struct FilesOutput
 	unsigned int limit;
 };
 
-static void processMatch(const FileFileEntry& entry, const char* data, FilesOutput* output)
+static void processMatch(const char* path, size_t pathLength, FilesOutput* output)
 {
-	const char* path = entry.pathOffset + data;
-
-	const char* pathEnd = strchr(path, '\n');
-	assert(pathEnd);
-
-	size_t pathLength = pathEnd - path;
-
 	if (output->options & SO_VISUALSTUDIO)
 	{
 		char* buffer = static_cast<char*>(alloca(pathLength));
@@ -192,6 +185,16 @@ static void processMatch(const FileFileEntry& entry, const char* data, FilesOutp
 	}
 
 	output->output->print("%.*s\n", static_cast<unsigned>(pathLength), path);
+}
+
+static void processMatch(const FileFileEntry& entry, const char* data, FilesOutput* output)
+{
+	const char* path = entry.pathOffset + data;
+
+	const char* pathEnd = strchr(path, '\n');
+	assert(pathEnd);
+
+	processMatch(path, pathEnd - path, output);
 }
 
 static unsigned int dumpFiles(const FileFileHeader& header, const char* data, FilesOutput* output)
@@ -404,6 +407,11 @@ public:
             return rankRecursive<false>(c, 0, -1, 0);
 	}
 
+	size_t size() const
+	{
+		return cfquery.size();
+	}
+
 private:
 	bool table[256];
 
@@ -526,6 +534,37 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 	return matches;
 }
 
+static void processMatchHighlight(RankMatcherCommandT& matcher, const FileFileEntry& entry, const char* data, FilesOutput* output)
+{
+	const char* path = entry.pathOffset + data;
+
+	const char* pathEnd = strchr(path, '\n');
+	assert(pathEnd);
+
+	static std::vector<int> posbuf;
+
+	posbuf.resize(matcher.size());
+	matcher.rank(path, pathEnd - path, &posbuf[0]);
+
+	static std::string result;
+	result.clear();
+
+	size_t posi = 0;
+
+	for (size_t i = 0; path + i != pathEnd; ++i)
+	{
+		if (posi < posbuf.size() && posbuf[posi] == i)
+		{
+			result.push_back('\x16');
+			posi++;
+		}
+
+		result.push_back(path[i]);
+	}
+
+	processMatch(result.c_str(), result.size(), output);
+}
+
 static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
 	RankMatcherCommandT matcher(string);
@@ -573,7 +612,10 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 	{
 		const FileFileEntry& e = *m.second;
 
-		processMatch(e, data, output);
+		if (output->options & SO_HIGHLIGHT)
+			processMatchHighlight(matcher, e, data, output);
+		else
+			processMatch(e, data, output);
 	}
 
 	return matches.size();
