@@ -1,16 +1,3 @@
-" User dictionary
-let g:Qgrep = {
-    \ 'qgrep': 'libcall:'.expand('<sfile>:h:h').'/qgrep',
-    \ 'project': '*',
-    \ 'searchtype': 'ft',
-    \ 'limit': 128,
-    \ 'keymap': {
-        \ 'qgrep#selectProject()':  ['<C-q>'],
-    \ },
-    \ 'lazyupdate': 0,
-    \ 'maxheight': 7,
-    \ }
-
 " Global options
 let s:globalopts = {
     \ 'guicursor': 'a:blinkon0',
