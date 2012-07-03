@@ -13,17 +13,19 @@ let s:globalopts = {
 
 " Key mappings
 let s:keymap = {
-    \ 's:onDeleteChar(%s, -1)': ['<BS>', '<C-]>'],
-    \ 's:onDeleteChar(%s, 0)':  ['<Del>'],
-    \ 's:onMoveLine(%s, "j")':  ['<C-j>', '<Down>'],
-    \ 's:onMoveLine(%s, "k")':  ['<C-k>', '<Up>'],
-    \ 's:onMoveLine(%s, "gg")': ['<Home>', '<kHome>'],
-    \ 's:onMoveLine(%s, "G")':  ['<End>', '<kEnd>'],
-    \ 's:onMoveLine(%s, "pk")': ['<PageUp>', '<kPageUp>'],
-    \ 's:onMoveLine(%s, "pj")': ['<PageDown>', '<kPageDown>'],
-    \ 's:onMoveCursor(%s, -1)': ['<C-h>', '<Left>', '<C-^>'],
-    \ 's:onMoveCursor(%s, +1)': ['<C-l>', '<Right>'],
-    \ 'qgrep#close()':          ['<Esc>', '<C-c>'],
+    \ 's:onDeleteChar(%s, -1)':     ['<BS>', '<C-]>'],
+    \ 's:onDeleteChar(%s, 0)':      ['<Del>'],
+    \ 's:onMoveLine(%s, "j")':      ['<C-j>', '<Down>'],
+    \ 's:onMoveLine(%s, "k")':      ['<C-k>', '<Up>'],
+    \ 's:onMoveLine(%s, "gg")':     ['<C-Home>', '<C-kHome>'],
+    \ 's:onMoveLine(%s, "G")':      ['<C-End>', '<C-kEnd>'],
+    \ 's:onMoveLine(%s, "pk")':     ['<PageUp>', '<kPageUp>'],
+    \ 's:onMoveLine(%s, "pj")':     ['<PageDown>', '<kPageDown>'],
+    \ 's:onMoveCursor(%s, -1)':     ['<C-h>', '<Left>', '<C-^>'],
+    \ 's:onMoveCursor(%s, +1)':     ['<C-l>', '<Right>'],
+    \ 's:onMoveCursor(%s, -1000)':  ['<Home>', '<kHome>'],
+    \ 's:onMoveCursor(%s, +1000)':  ['<End>', '<kEnd>'],
+    \ 'qgrep#close()':              ['<Esc>', '<C-c>'],
     \ }
 
 function! s:state()
@@ -153,7 +155,7 @@ endfunction
 function! s:onMoveLine(state, type)
     let state = a:state
     let motion = (a:type[0] == 'p') ? winheight(0) . a:type[1:] : a:type
-    execute 'keepjumps' 'normal!' motion
+    execute 'keepjumps' 'normal!' motion '0'
     let state.line = line('.')
     call s:onPromptChanged(state)
 endfunction
