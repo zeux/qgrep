@@ -46,6 +46,15 @@ function! s:echoHighlight(group, text)
     echohl None
 endfunction
 
+function! s:splitPattern(pattern)
+    let pos = stridx(a:pattern, ':')
+    if pos < 0
+        return [a:pattern, '']
+    else
+        return [strpart(a:pattern, 0, pos), strpart(a:pattern, pos)]
+    endif
+endfunction
+
 function! s:renderPrompt(state)
     let state = a:state
     let text = state.pattern
@@ -119,7 +128,7 @@ endfunction
 
 function! s:updateResults(state)
     let state = a:state
-    let pattern = state.pattern
+    let [pattern, cmd] = s:splitPattern(state.pattern)
     let start = reltime()
     let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, 'L'.state.limit, pattern])
     let mid = reltime()
