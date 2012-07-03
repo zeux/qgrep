@@ -9,7 +9,7 @@ let g:Qgrep = {
     \ 'qgrep': 'libcall:'.expand('<sfile>:h:h').'/qgrep',
     \ 'project': '*',
     \ 'searchtype': 'ft',
-    \ 'limit': 128,
+    \ 'limit': 100,
     \ 'keymap': {
         \ 'qgrep#selectProject()':  ['<C-q>'],
     \ },
