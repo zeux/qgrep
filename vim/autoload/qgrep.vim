@@ -1,25 +1,33 @@
+function! s:state()
+    return s:state
+endfunction
+
 function! s:echoHighlight(group, text)
     execute 'echohl' a:group
     echon a:text
     echohl None
 endfunction
 
-function! s:renderPrompt(prompt, text, cursor)
-    redraw
-    call s:echoHighlight('Comment', a:prompt)
-    call s:echoHighlight('Normal', strpart(a:text, 0, a:cursor))
-    call s:echoHighlight('Constant', strpart(a:text, a:cursor, 1))
-    call s:echoHighlight('Normal', strpart(a:text, a:cursor + 1))
+function! s:renderPrompt(state)
+    let state = a:state
+    let text = state.pattern
+    let cursor = state.cursor
 
-    if a:cursor >= len(a:text)
-        " call s:echoHighlight('Constant', '_')
+    redraw
+    call s:echoHighlight('Comment', '>>>')
+    call s:echoHighlight('Normal', strpart(text, 0, cursor))
+    call s:echoHighlight('Constant', strpart(text, cursor, 1))
+    call s:echoHighlight('Normal', strpart(text, cursor + 1))
+
+    if cursor >= len(text)
+        call s:echoHighlight('Constant', '_')
     endif
 endfunction
 
 function! s:renderResults(lines)
     let height = min([len(a:lines), 5])
-    execute '%d'
-    execute 'resize' height
+    silent! execute '%d'
+    silent! execute 'resize' height
     call setline(1, a:lines)
 endfunction
 
@@ -82,6 +90,11 @@ endfunction
 
 function! s:onPatternChanged(state)
     call s:updateResults(a:state)
+    call s:renderPrompt(a:state)
+endfunction
+
+function! s:onPromptChanged(state)
+    call s:renderPrompt(a:state)
 endfunction
 
 function! s:onInsertChar(state, char)
@@ -104,76 +117,24 @@ function! s:onMoveCursor(state, diff)
     let state = a:state
     let state.cursor += a:diff
     let state.cursor = max([0, min([state.cursor, len(state.pattern)])])
+    call s:onPromptChanged(state)
 endfunction
 
 function! s:onMoveLine(state, type)
     let state = a:state
-    execute 'keepjumps' 'normal!' a:type
+    let motion = (a:type[0] == 'p') ? winheight(0) . a:type[1:] : a:type
+    execute 'keepjumps' 'normal!' motion
     let state.line = line('.')
-
-    " make sure there are no empty lines on screen
-    let empty = winheight(0) - (line('w$') - line('w0') + 1)
-
-    if empty > 0
-        execute 'keepjumps' 'normal!' (empty . "\<c-y>")
-    endif
+    call s:onPromptChanged(state)
 endfunction
 
-function! s:prompt(input)
-    let state = {}
-    let state.cursor = 0
-    let state.pattern = ''
-    let state.line = 0
-
-    let keymap = {
-        \ 'onDeleteChar(-1)':   ['<bs>', '<c-]>'],
-        \ 'onDeleteChar(0)':    ['<del>'],
-        \ 'onMoveLine("j")':    ['<c-j>', '<down>'],
-        \ 'onMoveLine("k")':    ['<c-k>', '<up>'],
-        \ 'onMoveLine("gg")':   ['<Home>', '<kHome>'],
-        \ 'onMoveLine("G")':    ['<End>', '<kEnd>'],
-        \ 'onMoveLine("\<c-b>")':    ['<PageUp>', '<kPageUp>'],
-        \ 'onMoveLine("\<c-f>")':    ['<PageDown>', '<kPageDown>'],
-        \ 'onMoveCursor(-1)':   ['<c-h>', '<left>', '<c-^>'],
-        \ 'onMoveCursor(+1)':   ['<c-l>', '<right>'],
-        \ }
-
-    call s:updateResults(state)
-
-    while 1
-        call s:renderPrompt(a:input, state.pattern, state.cursor)
-
-        " get input
-        let ch = getchar()
-
-        if type(ch) == type(0) && ch >= 32
-            call s:onInsertChar(state, nr2char(ch))
-        else
-            let ch = (type(ch) == type(0)) ? nr2char(ch) : ch
-
-            if ch ==# "\<Esc>"
-                break
-            endif
-
-            for [k,v] in items(keymap)
-                for kp in v
-                    if ch ==# eval('"\' . kp . '"')
-                        let pos = stridx(k, '(')
-                        let expr = '<SID>' . strpart(k, 0, pos + 1) . 'state, ' . strpart(k, pos + 1)
-                        call eval(expr)
-                    endif
-                endfor
-            endfor
-        endif
-    endwhile
-endfunction
-
-function! s:open()
-	silent! keepalt botright 1new Qgrep
+function! s:initSyntax()
     syntax clear
     syntax match Identifier /\%x16\@<=./
     syntax match Ignore /\%x16/ conceal
+endfunction
 
+function! s:initOptions()
     setlocal bufhidden=unload
     setlocal nobuflisted
     setlocal buftype=nofile
@@ -194,14 +155,72 @@ function! s:open()
     setlocal nowrap
 endfunction
 
-function! s:close()
-    bunload!
+function! s:initKeys(stateexpr)
+    let keymap = {
+        \ 'onDeleteChar(%s, -1)':   ['<bs>', '<c-]>'],
+        \ 'onDeleteChar(%s, 0)':    ['<del>'],
+        \ 'onMoveLine(%s, "j")':    ['<c-j>', '<down>'],
+        \ 'onMoveLine(%s, "k")':    ['<c-k>', '<up>'],
+        \ 'onMoveLine(%s, "gg")':   ['<Home>', '<kHome>'],
+        \ 'onMoveLine(%s, "G")':    ['<End>', '<kEnd>'],
+        \ 'onMoveLine(%s, "pk")':   ['<PageUp>', '<kPageUp>'],
+        \ 'onMoveLine(%s, "pj")':   ['<PageDown>', '<kPageDown>'],
+        \ 'onMoveCursor(%s, -1)':   ['<c-h>', '<left>', '<c-^>'],
+        \ 'onMoveCursor(%s, +1)':   ['<c-l>', '<right>'],
+        \ }
+
+	" normal keys
+    let charcmd = 'nnoremap <buffer> <silent> <char-%d> :call <SID>onInsertChar(%s, "%s")<CR>'
+	for ch in range(32, 126)
+		execute printf(charcmd, ch, a:stateexpr, escape(nr2char(ch), '"|\'))
+	endfor
+
+    " special keys
+    for [expr, keys] in items(keymap)
+        for key in keys
+            execute 'nnoremap <buffer> <silent>' key ':call <SID>' . printf(expr, a:stateexpr) . '<CR>'
+        endfor
+    endfor
 endfunction
 
-function! qgrep#prompt(input)
+function! s:open()
+    let state = {}
+    let state.cursor = 0
+    let state.pattern = ''
+    let state.line = 0
+
+    let s:state = state
+
+	silent! keepalt botright 1new Qgrep
+    abclear <buffer>
+
+    call s:initOptions()
+    call s:initSyntax()
+    call s:initKeys('<SID>state()')
+
+    call s:updateResults(state)
+    call s:renderPrompt(state)
+endfunction
+
+function! s:close()
+    if exists('s:state')
+        bunload!
+        echo
+        unlet! s:state
+    endif
+endfunction
+
+function! qgrep#open()
     noautocmd call s:open()
-    call s:prompt(a:input)
+endfunction
+
+function! qgrep#close()
     noautocmd call s:close()
 endfunction
 
-call qgrep#prompt(">>>")
+if has('autocmd')
+	augroup QgrepAug
+		autocmd!
+		autocmd BufLeave Qgrep call qgrep#close()
+	augroup END
+endif
