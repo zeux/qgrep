@@ -335,6 +335,10 @@ public:
 
 			table[ch] = true;
 		}
+
+		// add inverse casefolded letters
+		for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); ++i)
+			table[i] = table[casefold(i)];
 	}
 
 	bool match(const char* data, size_t size)
@@ -357,141 +361,142 @@ public:
 		return true;
 	}
 
-    float rank(const char* data, size_t size)
+    int rank(const char* data, size_t size, int* positions = nullptr)
     {
-		static std::vector<std::pair<int, char>> buf;
+		size_t offset = 0;
 
-		while (size > 0 && casefold(data[0]) != cfquery.front()) data++, size--;
-		while (size > 0 && casefold(data[size - 1]) != cfquery.back()) size--;
+		while (offset < size && casefold(data[offset]) != cfquery.front()) offset++;
+		while (offset < size && casefold(data[size - 1]) != cfquery.back()) size--;
 
-		if (size < cfquery.size()) return 0;
+		if (offset + cfquery.size() > size) return INT_MAX;
 
-		buf.clear();
-		for (size_t i = 0; i < size; ++i)
+		if (buf.size() < size + 1) buf.resize(size + 1);
+
+		std::pair<int, char>* bufp = &buf[0];
+		size_t bufsize = 0;
+
+		for (size_t i = offset; i < size; ++i)
 		{
-			unsigned char ch = static_cast<unsigned char>(casefold(data[i]));
+			unsigned char ch = static_cast<unsigned char>(data[i]);
 
-			if (table[ch]) buf.push_back(std::make_pair(i, ch));
+			bufp[bufsize] = std::make_pair(i, data[i]);
+			bufsize += table[ch];
 		}
 
-		float baseScore = 1.f / static_cast<float>(cfquery.size());
+        cache.clear();
+        cache.resize(bufsize * cfquery.size(), INT_MIN);
 
-	#if 1
-		static std::vector<float> cache;
-		cache.clear();
-		cache.resize(buf.size() * cfquery.size(), -1.f);
+        RankContext c = {&buf[0], bufsize, cfquery.c_str(), cfquery.size(), &cache[0], nullptr};
 
-		return rankRecursive(&buf[0], 0, buf.size(), -1, cfquery.c_str(), 0, cfquery.size(), baseScore, &cache[0]);
-	#else
-		static std::vector<std::pair<float, int>> cache;
-		cache.clear();
-		cache.resize(buf.size() * cfquery.size());
+		if (positions)
+		{
+			cachepos.clear();
+			cachepos.resize(bufsize * cfquery.size(), -1);
+			c.cachepos = &cachepos[0];
 
-		return rankTable(&buf[0], buf.size(), cfquery.c_str(), cfquery.size(), baseScore, &cache[0]);
-	#endif
+			int score = rankRecursive<true>(c, 0, -1, 0);
+
+			if (score != INT_MAX) fillPositions(positions, &buf[0], bufsize, cfquery.size(), &cachepos[0]);
+
+			return score;
+		}
+		else
+            return rankRecursive<false>(c, 0, -1, 0);
 	}
 
 private:
-	std::string cfquery;
 	bool table[256];
+
+	std::string cfquery;
+    std::vector<std::pair<int, char>> buf;
+    std::vector<int> cache;
+    std::vector<int> cachepos;
+
+	struct RankContext
+	{
+        const std::pair<int, char>* path;
+		size_t pathLength;
+		const char* pattern;
+		size_t patternLength;
+		int* cache;
+		int* cachepos;
+	};
 	
-    static float rankTable(const std::pair<int, char>* path, size_t pathLength, const char* pattern, size_t patternLength, float baseScore, std::pair<float, int>* cache)
+	template <bool fillPosition>
+    static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch, size_t patternOffset)
     {
-		// cache[x, y] = score for path[0:y] using pattern[0:x], ranges are inclusive
-		for (size_t y = 0; y < pathLength; ++y)
-		{
-			std::pair<float, int>* cacheRow = cache + y * patternLength;
+        const std::pair<int, char>* path = c.path;
+		size_t pathLength = c.pathLength;
+		const char* pattern = c.pattern;
+		size_t patternLength = c.patternLength;
+		int* cache = c.cache;
 
-			// score for first row
-			if (y == 0)
-			{
-				cacheRow[0] = (path[0].second == pattern[0]) ? std::make_pair(baseScore, path[0].first) : std::make_pair(0.f, -1);
-				for (size_t x = 0; x < patternLength; ++x) cacheRow[x] = std::make_pair(0.f, -1);
-			}
-			else
-			{
-				std::pair<float, int>* cacheRowPrev = cacheRow - patternLength;
+		if (pathOffset == pathLength) return 0;
 
-				// score for first column
-				cacheRow[0] = (path[y].second == pattern[0]) ? std::make_pair(baseScore, path[y].first) : cacheRowPrev[0];
-				
-				// score for the rest
-				for (size_t x = 1; x < patternLength; ++x)
-				{
-					std::pair<float, int> r = cacheRowPrev[x];
+		int& cv = cache[pathOffset * patternLength + patternOffset];
 
-					if (path[y].second == pattern[x])
-					{
-						std::pair<float, int> last = cacheRow[x - 1];
-						int distance = path[y].first - last.second;
+		if (cv != INT_MIN) return cv;
 
-						float charScore = baseScore;
-
-						if (distance > 1 && last.second != -1)
-						{
-							charScore *= 1.f / distance;
-						}
-
-						float score = last.first + charScore;
-
-						if (score >= r.first) r = std::make_pair(score, path[y].first);
-					}
-
-					cacheRow[x] = r;
-				}
-			}
-		}
-
-		return cache[pathLength * patternLength - 1].first;
-	}
-
-    static float rankRecursive(const std::pair<int, char>* path, size_t pathOffset, size_t pathLength, int lastMatch, const char* pattern, size_t patternOffset, size_t patternLength, float baseScore, float* cache)
-    {
-		if (pathOffset == pathLength) return 0.f;
-
-		float& cv = cache[pathOffset * patternLength + patternOffset];
-
-		if (cv >= 0) return cv;
-
-        float bestScore = 0.f;
+        int bestScore = INT_MAX;
+		int bestPos = -1;
 
 		size_t patternRest = patternLength - patternOffset - 1;
 
         for (size_t i = pathOffset; i + patternRest < pathLength; ++i)
-            if (path[i].second == pattern[patternOffset])
+            if (casefold(path[i].second) == pattern[patternOffset])
             {
 				int distance = path[i].first - lastMatch;
 
-				float charScore = baseScore;
+				int charScore = 0;
 
-				if (distance > 1 && lastMatch != ~0u)
+				if (distance > 1 && lastMatch >= 0)
 				{
-					charScore *= 1.f / distance;
+					charScore += 10 + (distance - 2);
 				}
 
-				if (patternOffset + 1 < patternLength)
-				{
-					float restScore = rankRecursive(path, i + 1, pathLength, path[i].first, pattern, patternOffset + 1, patternLength, baseScore, cache);
+                int restScore =
+                    (patternOffset + 1 < patternLength)
+                    ? rankRecursive<fillPosition>(c, i + 1, path[i].first, patternOffset + 1)
+                    : 0;
 
-					if (restScore > 0.f)
+                if (restScore != INT_MAX)
+                {
+                    int score = charScore + restScore;
+
+                    if (bestScore > score)
 					{
-						float score = charScore + restScore;
-
-						if (bestScore < score) bestScore = score;
+						bestScore = score;
+						bestPos = i;
 					}
-				}
-				else
-				{
-					float score = charScore;
+                }
 
-					if (bestScore < score) bestScore = score;
-
+                if (patternOffset + 1 < patternLength)
+                    ;
+                else
 					break;
-				}
             }
+
+		if (fillPosition) c.cachepos[pathOffset * patternLength + patternOffset] = bestPos;
 
         return cv = bestScore;
     }
+
+    void fillPositions(int* positions, const std::pair<int, char>* path, size_t pathLength, size_t patternLength, int* cachepos)
+	{
+		size_t pathOffset = 0;
+
+		for (size_t i = 0; i < patternLength; ++i)
+		{
+			assert(pathOffset < pathLength);
+
+			int pos = cachepos[pathOffset * patternLength + i];
+			assert(pos >= 0 && pos < (int)pathLength);
+
+			positions[i] = path[pos].first;
+
+			pathOffset = pos + 1;
+		}
+	}
 };
 
 static unsigned int searchFilesCommandT(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
@@ -527,7 +532,7 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
-	typedef std::pair<float, const FileFileEntry*> Match;
+	typedef std::pair<int, const FileFileEntry*> Match;
 
 	std::vector<Match> matches;
 	unsigned int perfectMatches = 0;
@@ -541,12 +546,12 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 
 		if (matcher.match(path, pathe - path))
 		{
-            float score = matcher.rank(path, pathe - path);
-			assert(score > 0.f);
+            int score = matcher.rank(path, pathe - path);
+			assert(score != INT_MAX);
 
 			matches.push_back(std::make_pair(score, &e));
 
-			if (score >= 0.999f)
+			if (score == 0)
 			{
 				perfectMatches++;
 				if (perfectMatches >= output->limit) break;
@@ -554,7 +559,7 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 		}
 	}
 
-	auto compareMatches = [](const Match& l, const Match& r) { return l.first == r.first ? l.second < r.second : l.first > r.first; };
+	auto compareMatches = [](const Match& l, const Match& r) { return l.first == r.first ? l.second < r.second : l.first < r.first; };
 
 	if (matches.size() <= output->limit)
 		std::sort(matches.begin(), matches.end(), compareMatches);
