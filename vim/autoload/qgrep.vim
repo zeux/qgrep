@@ -1,3 +1,24 @@
+" Global options
+let s:globalopts = {
+    \ 'mouse': 'n', 'guicursor': 'a:blinkon0', 'mousef': 0, 'imdisable': 1,
+    \ 'hlsearch': 0,
+    \ }
+
+" Key mappings
+let s:keymap = {
+    \ 'onDeleteChar(%s, -1)':   ['<BS>', '<C-]>'],
+    \ 'onDeleteChar(%s, 0)':    ['<Del>'],
+    \ 'onMoveLine(%s, "j")':    ['<C-j>', '<Down>'],
+    \ 'onMoveLine(%s, "k")':    ['<C-k>', '<Up>'],
+    \ 'onMoveLine(%s, "gg")':   ['<Home>', '<kHome>'],
+    \ 'onMoveLine(%s, "G")':    ['<End>', '<kEnd>'],
+    \ 'onMoveLine(%s, "pk")':   ['<PageUp>', '<kPageUp>'],
+    \ 'onMoveLine(%s, "pj")':   ['<PageDown>', '<kPageDown>'],
+    \ 'onMoveCursor(%s, -1)':   ['<C-h>', '<Left>', '<C-^>'],
+    \ 'onMoveCursor(%s, +1)':   ['<C-l>', '<Right>'],
+    \ 'close()':                ['<Esc>', '<C-c>'],
+    \ }
+
 function! s:state()
     return s:state
 endfunction
@@ -24,19 +45,25 @@ function! s:renderPrompt(state)
     endif
 endfunction
 
-function! s:renderResults(lines)
-    let height = min([len(a:lines), 5])
-    silent! execute '%d'
-    silent! execute 'resize' height
-    call setline(1, a:lines)
+function! s:formatLine(str)
+    return '  '.a:str
 endfunction
 
-function! s:renderStatus(matches, uptime, retime)
+function! s:renderResults(lines)
+    let height = min([len(a:lines), 5])
+    setlocal modifiable
+    silent! execute '%d'
+    silent! execute 'resize' height
+    call setline(1, map(copy(a:lines), 's:formatLine(v:val)'))
+    setlocal nomodifiable
+endfunction
+
+function! s:renderStatus(state, matches, uptime, retime)
     let res = []
 
     call add(res, "qgrep")
 
-    if a:matches < 128
+    if a:matches < a:state.limit
         call add(res, printf("%d matches", a:matches))
     else
         call add(res, printf("%d+ matches", a:matches))
@@ -73,19 +100,18 @@ function! s:diffms(start, end)
 endfunction
 
 function! s:updateResults(state)
-    let pattern = a:state.pattern
+    let state = a:state
+    let pattern = state.pattern
     let start = reltime()
     let qgrep = expand('$VIM') . '\ext\qgrep.dll'
-    let qgrep_args = printf("files\nea\nft\nL%d\nft\n%s", 128, pattern)
+    let qgrep_args = printf("files\nea\nft\nL%d\nft\n%s", state.limit, pattern)
     let results = split(libcall(qgrep, 'entryPointVim', qgrep_args), "\n")
     let mid = reltime()
     call map(results, 's:hixform(v:val, pattern)')
     call s:renderResults(results)
-    call cursor(a:state.line, 1)
+    call cursor(state.line, 1)
     let end = reltime()
-    call s:renderStatus(len(results), s:diffms(start, mid), s:diffms(mid, end))
-
-    " modifiable???
+    call s:renderStatus(state, len(results), s:diffms(start, mid), s:diffms(mid, end))
 endfunction
 
 function! s:onPatternChanged(state)
@@ -134,7 +160,18 @@ function! s:initSyntax()
     syntax match Ignore /\%x16/ conceal
 endfunction
 
-function! s:initOptions()
+function! s:initOptions(state)
+    " Global options
+    let a:state.globalopts = {}
+
+    for [k, v] in items(s:globalopts)
+        if exists('+'.k)
+            let a:state.globalopts[k] = eval('&'.k)
+            execute 'let &'.k.'='.string(v)
+        endif
+    endfor
+
+    " Local options
     setlocal bufhidden=unload
     setlocal nobuflisted
     setlocal buftype=nofile
@@ -146,6 +183,7 @@ function! s:initOptions()
     setlocal foldcolumn=0
     setlocal nofoldenable
     setlocal nolist
+    setlocal nomodifiable
     setlocal number
     setlocal numberwidth=4
     setlocal norelativenumber
@@ -156,19 +194,6 @@ function! s:initOptions()
 endfunction
 
 function! s:initKeys(stateexpr)
-    let keymap = {
-        \ 'onDeleteChar(%s, -1)':   ['<bs>', '<c-]>'],
-        \ 'onDeleteChar(%s, 0)':    ['<del>'],
-        \ 'onMoveLine(%s, "j")':    ['<c-j>', '<down>'],
-        \ 'onMoveLine(%s, "k")':    ['<c-k>', '<up>'],
-        \ 'onMoveLine(%s, "gg")':   ['<Home>', '<kHome>'],
-        \ 'onMoveLine(%s, "G")':    ['<End>', '<kEnd>'],
-        \ 'onMoveLine(%s, "pk")':   ['<PageUp>', '<kPageUp>'],
-        \ 'onMoveLine(%s, "pj")':   ['<PageDown>', '<kPageDown>'],
-        \ 'onMoveCursor(%s, -1)':   ['<c-h>', '<left>', '<c-^>'],
-        \ 'onMoveCursor(%s, +1)':   ['<c-l>', '<right>'],
-        \ }
-
 	" normal keys
     let charcmd = 'nnoremap <buffer> <silent> <char-%d> :call <SID>onInsertChar(%s, "%s")<CR>'
 	for ch in range(32, 126)
@@ -176,9 +201,10 @@ function! s:initKeys(stateexpr)
 	endfor
 
     " special keys
-    for [expr, keys] in items(keymap)
+    for [expr, keys] in items(s:keymap)
+        let expr = stridx(expr, '%s') < 0 ? expr : printf(expr, a:stateexpr)
         for key in keys
-            execute 'nnoremap <buffer> <silent>' key ':call <SID>' . printf(expr, a:stateexpr) . '<CR>'
+            execute 'nnoremap <buffer> <silent>' key ':call <SID>'.expr '<CR>'
         endfor
     endfor
 endfunction
@@ -188,13 +214,14 @@ function! s:open()
     let state.cursor = 0
     let state.pattern = ''
     let state.line = 0
+    let state.limit = 128
 
     let s:state = state
 
 	silent! keepalt botright 1new Qgrep
     abclear <buffer>
 
-    call s:initOptions()
+    call s:initOptions(state)
     call s:initSyntax()
     call s:initKeys('<SID>state()')
 
@@ -204,6 +231,10 @@ endfunction
 
 function! s:close()
     if exists('s:state')
+        for [k, v] in items(s:state.globalopts)
+            silent! execute 'let &'.k.'='.string(v)
+        endfor
+
         bunload!
         echo
         unlet! s:state
