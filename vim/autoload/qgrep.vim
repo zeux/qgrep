@@ -3,7 +3,10 @@ let g:Qgrep = {
     \ 'qgrep': 'libcall:'.expand('<sfile>:h:h').'/qgrep',
     \ 'project': '*',
     \ 'searchtype': 'ft',
-    \ 'limit': 128
+    \ 'limit': 128,
+    \ 'keymap': {
+        \ 'qgrep#selectProject()':  ['<C-q>'],
+    \ },
     \ }
 
 " Global options
@@ -31,7 +34,6 @@ let s:keymap = {
     \ 's:onMoveCursor(%s, -1)': ['<C-h>', '<Left>', '<C-^>'],
     \ 's:onMoveCursor(%s, +1)': ['<C-l>', '<Right>'],
     \ 'qgrep#close()':          ['<Esc>', '<C-c>'],
-    \ 'qgrep#selectProject()':  ['<C-q>'],
     \ }
 
 function! s:state()
@@ -215,7 +217,9 @@ function! s:initKeys(stateexpr)
 	endfor
 
     " special keys
-    for [expr, keys] in items(s:keymap)
+    let keymap = extend(copy(s:keymap), g:Qgrep.keymap)
+
+    for [expr, keys] in items(keymap)
         let expr = stridx(expr, '%s') < 0 ? expr : printf(expr, a:stateexpr)
         let expr = expr[0:1] == 's:' ? '<SID>'.expr[2:] : expr
         for key in keys
