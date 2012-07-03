@@ -1,3 +1,9 @@
+" User dictionary
+let g:Qgrep = {
+    \ 'qgrep': 'libcall:'.expand('<sfile>:h:h').'/qgrep',
+    \ 'limit': 128
+    \ }
+
 " Global options
 let s:globalopts = {
     \ 'mouse': 'n', 'guicursor': 'a:blinkon0', 'mousef': 0, 'imdisable': 1,
@@ -103,9 +109,7 @@ function! s:updateResults(state)
     let state = a:state
     let pattern = state.pattern
     let start = reltime()
-    let qgrep = expand('$VIM') . '\ext\qgrep.dll'
-    let qgrep_args = printf("files\nea\nft\nL%d\nft\n%s", state.limit, pattern)
-    let results = split(libcall(qgrep, 'entryPointVim', qgrep_args), "\n")
+    let results = qgrep#execute(['files', 'ea', 'ft', 'L'.state.limit, pattern])
     let mid = reltime()
     call map(results, 's:hixform(v:val, pattern)')
     call s:renderResults(results)
@@ -247,6 +251,24 @@ endfunction
 
 function! qgrep#close()
     noautocmd call s:close()
+endfunction
+
+function! qgrep#execute(args)
+    let path = g:Qgrep.qgrep
+
+    try
+        if path[0:7] == 'libcall:'
+            let args = join(a:args, "\n")
+            let results = libcall(path[8:], 'entryPointVim', args)
+        else
+            let args = map(copy(a:args), 'shellescape(v:val)')
+            let results = system(path . ' ' . join(args, ' '))
+        endif
+
+        return split(results, "\n")
+    catch
+        return []
+    endtry
 endfunction
 
 if has('autocmd')
