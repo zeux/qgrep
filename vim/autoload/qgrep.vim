@@ -208,11 +208,24 @@ function! s:initOptions(state)
 endfunction
 
 function! s:initKeys(stateexpr)
+    let charcmd = 'nnoremap <buffer> <silent> %s :call <SID>onInsertChar(%s, "%s")<CR>'
+
 	" normal keys
-    let charcmd = 'nnoremap <buffer> <silent> <char-%d> :call <SID>onInsertChar(%s, "%s")<CR>'
 	for ch in range(32, 126)
-		execute printf(charcmd, ch, a:stateexpr, escape(nr2char(ch), '"|\'))
+		execute printf(charcmd, printf('<char-%d>', ch), a:stateexpr, escape(nr2char(ch), '"|\'))
 	endfor
+
+    " keypad numeric keys
+	for ch in range(0, 9)
+		execute printf(charcmd, printf('<k%d>', ch), a:stateexpr, ch)
+	endfo
+
+    " keypad non-numeric keys
+    let kprange = { 'Plus': '+', 'Minus': '-', 'Divide': '/', 'Multiply': '*', 'Point': '.' }
+
+	for [key, ch] in items(kprange)
+		execute printf(charcmd, printf('<k%s>', key), a:stateexpr, ch)
+	endfo
 
     " special keys
     let keymap = extend(copy(s:keymap), g:Qgrep.keymap)
