@@ -100,11 +100,19 @@ endfunction
 function! s:updateResults(state)
     let state = a:state
     let [pattern, cmd] = s:splitPattern(state.pattern)
+
+    if has_key(state, 'lastpattern') && state.lastpattern ==# pattern
+        return
+    end
+
     let start = reltime()
     let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, 'H', 'L'.state.limit, pattern])
     call s:renderResults(results, g:Qgrep.maxheight)
     call cursor(state.line, 1)
     let end = reltime()
+
+    let state.lastpattern = pattern
+
     call s:renderStatus(state, len(results), s:diffms(start, end))
 endfunction
 
@@ -273,6 +281,7 @@ endfunction
 
 function! qgrep#update()
     if exists('s:state')
+        unlet! s:state.lastpattern
         call s:update(s:state)
     endif
 endfunction
