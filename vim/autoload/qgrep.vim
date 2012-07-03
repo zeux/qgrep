@@ -7,6 +7,8 @@ let g:Qgrep = {
     \ 'keymap': {
         \ 'qgrep#selectProject()':  ['<C-q>'],
     \ },
+    \ 'lazyupdate': 0,
+    \ 'maxheight': 7,
     \ }
 
 " Global options
@@ -19,6 +21,7 @@ let s:globalopts = {
     \ 'showcmd': 0,
     \ 'timeout': 1,
     \ 'timeoutlen': 0,
+    \ 'updatetime': 4000
     \ }
 
 " Key mappings
@@ -75,8 +78,8 @@ function! s:formatLine(str)
     return '  '.a:str
 endfunction
 
-function! s:renderResults(lines)
-    let height = min([len(a:lines), 5])
+function! s:renderResults(lines, maxheight)
+    let height = min([len(a:lines), a:maxheight])
     setlocal modifiable
     silent! execute '%d'
     silent! execute 'resize' height
@@ -84,7 +87,7 @@ function! s:renderResults(lines)
     setlocal nomodifiable
 endfunction
 
-function! s:renderStatus(state, matches, uptime, retime)
+function! s:renderStatus(state, matches, time)
     let res = []
 
     call add(res, "qgrep")
@@ -96,8 +99,7 @@ function! s:renderStatus(state, matches, uptime, retime)
         call add(res, printf("%d+ matches", a:matches))
     endif
 
-    call add(res, printf("update %.f ms", a:uptime))
-    call add(res, printf("render %.f ms", a:retime))
+    call add(res, printf("%.f ms", a:time))
 
     let groups = ["LineNr", "None"]
 
@@ -113,15 +115,16 @@ function! s:updateResults(state)
     let [pattern, cmd] = s:splitPattern(state.pattern)
     let start = reltime()
     let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, 'H', 'L'.state.limit, pattern])
-    let mid = reltime()
-    call s:renderResults(results)
+    call s:renderResults(results, g:Qgrep.maxheight)
     call cursor(state.line, 1)
     let end = reltime()
-    call s:renderStatus(state, len(results), s:diffms(start, mid), s:diffms(mid, end))
+    call s:renderStatus(state, len(results), s:diffms(start, end))
 endfunction
 
 function! s:onPatternChanged(state)
-    call s:updateResults(a:state)
+    if !has('autocmd') || g:Qgrep.lazyupdate == 0
+        call s:updateResults(a:state)
+    endif
     call s:renderPrompt(a:state)
 endfunction
 
@@ -197,6 +200,11 @@ function! s:initOptions(state)
     setlocal noswapfile
     setlocal winfixheight
     setlocal nowrap
+
+    " Custom options
+    if g:Qgrep.lazyupdate
+        let &updatetime = (g:Qgrep.lazyupdate > 1) ? g:Qgrep.lazyupdate : 250
+    endif
 endfunction
 
 function! s:initKeys(stateexpr)
@@ -234,8 +242,7 @@ function! s:open()
     call s:initSyntax()
     call s:initKeys('<SID>state()')
 
-    call s:updateResults(state)
-    call s:renderPrompt(state)
+    call s:update(state)
 endfunction
 
 function! s:close()
@@ -250,6 +257,12 @@ function! s:close()
     endif
 endfunction
 
+function! s:update(state)
+    call s:updateResults(a:state)
+    call s:renderPrompt(a:state)
+endfunction
+
+
 function! qgrep#open()
     noautocmd call s:open()
 endfunction
@@ -260,7 +273,7 @@ endfunction
 
 function! qgrep#update()
     if exists('s:state')
-        call s:onPatternChanged(s:state)
+        call s:update(s:state)
     endif
 endfunction
 
@@ -302,5 +315,6 @@ if has('autocmd')
 	augroup QgrepAug
 		autocmd!
 		autocmd BufLeave Qgrep call qgrep#close()
+        autocmd CursorHold Qgrep if g:Qgrep.lazyupdate | call s:update(s:state) | endif
 	augroup END
 endif
