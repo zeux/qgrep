@@ -10,6 +10,7 @@
 #include "stringutil.hpp"
 #include "streamutil.hpp"
 #include "casefold.hpp"
+#include "colors.hpp"
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
@@ -555,11 +556,14 @@ static void processMatchHighlight(RankMatcherCommandT& matcher, const FileFileEn
 	{
 		if (posi < posbuf.size() && posbuf[posi] == i)
 		{
-			result.push_back('\x16');
 			posi++;
-		}
 
-		result.push_back(path[i]);
+			result += kColorMatch;
+			result += path[i];
+			result += kColorEnd;
+		}
+		else
+			result += path[i];
 	}
 
 	processMatch(result.c_str(), result.size(), output);
