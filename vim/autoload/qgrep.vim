@@ -108,7 +108,7 @@ function! s:updateResults(state)
     end
 
     let start = reltime()
-    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, has('conceal') ? 'H' : '', 'L'.state.limit, pattern])
+    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, qgrep#syntax() && has('conceal') ? 'H' : '', 'L'.state.limit, pattern])
     call s:renderResults(results, g:Qgrep.maxheight)
     call cursor(state.line, 1)
     let end = reltime()
@@ -276,7 +276,9 @@ function! s:open()
     abclear <buffer>
 
     call s:initOptions(state)
-    call s:initSyntax()
+    if qgrep#syntax()
+        call s:initSyntax()
+    endif
     call s:initKeys('<SID>state()')
 
     call s:update(state)
@@ -418,6 +420,10 @@ function! qgrep#selectProject()
 
         call qgrep#update()
     endif
+endfunction
+
+function! qgrep#syntax()
+	return has('syntax') && exists('g:syntax_on')
 endfunction
 
 if has('autocmd')
