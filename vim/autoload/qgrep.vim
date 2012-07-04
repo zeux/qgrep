@@ -250,7 +250,17 @@ function! s:initKeys(stateexpr)
     endfor
 endfunction
 
+function! s:iscmdwin()
+	let v:errmsg = ""
+	silent! noautocmd wincmd p
+	return v:errmsg =~ '^E11:'
+endfunction
+
 function! s:open()
+    if exists('s:state') || s:iscmdwin()
+        return
+    endif
+
     let state = {}
     let state.cursor = 0
     let state.pattern = ''
