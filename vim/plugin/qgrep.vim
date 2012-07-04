@@ -8,25 +8,25 @@ let g:loaded_qgrep = 1
 let g:Qgrep = {
     \ 'qgrep': 'libcall:'.expand('<sfile>:h:h').'/qgrep',
     \ 'project': '*',
-    \ 'searchtype': 'ft',
     \ 'limit': 100,
     \ 'lazyupdate': 0,
     \ 'maxheight': 7,
-    \ 'openmode': '',
+    \ 'switchbuf': '',
     \ 'keymap': {
         \ 'qgrep#selectProject()':  ['<C-q>'],
-        \ 'qgrep#acceptSelection(g:Qgrep.openmode)': ['<CR>'],
-    \ },
+        \ 'qgrep#acceptSelection(g:Qgrep.switchbuf)': ['<CR>'],
+        \ },
     \ 'highlight': {
         \ 'match': 'Identifier',
         \ 'prompt': 'Comment',
         \ 'cursor': 'Constant',
         \ 'status': ['LineNr', 'None']
-    \ },
+        \ },
+    \ 'mode': 'files',
     \ }
 
 " Commands
-command! -n=? Qgrep call qgrep#open()
+command! -n=? Qgrep call qgrep#open(<f-args>)
 command! -n=? QgrepProject call qgrep#selectProject()
 
 " Mappings

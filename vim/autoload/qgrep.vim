@@ -8,7 +8,7 @@ let s:globalopts = {
     \ 'showcmd': 0,
     \ 'timeout': 1,
     \ 'timeoutlen': 0,
-    \ 'updatetime': 4000
+    \ 'updatetime': 4000,
     \ }
 
 " Key mappings
@@ -32,21 +32,19 @@ function! s:state()
     return s:state
 endfunction
 
+function! s:modecall(state, name, args)
+    return call(printf('qgrep#%s#%s', a:state.mode, a:name), [a:state] + a:args)
+endfunction
+
 function! s:echoHighlight(group, text)
     execute 'echohl' a:group
     echon a:text
     echohl None
 endfunction
 
-function! s:splitPattern(pattern)
-    let pos = stridx(a:pattern, ':')
-    let pos = pos < 0 ? len(a:pattern) : pos
-    return [strpart(a:pattern, 0, pos), strpart(a:pattern, pos)]
-endfunction
-
 function! s:renderPrompt(state)
     let state = a:state
-    let text = state.pattern
+    let text = state.input
     let cursor = state.cursor
     let hl = g:Qgrep.highlight
 
@@ -61,27 +59,19 @@ function! s:renderPrompt(state)
     endif
 endfunction
 
-function! s:formatLine(str)
-    return '  '.a:str
-endfunction
-
-function! s:getFilePath(str)
-    return substitute(a:str, '\%o33\[.\{-}m', '', 'g')
-endfunction
-
 function! s:renderResults(lines, maxheight)
     let height = min([len(a:lines), a:maxheight])
     setlocal modifiable
     silent! execute '%d'
     silent! execute 'resize' height
-    call setline(1, map(copy(a:lines), 's:formatLine(v:val)'))
+    call setline(1, map(copy(a:lines), '"  ".v:val'))
     setlocal nomodifiable
 endfunction
 
 function! s:renderStatus(state, matches, time)
     let res = []
 
-    call add(res, "qgrep")
+    call add(res, 'qgrep '.a:state.mode)
     call add(res, g:Qgrep.project)
 
     if a:matches < a:state.limit
@@ -101,15 +91,16 @@ endfunction
 
 function! s:updateResults(state)
     let state = a:state
-    let [pattern, cmd] = s:splitPattern(state.pattern)
+    let pattern = s:modecall(state, 'parseInput', [state.input])
 
     if has_key(state, 'lastpattern') && state.lastpattern ==# pattern
         return
     end
 
     let start = reltime()
-    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, qgrep#syntax() && has('conceal') ? 'H' : '', 'L'.state.limit, pattern])
-    call s:renderResults(results, g:Qgrep.maxheight)
+    let results = s:modecall(state, 'getResults', [pattern])
+    let lines = s:modecall(state, 'formatResults', [results])
+    call s:renderResults(lines, g:Qgrep.maxheight)
     call cursor(state.line, 1)
     let end = reltime()
 
@@ -119,7 +110,7 @@ function! s:updateResults(state)
     call s:renderStatus(state, len(results), s:diffms(start, end))
 endfunction
 
-function! s:onPatternChanged(state)
+function! s:onInputChanged(state)
     if !has('autocmd') || g:Qgrep.lazyupdate == 0
         call s:updateResults(a:state)
     endif
@@ -132,24 +123,24 @@ endfunction
 
 function! s:onInsertChar(state, char)
     let state = a:state
-    let state.pattern = strpart(state.pattern, 0, state.cursor) . a:char . strpart(state.pattern, state.cursor)
+    let state.input = strpart(state.input, 0, state.cursor) . a:char . strpart(state.input, state.cursor)
     let state.cursor += 1
-    call s:onPatternChanged(state)
+    call s:onInputChanged(state)
 endfunction
 
 function! s:onDeleteChar(state, offset)
     let state = a:state
-    let state.pattern = strpart(state.pattern, 0, state.cursor + a:offset) . strpart(state.pattern, state.cursor + a:offset + 1)
+    let state.input = strpart(state.input, 0, state.cursor + a:offset) . strpart(state.input, state.cursor + a:offset + 1)
     if state.cursor > 0 && a:offset < 0
         let state.cursor -= 1
     endif
-    call s:onPatternChanged(state)
+    call s:onInputChanged(state)
 endfunction
 
 function! s:onMoveCursor(state, diff)
     let state = a:state
     let state.cursor += a:diff
-    let state.cursor = max([0, min([state.cursor, len(state.pattern)])])
+    let state.cursor = max([0, min([state.cursor, len(state.input)])])
     call s:onPromptChanged(state)
 endfunction
 
@@ -202,6 +193,7 @@ function! s:initOptions(state)
     setlocal number
     setlocal numberwidth=4
     setlocal norelativenumber
+    setlocal noreadonly
     setlocal nospell
     setlocal noswapfile
     setlocal winfixheight
@@ -258,17 +250,18 @@ function! s:iscmdwin()
 	return v:errmsg =~ '^E11:'
 endfunction
 
-function! s:open()
+function! s:open(args)
     if exists('s:state') || s:iscmdwin()
         return
     endif
 
     let state = {}
     let state.cursor = 0
-    let state.pattern = ''
+    let state.input = ''
     let state.line = 0
     let state.limit = g:Qgrep.limit
     let state.results = []
+    let state.mode = empty(a:args) ? g:Qgrep.mode : a:args[0]
 
     let s:state = state
 
@@ -280,6 +273,8 @@ function! s:open()
         call s:initSyntax()
     endif
     call s:initKeys('<SID>state()')
+
+    call s:modecall(state, 'init', [])
 
     call s:update(state)
 endfunction
@@ -312,8 +307,8 @@ function! s:tabpagebufwinnr(idx)
     return [-1, -1]
 endfunction
 
-function! qgrep#open()
-    noautocmd call s:open()
+function! qgrep#open(...)
+    noautocmd call s:open(a:000)
 endfunction
 
 function! qgrep#close()
@@ -376,8 +371,7 @@ function! qgrep#acceptSelection(mode)
     call qgrep#close()
 
     if line >= 0 && line < len(state.results)
-        let path = s:getFilePath(state.results[line])
-        let [_, cmd] = s:splitPattern(state.pattern)
+        let [path, cmd] = s:modecall(state, 'parseResult', [state.input, state.results[line]])
 
         try
             call qgrep#gotoFile(path, a:mode, cmd)
@@ -424,6 +418,12 @@ endfunction
 
 function! qgrep#syntax()
 	return has('syntax') && exists('g:syntax_on')
+endfunction
+
+function! qgrep#splitExCmd(input)
+    let pos = stridx(a:input, ':')
+    let pos = pos < 0 ? len(a:input) : pos
+    return [strpart(a:input, 0, pos), strpart(a:input, pos)]
 endfunction
 
 if has('autocmd')
