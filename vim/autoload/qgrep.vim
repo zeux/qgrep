@@ -108,7 +108,7 @@ function! s:updateResults(state)
     end
 
     let start = reltime()
-    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, 'H', 'L'.state.limit, pattern])
+    let results = qgrep#execute(['files', g:Qgrep.project, g:Qgrep.searchtype, has('conceal') ? 'H' : '', 'L'.state.limit, pattern])
     call s:renderResults(results, g:Qgrep.maxheight)
     call cursor(state.line, 1)
     let end = reltime()
@@ -162,8 +162,16 @@ endfunction
 
 function! s:initSyntax()
     syntax clear
-    syntax match Identifier /\%x16\@<=./
-    syntax match Ignore /\%x16/ conceal
+
+    if has('conceal')
+        syntax region Identifier
+            \ matchgroup=EscapeMatchBeg start=/\%o33\[.\{-}m/
+            \ matchgroup=EscapeMatchEnd end=/\%o33\[0m/
+            \ concealends
+
+        setlocal concealcursor=n
+        setlocal conceallevel=2
+    endif
 endfunction
 
 function! s:initOptions(state)
@@ -182,8 +190,6 @@ function! s:initOptions(state)
     setlocal nobuflisted
     setlocal buftype=nofile
     setlocal colorcolumn=0
-    setlocal concealcursor=n
-    setlocal conceallevel=2
     setlocal nocursorcolumn
     setlocal cursorline
     setlocal foldcolumn=0
