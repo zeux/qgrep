@@ -12,9 +12,10 @@ let g:Qgrep = {
     \ 'limit': 100,
     \ 'lazyupdate': 0,
     \ 'maxheight': 7,
+    \ 'openmode': '',
     \ 'keymap': {
         \ 'qgrep#selectProject()':  ['<C-q>'],
-        \ 'qgrep#acceptSelection("")': ['<CR>'],
+        \ 'qgrep#acceptSelection(g:Qgrep.openmode)': ['<CR>'],
     \ },
     \ 'highlight': {
         \ 'match': 'Identifier',
