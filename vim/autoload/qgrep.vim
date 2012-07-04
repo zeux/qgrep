@@ -404,7 +404,12 @@ function! qgrep#execute(args)
     endtry
 endfunction
 
-function! qgrep#selectProject()
+function! qgrep#selectProject(...)
+    if a:0
+        let g:Qgrep.project = a:1
+        return
+    endif
+
     let projects = qgrep#execute(['projects'])
 
     let lines = copy(projects)

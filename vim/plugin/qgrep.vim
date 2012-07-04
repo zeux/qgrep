@@ -27,7 +27,7 @@ let g:Qgrep = {
 
 " Commands
 command! -n=? Qgrep call qgrep#open(<f-args>)
-command! -n=? QgrepProject call qgrep#selectProject()
+command! -n=? QgrepProject call qgrep#selectProject(<f-args>)
 
 " Mappings
 silent! nnoremap <silent> <C-p> :Qgrep<CR>
