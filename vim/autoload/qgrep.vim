@@ -68,6 +68,10 @@ function! s:formatLine(str)
     return '  '.a:str
 endfunction
 
+function! s:getFilePath(str)
+    return substitute(a:str, '\%o33\[.\{-}m', '', 'g')
+endfunction
+
 function! s:renderResults(lines, maxheight)
     let height = min([len(a:lines), a:maxheight])
     setlocal modifiable
@@ -112,6 +116,7 @@ function! s:updateResults(state)
     call cursor(state.line, 1)
     let end = reltime()
 
+    let state.results = results
     let state.lastpattern = pattern
 
     call s:renderStatus(state, len(results), s:diffms(start, end))
@@ -266,6 +271,7 @@ function! s:open()
     let state.pattern = ''
     let state.line = 0
     let state.limit = g:Qgrep.limit
+    let state.results = []
 
     let s:state = state
 
@@ -296,6 +302,16 @@ function! s:update(state)
     call s:renderPrompt(a:state)
 endfunction
 
+function! s:tabpagebufwinnr(idx)
+    for i in range(tabpagenr('$'))
+        let win = index(tabpagebuflist(i + 1), a:idx)
+        if win >= 0
+            return [i, win]
+        endif
+    endfor
+
+    return [-1, -1]
+endfunction
 
 function! qgrep#open()
     noautocmd call s:open()
@@ -309,6 +325,62 @@ function! qgrep#update()
     if exists('s:state')
         unlet! s:state.lastpattern
         call s:update(s:state)
+    endif
+endfunction
+
+function! s:jumpCmd(cmd)
+    if a:cmd != ''
+        silent! execute a:cmd
+        silent! normal! zvzz
+    endif
+endfunction
+
+function! qgrep#gotoFile(path, mode, cmd)
+    let path = fnamemodify(a:path, ':p')
+    let mode = split(a:mode, ',')
+
+    let buf = bufnr(path)
+
+    if (count(mode, 'useopen') || count(mode, 'usetab')) && buf >= 0
+        let win = bufwinnr(buf)
+        if win >= 0
+            execute win . 'wincmd w'
+            return s:jumpCmd(a:cmd)
+        endif
+
+        if count(mode, 'usetab')
+            let [tab, win] = s:tabpagebufwinnr(buf)
+            if tab >= 0 && win >= 0
+                execute 'tabnext' (tab + 1)
+                execute win . 'wincmd w'
+                return s:jumpCmd(a:cmd)
+            endif
+        endif
+    endif
+
+    if count(mode, 'newtab')
+        execute 'tabedit' path
+    elseif count(mode, 'split')
+        execute 'split' path
+    elseif count(mode, 'vsplit')
+        execute 'vsplit' path
+    else
+        execute 'edit' path
+    endif
+
+    return s:jumpCmd(a:cmd)
+endfunction
+
+function! qgrep#acceptSelection(mode)
+    let state = s:state
+    let line = line('.') - 1
+    call qgrep#close()
+
+    if line >= 0 && line < len(state.results)
+        let path = s:getFilePath(state.results[line])
+        let [_, cmd] = s:splitPattern(state.pattern)
+
+        call qgrep#gotoFile(path, a:mode, cmd)
     endif
 endfunction
 

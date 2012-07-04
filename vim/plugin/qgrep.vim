@@ -14,6 +14,7 @@ let g:Qgrep = {
     \ 'maxheight': 7,
     \ 'keymap': {
         \ 'qgrep#selectProject()':  ['<C-q>'],
+        \ 'qgrep#acceptSelection("usetab,newtab")': ['<CR>'],
     \ },
     \ 'highlight': {
         \ 'match': 'Identifier',
