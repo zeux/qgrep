@@ -13,6 +13,9 @@ function! qgrep#files#formatResults(state, results)
     return a:results
 endfunction
 
-function! qgrep#files#parseResult(state, input, result)
-    return [substitute(a:result, '\%o33\[.\{-}m', '', 'g'), qgrep#utils#splitex(a:input)[1]]
+function! qgrep#files#acceptResult(state, input, result, ...)
+    let path = substitute(a:result, '\%o33\[.\{-}m', '', 'g')
+    let cmd = qgrep#utils#splitex(a:input)[1]
+
+    call qgrep#utils#gotoFile(path, a:0 ? a:1 : g:Qgrep.switchbuf, cmd)
 endfunction

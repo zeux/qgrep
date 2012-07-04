@@ -13,7 +13,8 @@ function! qgrep#search#formatResults(state, results)
     return a:results
 endfunction
 
-function! qgrep#search#parseResult(state, input, result)
+function! qgrep#search#acceptResult(state, input, result, ...)
     let res = matchlist(a:result, '^\(.\{-}\):\(\d\+\):')
-    return [res[1], ':'.res[2]]
+
+    call qgrep#utils#gotoFile(res[1], a:0 ? a:1 : g:Qgrep.switchbuf, ':'.res[2])
 endfunction

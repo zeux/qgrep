@@ -322,67 +322,13 @@ function! qgrep#update()
     endif
 endfunction
 
-function! s:jumpCmd(cmd)
-    if a:cmd != ''
-        silent! execute a:cmd
-        silent! normal! zvzz
-    endif
-endfunction
-
-function! qgrep#gotoFile(path, mode, cmd)
-    let path = fnamemodify(a:path, ':p')
-    let mode = split(a:mode, ',')
-
-    let buf = bufnr('^'.path.'$')
-
-    if (count(mode, 'useopen') || count(mode, 'usetab')) && buf >= 0
-        let win = bufwinnr(buf)
-        if win >= 0
-            execute win . 'wincmd w'
-            return s:jumpCmd(a:cmd)
-        endif
-
-        if count(mode, 'usetab')
-            let [tab, win] = s:tabpagebufwinnr(buf)
-            if tab >= 0 && win >= 0
-                execute 'tabnext' (tab + 1)
-                execute win . 'wincmd w'
-                return s:jumpCmd(a:cmd)
-            endif
-        endif
-    endif
-
-    if count(mode, 'newtab')
-        execute 'tabedit' path
-    elseif count(mode, 'split')
-        execute 'split' path
-    elseif count(mode, 'vsplit')
-        execute 'vsplit' path
-    else
-        execute 'edit' path
-    endif
-
-    return s:jumpCmd(a:cmd)
-endfunction
-
-function! qgrep#acceptSelection(mode)
+function! qgrep#acceptSelection(...)
     let state = s:state
     let line = line('.') - 1
-    call qgrep#close()
 
     if line >= 0 && line < len(state.results)
-        let res = s:modecall(state, 'parseResult', [state.input, state.results[line]])
-
-        if !empty(res)
-            let [path, cmd] = res
-
-            try
-                call qgrep#gotoFile(path, a:mode, cmd)
-            catch
-                echohl ErrorMsg
-                echo v:exception
-            endtry
-        endif
+        call qgrep#close()
+        call s:modecall(state, 'acceptResult', [state.input, state.results[line]] + a:000)
     endif
 endfunction
 

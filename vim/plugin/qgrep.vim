@@ -14,7 +14,7 @@ let g:Qgrep = {
     \ 'switchbuf': '',
     \ 'keymap': {
         \ 'qgrep#selectProject()':  ['<C-q>'],
-        \ 'qgrep#acceptSelection(g:Qgrep.switchbuf)': ['<CR>'],
+        \ 'qgrep#acceptSelection()': ['<CR>'],
         \ },
     \ 'highlight': {
         \ 'match': 'Identifier',
