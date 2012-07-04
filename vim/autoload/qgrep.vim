@@ -371,14 +371,18 @@ function! qgrep#acceptSelection(mode)
     call qgrep#close()
 
     if line >= 0 && line < len(state.results)
-        let [path, cmd] = s:modecall(state, 'parseResult', [state.input, state.results[line]])
+        let res = s:modecall(state, 'parseResult', [state.input, state.results[line]])
 
-        try
-            call qgrep#gotoFile(path, a:mode, cmd)
-        catch
-            echohl ErrorMsg
-            echo v:exception
-        endtry
+        if !empty(res)
+            let [path, cmd] = res
+
+            try
+                call qgrep#gotoFile(path, a:mode, cmd)
+            catch
+                echohl ErrorMsg
+                echo v:exception
+            endtry
+        endif
     endif
 endfunction
 
