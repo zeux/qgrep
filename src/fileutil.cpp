@@ -1,6 +1,8 @@
 #include "common.hpp"
 #include "fileutil.hpp"
 
+#include <string.h>
+
 static bool isSeparator(char ch)
 {
 	return ch == '/' || ch == '\\';

@@ -18,6 +18,7 @@
 #include <fstream>
 #include <memory>
 #include <algorithm>
+#include <limits.h>
 
 static std::vector<char> compressData(const std::vector<char>& data)
 {
@@ -342,7 +343,11 @@ public:
 
 		// add inverse casefolded letters
 		for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); ++i)
-			table[i] = table[casefold(i)];
+		{
+			unsigned char ch = static_cast<unsigned char>(casefold(i));
+
+			table[i] = table[ch];
+		}
 	}
 
 	bool match(const char* data, size_t size)
@@ -554,7 +559,7 @@ static void processMatchHighlight(RankMatcherCommandT& matcher, const FileFileEn
 
 	for (size_t i = 0; path + i != pathEnd; ++i)
 	{
-		if (posi < posbuf.size() && posbuf[posi] == i)
+		if (posi < posbuf.size() && posbuf[posi] == static_cast<int>(i))
 		{
 			posi++;
 
