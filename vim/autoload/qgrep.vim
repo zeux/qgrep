@@ -339,7 +339,7 @@ function! qgrep#gotoFile(path, mode, cmd)
     let path = fnamemodify(a:path, ':p')
     let mode = split(a:mode, ',')
 
-    let buf = bufnr(path)
+    let buf = bufnr('^'.path.'$')
 
     if (count(mode, 'useopen') || count(mode, 'usetab')) && buf >= 0
         let win = bufwinnr(buf)
@@ -380,7 +380,12 @@ function! qgrep#acceptSelection(mode)
         let path = s:getFilePath(state.results[line])
         let [_, cmd] = s:splitPattern(state.pattern)
 
-        call qgrep#gotoFile(path, a:mode, cmd)
+        try
+            call qgrep#gotoFile(path, a:mode, cmd)
+        catch
+            echohl ErrorMsg
+            echo v:exception
+        endtry
     endif
 endfunction
 
