@@ -51,15 +51,16 @@ function! s:renderPrompt(state)
     let state = a:state
     let text = state.pattern
     let cursor = state.cursor
+    let hl = g:Qgrep.highlight
 
     redraw
-    call s:echoHighlight('Comment', '>>> ')
+    call s:echoHighlight(hl.prompt, '>>> ')
     call s:echoHighlight('Normal', strpart(text, 0, cursor))
-    call s:echoHighlight('Constant', strpart(text, cursor, 1))
+    call s:echoHighlight(hl.cursor, strpart(text, cursor, 1))
     call s:echoHighlight('Normal', strpart(text, cursor + 1))
 
     if cursor >= len(text)
-        call s:echoHighlight('Constant', '_')
+        call s:echoHighlight(hl.cursor, '_')
     endif
 endfunction
 
@@ -88,11 +89,9 @@ function! s:renderStatus(state, matches, time)
         call add(res, printf("%d+ matches", a:matches))
     endif
 
-    call add(res, printf("%.f ms", a:time))
+    let groups = g:Qgrep.highlight.status
 
-    let groups = ["LineNr", "None"]
-
-    let &l:statusline = join(map(copy(res), '"%#" . groups[v:key % 2] . "# " . v:val . " %*"'), '')
+    let &l:statusline = join(map(copy(res), '"%#" . groups[v:key % len(groups)] . "# " . v:val . " %*"'), '') . printf('%%=%.f ms', a:time)
 endfunction
 
 function! s:diffms(start, end)
@@ -164,10 +163,12 @@ function! s:initSyntax()
     syntax clear
 
     if has('conceal')
-        syntax region Identifier
+        syntax region EscapeMatch
             \ matchgroup=EscapeMatchBeg start=/\%o33\[.\{-}m/
             \ matchgroup=EscapeMatchEnd end=/\%o33\[0m/
             \ concealends
+
+        execute 'highlight link EscapeMatch' g:Qgrep.highlight.match
 
         setlocal concealcursor=n
         setlocal conceallevel=2

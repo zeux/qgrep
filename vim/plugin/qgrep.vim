@@ -10,11 +10,17 @@ let g:Qgrep = {
     \ 'project': '*',
     \ 'searchtype': 'ft',
     \ 'limit': 100,
+    \ 'lazyupdate': 0,
+    \ 'maxheight': 7,
     \ 'keymap': {
         \ 'qgrep#selectProject()':  ['<C-q>'],
     \ },
-    \ 'lazyupdate': 0,
-    \ 'maxheight': 7,
+    \ 'highlight': {
+        \ 'match': 'Identifier',
+        \ 'prompt': 'Comment',
+        \ 'cursor': 'Constant',
+        \ 'status': ['LineNr', 'None']
+    \ },
     \ }
 
 " Commands
