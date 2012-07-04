@@ -40,11 +40,8 @@ endfunction
 
 function! s:splitPattern(pattern)
     let pos = stridx(a:pattern, ':')
-    if pos < 0
-        return [a:pattern, '']
-    else
-        return [strpart(a:pattern, 0, pos), strpart(a:pattern, pos)]
-    endif
+    let pos = pos < 0 ? len(a:pattern) : pos
+    return [strpart(a:pattern, 0, pos), strpart(a:pattern, pos)]
 endfunction
 
 function! s:renderPrompt(state)
@@ -244,13 +241,13 @@ function! s:initKeys(stateexpr)
 	endfo
 
     " special keys
-    let keymap = extend(copy(s:keymap), g:Qgrep.keymap)
-
-    for [expr, keys] in items(keymap)
-        let expr = stridx(expr, '%s') < 0 ? expr : printf(expr, a:stateexpr)
-        let expr = expr[0:1] == 's:' ? '<SID>'.expr[2:] : expr
-        for key in keys
-            execute 'nnoremap <buffer> <silent>' key ':call' expr '<CR>'
+    for keymap in [s:keymap, g:Qgrep.keymap]
+        for [expr, keys] in items(keymap)
+            let expr = stridx(expr, '%s') < 0 ? expr : printf(expr, a:stateexpr)
+            let expr = expr[0:1] == 's:' ? '<SID>'.expr[2:] : expr
+            for key in keys
+                execute 'nnoremap <buffer> <silent>' key ':call' expr '<CR>'
+            endfor
         endfor
     endfor
 endfunction
