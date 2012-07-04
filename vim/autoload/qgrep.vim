@@ -269,7 +269,7 @@ function! s:open(args)
     abclear <buffer>
 
     call s:initOptions(state)
-    if qgrep#syntax()
+    if qgrep#utils#syntax()
         call s:initSyntax()
     endif
     call s:initKeys('<SID>state()')
@@ -414,16 +414,6 @@ function! qgrep#selectProject()
 
         call qgrep#update()
     endif
-endfunction
-
-function! qgrep#syntax()
-	return has('syntax') && exists('g:syntax_on')
-endfunction
-
-function! qgrep#splitExCmd(input)
-    let pos = stridx(a:input, ':')
-    let pos = pos < 0 ? len(a:input) : pos
-    return [strpart(a:input, 0, pos), strpart(a:input, pos)]
 endfunction
 
 if has('autocmd')
