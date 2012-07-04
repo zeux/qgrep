@@ -213,6 +213,13 @@ endfunction
 function! s:initKeys(stateexpr)
     let charcmd = 'nnoremap <buffer> <silent> %s :call <SID>onInsertChar(%s, "%s")<CR>'
 
+    " fix arrow keys
+    if (has('termresponse') && v:termresponse =~ "\<Esc>") || &term =~? '\vxterm|<k?vt|gnome|screen|linux|ansi'
+        for mapping in ['\A <Up>', '\B <Down>', '\C <Right>', '\D <Left>']
+            execute 'nnoremap <buffer> <silent> <Esc>['.mapping
+        endfor
+    endif
+
 	" normal keys
 	for ch in range(32, 126)
 		execute printf(charcmd, printf('<char-%d>', ch), a:stateexpr, escape(nr2char(ch), '"|\'))
