@@ -343,6 +343,9 @@ function! qgrep#selectProject(...)
     if a:0
         let g:qgrep.project = a:1
         call qgrep#update()
+        if exists('s:grepprg')
+            call call('qgrep#replaceGrep', s:grepprg)
+        endif
         return
     endif
 
@@ -372,6 +375,15 @@ function! qgrep#selectProject(...)
             call qgrep#selectProject(choice == 0 ? '*' : projects[choice - 1])
         endif
     endif
+endfunction
+
+function! qgrep#replaceGrep(...)
+    let s:grepprg = a:000
+    let opts = empty(s:grepprg) ? ['<project>'] : s:grepprg
+    let args = map(copy(opts), 'shellescape(v:val == "<project>" ? g:qgrep.project : v:val)')
+    let path = g:qgrep.qgrep
+    let path = path[0:7] == 'libcall:' ? path[8:] : path
+    let &grepprg = path . ' search ' . join(args, ' ')
 endfunction
 
 if has('autocmd')
