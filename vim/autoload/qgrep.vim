@@ -359,7 +359,7 @@ function! qgrep#selectProject(...)
         for i in range(0, len(projects))
             let proj = i == 0 ? '*' : projects[i - 1]
             let pref = i < 10 ? '&'.i : '\ '
-            execute 'nnoremenu' ']Qgrep.'.pref.'\ '.proj ':call qgrep#selectProject("'.proj.'")<CR>'
+            execute 'nnoremenu' '<silent>' ']Qgrep.'.pref.'\ '.proj ':call qgrep#selectProject("'.proj.'")<CR>'
         endfor
         popup ]Qgrep
     else
