@@ -5,7 +5,7 @@ endif
 let g:loaded_qgrep = 1
 
 " Options
-let g:Qgrep = {
+let g:qgrep = {
     \ 'qgrep': 'libcall:'.expand('<sfile>:h:h').'/qgrep',
     \ 'project': '*',
     \ 'limit': 100,

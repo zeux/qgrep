@@ -46,7 +46,7 @@ function! s:renderPrompt(state)
     let state = a:state
     let text = state.input
     let cursor = state.cursor
-    let hl = g:Qgrep.highlight
+    let hl = g:qgrep.highlight
 
     redraw
     call s:echoHighlight(hl.prompt, '>>> ')
@@ -72,7 +72,7 @@ function! s:renderStatus(state, matches, time)
     let res = []
 
     call add(res, 'qgrep '.a:state.mode)
-    call add(res, g:Qgrep.project)
+    call add(res, g:qgrep.project)
 
     if a:matches < a:state.limit
         call add(res, printf("%d matches", a:matches))
@@ -80,7 +80,7 @@ function! s:renderStatus(state, matches, time)
         call add(res, printf("%d+ matches", a:matches))
     endif
 
-    let groups = g:Qgrep.highlight.status
+    let groups = g:qgrep.highlight.status
 
     let &l:statusline = join(map(copy(res), '"%#" . groups[v:key % len(groups)] . "# " . v:val . " %*"'), '') . printf('%%=%.f ms', a:time)
 endfunction
@@ -100,7 +100,7 @@ function! s:updateResults(state)
     let start = reltime()
     let results = s:modecall(state, 'getResults', [pattern])
     let lines = s:modecall(state, 'formatResults', [results])
-    call s:renderResults(lines, g:Qgrep.maxheight)
+    call s:renderResults(lines, g:qgrep.maxheight)
     call cursor(state.line, 1)
     let end = reltime()
 
@@ -111,7 +111,7 @@ function! s:updateResults(state)
 endfunction
 
 function! s:onInputChanged(state)
-    if !has('autocmd') || g:Qgrep.lazyupdate == 0
+    if !has('autocmd') || g:qgrep.lazyupdate == 0
         call s:updateResults(a:state)
     endif
     call s:renderPrompt(a:state)
@@ -161,7 +161,7 @@ function! s:initSyntax()
             \ matchgroup=EscapeMatchEnd end=/\%o33\[0m/
             \ concealends
 
-        execute 'highlight link EscapeMatch' g:Qgrep.highlight.match
+        execute 'highlight link EscapeMatch' g:qgrep.highlight.match
 
         setlocal concealcursor=n
         setlocal conceallevel=2
@@ -200,8 +200,8 @@ function! s:initOptions(state)
     setlocal nowrap
 
     " Custom options
-    if g:Qgrep.lazyupdate
-        let &updatetime = (g:Qgrep.lazyupdate > 1) ? g:Qgrep.lazyupdate : 250
+    if g:qgrep.lazyupdate
+        let &updatetime = (g:qgrep.lazyupdate > 1) ? g:qgrep.lazyupdate : 250
     endif
 endfunction
 
@@ -233,7 +233,7 @@ function! s:initKeys(stateexpr)
 	endfo
 
     " special keys
-    for keymap in [s:keymap, g:Qgrep.keymap]
+    for keymap in [s:keymap, g:qgrep.keymap]
         for [expr, keys] in items(keymap)
             let expr = stridx(expr, '%s') < 0 ? expr : printf(expr, a:stateexpr)
             let expr = expr[0:1] == 's:' ? '<SID>'.expr[2:] : expr
@@ -259,9 +259,9 @@ function! s:open(args)
     let state.cursor = 0
     let state.input = ''
     let state.line = 0
-    let state.limit = g:Qgrep.limit
+    let state.limit = g:qgrep.limit
     let state.results = []
-    let state.mode = empty(a:args) ? g:Qgrep.mode : a:args[0]
+    let state.mode = empty(a:args) ? g:qgrep.mode : a:args[0]
 
     let s:state = state
 
@@ -322,7 +322,7 @@ function! qgrep#acceptSelection(...)
 endfunction
 
 function! qgrep#execute(args)
-    let path = g:Qgrep.qgrep
+    let path = g:qgrep.qgrep
 
     try
         if path[0:7] == 'libcall:'
@@ -341,7 +341,7 @@ endfunction
 
 function! qgrep#selectProject(...)
     if a:0
-        let g:Qgrep.project = a:1
+        let g:qgrep.project = a:1
         call qgrep#update()
         return
     endif
@@ -378,6 +378,6 @@ if has('autocmd')
 	augroup QgrepAug
 		autocmd!
 		autocmd BufLeave Qgrep call qgrep#close()
-        autocmd CursorHold Qgrep if g:Qgrep.lazyupdate | call s:update(s:state) | endif
+        autocmd CursorHold Qgrep if g:qgrep.lazyupdate | call s:update(s:state) | endif
 	augroup END
 endif

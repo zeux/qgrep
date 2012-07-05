@@ -6,7 +6,7 @@ function! qgrep#search#parseInput(state, input)
 endfunction
 
 function! qgrep#search#getResults(state, pattern)
-    return qgrep#execute(['search', g:Qgrep.project, 'L'.a:state.limit, a:pattern])
+    return qgrep#execute(['search', g:qgrep.project, 'L'.a:state.limit, a:pattern])
 endfunction
 
 function! qgrep#search#formatResults(state, results)
@@ -16,5 +16,5 @@ endfunction
 function! qgrep#search#acceptResult(state, input, result, ...)
     let res = matchlist(a:result, '^\(.\{-}\):\(\d\+\):')
 
-    call qgrep#utils#gotoFile(res[1], a:0 ? a:1 : g:Qgrep.switchbuf, ':'.res[2])
+    call qgrep#utils#gotoFile(res[1], a:0 ? a:1 : g:qgrep.switchbuf, ':'.res[2])
 endfunction
