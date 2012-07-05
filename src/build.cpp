@@ -93,10 +93,30 @@ public:
 		flushIfNeeded();
 	}
 
-	std::vector<char> readFile(std::ifstream& in)
+    static size_t normalizeEOL(char* data, size_t size)
+    {
+        // replace \r\n with \n, replace stray \r with \n
+        size_t result = 0;
+
+        for (size_t i = 0; i < size; ++i)
+        {
+            if (data[i] == '\r')
+            {
+                data[result++] = '\n';
+                if (i + 1 < size && data[i + 1] == '\n') i++;
+            }
+            else
+                data[result++] = data[i];
+        }
+
+		return result;
+    }
+
+	static std::vector<char> readFile(std::ifstream& in)
 	{
 		std::vector<char> result;
 
+        // read file as is
 		while (!in.eof())
 		{
 			char buffer[65536];
@@ -105,12 +125,20 @@ public:
 			result.insert(result.end(), buffer, buffer + in.gcount());
 		}
 
+        // normalize new lines in a cross-platform way (don't rely on text-mode file I/O)
+        if (!result.empty())
+        {
+            size_t size = normalizeEOL(&result[0], result.size());
+            assert(size <= result.size());
+            result.resize(size);
+        }
+
 		return result;
 	}
 
 	bool appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize)
 	{
-		std::ifstream in(path);
+		std::ifstream in(path, std::ios::in | std::ios::binary);
 		if (!in) return false;
 
 		try
