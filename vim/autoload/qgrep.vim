@@ -296,17 +296,6 @@ function! s:update(state)
     call s:renderPrompt(a:state)
 endfunction
 
-function! s:tabpagebufwinnr(idx)
-    for i in range(tabpagenr('$'))
-        let win = index(tabpagebuflist(i + 1), a:idx)
-        if win >= 0
-            return [i, win]
-        endif
-    endfor
-
-    return [-1, -1]
-endfunction
-
 function! qgrep#open(...)
     noautocmd call s:open(a:000)
 endfunction
@@ -353,21 +342,35 @@ endfunction
 function! qgrep#selectProject(...)
     if a:0
         let g:Qgrep.project = a:1
+        call qgrep#update()
         return
     endif
 
     let projects = qgrep#execute(['projects'])
 
-    let lines = copy(projects)
-    call map(lines, 'printf("%2d. %s", v:key + 1, v:val)')
-    call insert(lines, 'Select project (*):')
+    if has('menu') && has('gui_running')
+        try
+            nunmenu ]Qgrep
+        catch
+        endtry
 
-    let choice = inputlist(lines)
-    if choice >= 0 && choice <= len(projects)
-        let project = (choice == 0) ? '*' : projects[choice - 1]
-        let g:Qgrep.project = project
+        execute 'nnoremenu' ']Qgrep.Select\ project:' '<Nop>'
 
-        call qgrep#update()
+        for i in range(0, len(projects))
+            let proj = i == 0 ? '*' : projects[i - 1]
+            let pref = i < 10 ? '&'.i : '\ '
+            execute 'nnoremenu' ']Qgrep.'.pref.'\ '.proj ':call qgrep#selectProject("'.proj.'")<CR>'
+        endfor
+        popup ]Qgrep
+    else
+        let lines = copy(projects)
+        call map(lines, 'printf("%d. %s", v:key + 1, v:val)')
+        call insert(lines, 'Select project (*):')
+
+        let choice = inputlist(lines)
+        if choice >= 0 && choice <= len(projects)
+            call qgrep#selectProject(choice == 0 ? '*' : projects[choice - 1])
+        endif
     endif
 endfunction
 

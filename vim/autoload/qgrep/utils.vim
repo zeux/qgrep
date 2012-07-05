@@ -15,6 +15,17 @@ function! s:jumpCmd(cmd)
     endif
 endfunction
 
+function! s:tabpagebufwinnr(idx)
+    for i in range(tabpagenr('$'))
+        let win = index(tabpagebuflist(i + 1), a:idx)
+        if win >= 0
+            return [i, win]
+        endif
+    endfor
+
+    return [-1, -1]
+endfunction
+
 function! s:gotoFile(path, mode, cmd)
     let path = fnamemodify(a:path, ':p')
     let mode = split(a:mode, ',')
