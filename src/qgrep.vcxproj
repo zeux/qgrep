@@ -116,6 +116,7 @@
     <ClCompile Include="files.cpp" />
     <ClCompile Include="fileutil.cpp" />
     <ClCompile Include="fileutil_win.cpp" />
+    <ClCompile Include="fuzzymatch.cpp" />
     <ClCompile Include="info.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="main.cpp" />
@@ -144,11 +145,13 @@
     <ClInclude Include="blockpool.hpp" />
     <ClInclude Include="build.hpp" />
     <ClInclude Include="casefold.hpp" />
+    <ClInclude Include="colors.hpp" />
     <ClInclude Include="common.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="encoding.hpp" />
     <ClInclude Include="files.hpp" />
     <ClInclude Include="fileutil.hpp" />
+    <ClInclude Include="fuzzymatch.hpp" />
     <ClInclude Include="info.hpp" />
     <ClInclude Include="init.hpp" />
     <ClInclude Include="orderedoutput.hpp" />

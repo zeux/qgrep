@@ -118,6 +118,9 @@
     <ClCompile Include="stringutil.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="fuzzymatch.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -220,6 +223,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="common.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="colors.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="fuzzymatch.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
