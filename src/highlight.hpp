@@ -7,7 +7,7 @@
 const char* const kHighlightMatch = "\033[;01;31m"; // bright red
 const char* const kHighlightPath = "\033[;0;35m"; // magenta
 const char* const kHighlightNumber = "\033[;0;32m"; // green
-const char* const kHighlightSeparator = "\033[;0;32m"; // cyan
+const char* const kHighlightSeparator = "\033[;0;36m"; // cyan
 const char* const kHighlightEnd = "\033[0m";
 
 // Compute highlighting for a string, given a set of ranges
