@@ -16,12 +16,6 @@ let g:qgrep = {
         \ 'qgrep#selectProject()':  ['<C-q>'],
         \ 'qgrep#acceptSelection()': ['<CR>'],
         \ },
-    \ 'highlight': {
-        \ 'match': 'Identifier',
-        \ 'prompt': 'Comment',
-        \ 'cursor': 'Constant',
-        \ 'status': ['LineNr', 'None']
-        \ },
     \ 'mode': 'files',
     \ }
 

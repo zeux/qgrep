@@ -46,16 +46,15 @@ function! s:renderPrompt(state)
     let state = a:state
     let text = state.input
     let cursor = state.cursor
-    let hl = g:qgrep.highlight
 
     redraw
-    call s:echoHighlight(hl.prompt, '>>> ')
-    call s:echoHighlight('Normal', strpart(text, 0, cursor))
-    call s:echoHighlight(hl.cursor, strpart(text, cursor, 1))
-    call s:echoHighlight('Normal', strpart(text, cursor + 1))
+    call s:echoHighlight('QgrepPromptPrompt', '>>> ')
+    call s:echoHighlight('QgrepPromptText', strpart(text, 0, cursor))
+    call s:echoHighlight('QgrepPromptCursor', strpart(text, cursor, 1))
+    call s:echoHighlight('QgrepPromptText', strpart(text, cursor + 1))
 
     if cursor >= len(text)
-        call s:echoHighlight(hl.cursor, '_')
+        call s:echoHighlight('QgrepPromptCursor', '_')
     endif
 endfunction
 
@@ -80,7 +79,7 @@ function! s:renderStatus(state, matches, time)
         call add(res, printf("%d+ matches", a:matches))
     endif
 
-    let groups = g:qgrep.highlight.status
+    let groups = ['QgrepStatusOdd', 'QgrepStatusEven']
 
     let &l:statusline = join(map(copy(res), '"%#" . groups[v:key % len(groups)] . "# " . v:val . " %*"'), '') . printf('%%=%.f ms', a:time)
 endfunction
@@ -155,13 +154,20 @@ endfunction
 function! s:initSyntax()
     syntax clear
 
+    highlight default link QgrepPromptPrompt Comment
+    highlight default link QgrepPromptText Normal
+    highlight default link QgrepPromptCursor Constant
+
+    highlight default link QgrepStatusOdd LineNr
+    highlight default link QgrepStatusEven None
+
     if has('conceal')
-        syntax region EscapeMatch
-            \ matchgroup=EscapeMatchBeg start=/\%o33\[.\{-}m/
-            \ matchgroup=EscapeMatchEnd end=/\%o33\[0m/
+        syntax region QgrepMatch
+            \ matchgroup=QgrepMatchBeg start=/\%o33\[.\{-}m/
+            \ matchgroup=QgrepMatchEnd end=/\%o33\[0m/
             \ concealends
 
-        execute 'highlight link EscapeMatch' g:qgrep.highlight.match
+        highlight default link QgrepMatch Identifier
 
         setlocal concealcursor=n
         setlocal conceallevel=2

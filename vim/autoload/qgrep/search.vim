@@ -1,4 +1,11 @@
 function! qgrep#search#init(state)
+    if qgrep#utils#syntax()
+        syntax match QgrepSearchPath "^.\{-}\ze:\d\+:" nextgroup=QgrepSearchLine
+        syntax match QgrepSearchLine ":\zs\d\+\ze:"
+
+        highlight default link QgrepSearchPath Directory
+        highlight default link QgrepSearchLine LineNr
+    endif
 endfunction
 
 function! qgrep#search#parseInput(state, input)
@@ -16,5 +23,7 @@ endfunction
 function! qgrep#search#acceptResult(state, input, result, ...)
     let res = matchlist(a:result, '^\(.\{-}\):\(\d\+\):')
 
-    call qgrep#utils#gotoFile(res[1], a:0 ? a:1 : g:qgrep.switchbuf, ':'.res[2])
+    if !empty(res)
+        call qgrep#utils#gotoFile(res[1], a:0 ? a:1 : g:qgrep.switchbuf, ':'.res[2])
+    endif
 endfunction
