@@ -253,6 +253,7 @@ endfunction
 function! s:iscmdwin()
 	let v:errmsg = ""
 	silent! noautocmd wincmd p
+	silent! noautocmd wincmd p
 	return v:errmsg =~ '^E11:'
 endfunction
 
@@ -308,6 +309,7 @@ endfunction
 
 function! qgrep#close()
     noautocmd call s:close()
+    wincmd p
 endfunction
 
 function! qgrep#update()
@@ -395,7 +397,7 @@ endfunction
 if has('autocmd')
 	augroup QgrepAug
 		autocmd!
-		autocmd BufLeave Qgrep call qgrep#close()
+		autocmd BufLeave Qgrep call s:close()
         autocmd CursorHold Qgrep if g:qgrep.lazyupdate | call s:update(s:state) | endif
 	augroup END
 endif
