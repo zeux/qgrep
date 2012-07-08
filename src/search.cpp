@@ -13,6 +13,7 @@
 #include "bloom.hpp"
 #include "casefold.hpp"
 #include "streamutil.hpp"
+#include "highlight.hpp"
 
 #include <fstream>
 #include <algorithm>
@@ -38,7 +39,44 @@ struct SearchOutput
 	OrderedOutput output;
 };
 
-static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength)
+struct HighlightBuffer
+{
+	std::vector<HighlightRange> ranges;
+	std::string result;
+};
+
+static void highlightMatch(Regex* re, HighlightBuffer& hlbuf, const char* match, size_t matchLength, const char* matchRange, size_t offset = 0)
+{
+	hlbuf.ranges.clear();
+
+	while (RegexMatch match = (offset < matchLength) ? re->rangeSearch(matchRange + offset, matchLength - offset) : RegexMatch())
+	{
+		size_t position = match.data - matchRange;
+
+		if (match.size > 0)
+		{
+			hlbuf.ranges.push_back(std::make_pair(position, match.size));
+
+			offset = position + match.size;
+		}
+		else
+			offset = position + 1;
+	}
+
+	if (hlbuf.ranges.empty())
+	{
+		hlbuf.result.assign(match, match + matchLength);
+	}
+	else
+	{
+		hlbuf.result.clear();
+
+		highlight(hlbuf.result, match, matchLength, &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
+	}
+}
+
+static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
+	const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength, const char* matchRange)
 {
 	const char* lineBefore = ":";
 	const char* lineAfter = ":";
@@ -60,11 +98,20 @@ static void processMatch(SearchOutput* output, OrderedOutput::Chunk* chunk, cons
 	{
 		sprintf(colnumber, "%c%d", (output->options & SO_VISUALSTUDIO) ? ',' : ':', column);
 	}
+
+	if (output->options & SO_HIGHLIGHT)
+	{
+		highlightMatch(re, hlbuf, match, matchLength, matchRange);
+
+		match = hlbuf.result.c_str();
+		matchLength = hlbuf.result.size();
+	}
 	
 	output->output.write(chunk, "%.*s%s%d%s%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, colnumber, lineAfter, static_cast<unsigned>(matchLength), match);
 }
 
-static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, const char* path, size_t pathLength, const char* data, size_t size, unsigned int startLine)
+static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
+	const char* path, size_t pathLength, const char* data, size_t size, unsigned int startLine)
 {
 	const char* range = re->rangePrepare(data, size);
 
@@ -84,7 +131,7 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 		// print match
 		const char* lbeg = findLineStart(begin, match.data);
 		const char* lend = findLineEnd(match.data + match.size, end);
-		processMatch(output, chunk, path, pathLength, line, (match.data - lbeg) + 1, (lbeg - range) + data, lend - lbeg);
+		processMatch(re, output, chunk, hlbuf, path, pathLength, line, (match.data - lbeg) + 1, (lbeg - range) + data, lend - lbeg, lbeg);
 		
 		// move to next line
 		if (lend == end) break;
@@ -102,11 +149,13 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 	if (!output->isLimitReached())
 	{
+		HighlightBuffer hlbuf;
+
 		for (size_t i = 0; i < fileCount; ++i)
 		{
 			const DataChunkFileHeader& f = files[i];
 			
-			processFile(re, output, chunk, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
+			processFile(re, output, chunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
 		}
 	}
 
