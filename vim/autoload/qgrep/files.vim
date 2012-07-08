@@ -6,7 +6,7 @@ function! qgrep#files#parseInput(state, input)
 endfunction
 
 function! qgrep#files#getResults(state, pattern)
-    return qgrep#execute(['files', a:state.config.project, 'ft', qgrep#utils#syntax() && has('conceal') ? 'H' : '', 'L'.a:state.config.limit, a:pattern])
+    return qgrep#execute(['files', a:state.config.project, a:state.config.searchtype, qgrep#utils#syntax() && has('conceal') ? 'H' : '', 'L'.a:state.config.limit, a:pattern])
 endfunction
 
 function! qgrep#files#formatResults(state, results)
