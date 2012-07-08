@@ -9,7 +9,7 @@
 #include "regex.hpp"
 #include "stringutil.hpp"
 #include "streamutil.hpp"
-#include "colors.hpp"
+#include "highlight.hpp"
 #include "fuzzymatch.hpp"
 
 #include "lz4/lz4.h"
@@ -359,24 +359,15 @@ static void processMatchHighlight(FuzzyMatcher& matcher, const FileFileEntry& en
 	posbuf.resize(matcher.size());
 	matcher.rank(path, pathEnd - path, &posbuf[0]);
 
+	static std::vector<HighlightRange> rbuf;
+
+	rbuf.resize(posbuf.size());
+	for (size_t i = 0; i < posbuf.size(); ++i) rbuf[i] = std::make_pair(posbuf[i], 1);
+
 	static std::string result;
 	result.clear();
 
-	size_t posi = 0;
-
-	for (size_t i = 0; path + i != pathEnd; ++i)
-	{
-		if (posi < posbuf.size() && posbuf[posi] == static_cast<int>(i))
-		{
-			posi++;
-
-			result += kColorMatch;
-			result += path[i];
-			result += kColorEnd;
-		}
-		else
-			result += path[i];
-	}
+	highlight(result, path, pathEnd - path, &rbuf[0], rbuf.size(), kHighlightMatch);
 
 	processMatch(result.c_str(), result.size(), output);
 }
