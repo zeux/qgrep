@@ -6,7 +6,7 @@ function! qgrep#files#parseInput(state, input)
 endfunction
 
 function! qgrep#files#getResults(state, pattern)
-    return qgrep#execute(['files', g:qgrep.project, 'ft', qgrep#utils#syntax() && has('conceal') ? 'H' : '', 'L'.a:state.limit, a:pattern])
+    return qgrep#execute(['files', a:state.config.project, 'ft', qgrep#utils#syntax() && has('conceal') ? 'H' : '', 'L'.a:state.config.limit, a:pattern])
 endfunction
 
 function! qgrep#files#formatResults(state, results)
@@ -17,5 +17,5 @@ function! qgrep#files#acceptResult(state, input, result, ...)
     let path = substitute(a:result, '\%o33\[.\{-}m', '', 'g')
     let cmd = qgrep#utils#splitex(a:input)[1]
 
-    call qgrep#utils#gotoFile(path, a:0 ? a:1 : g:qgrep.switchbuf, cmd)
+    call qgrep#utils#gotoFile(path, a:0 ? a:1 : a:state.config.switchbuf, cmd)
 endfunction

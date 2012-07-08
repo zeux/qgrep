@@ -71,9 +71,9 @@ function! s:renderStatus(state, matches, time)
     let res = []
 
     call add(res, 'qgrep '.a:state.mode)
-    call add(res, g:qgrep.project)
+    call add(res, a:state.config.project)
 
-    if a:matches < a:state.limit
+    if a:matches < a:state.config.limit
         call add(res, printf("%d matches", a:matches))
     else
         call add(res, printf("%d+ matches", a:matches))
@@ -99,7 +99,7 @@ function! s:updateResults(state)
     let start = reltime()
     let results = s:modecall(state, 'getResults', [pattern])
     let lines = s:modecall(state, 'formatResults', [results])
-    call s:renderResults(lines, g:qgrep.maxheight)
+    call s:renderResults(lines, state.config.maxheight)
     call cursor(state.line, 1)
     let end = reltime()
 
@@ -110,7 +110,7 @@ function! s:updateResults(state)
 endfunction
 
 function! s:onInputChanged(state)
-    if !has('autocmd') || g:qgrep.lazyupdate == 0
+    if !has('autocmd') || a:state.config.lazyupdate == 0
         call s:updateResults(a:state)
     endif
     call s:renderPrompt(a:state)
@@ -206,12 +206,12 @@ function! s:initOptions(state)
     setlocal nowrap
 
     " Custom options
-    if g:qgrep.lazyupdate
-        let &updatetime = (g:qgrep.lazyupdate > 1) ? g:qgrep.lazyupdate : 250
+    if a:state.config.lazyupdate
+        let &updatetime = (a:state.config.lazyupdate > 1) ? a:state.config.lazyupdate : 250
     endif
 endfunction
 
-function! s:initKeys(stateexpr)
+function! s:initKeys(state, stateexpr)
     let charcmd = 'nnoremap <buffer> <silent> %s :call <SID>onInsertChar(%s, "%s")<CR>'
 
     " fix arrow keys
@@ -239,7 +239,7 @@ function! s:initKeys(stateexpr)
 	endfo
 
     " special keys
-    for keymap in [s:keymap, g:qgrep.keymap]
+    for keymap in [s:keymap, a:state.config.keymap]
         for [expr, keys] in items(keymap)
             let expr = stridx(expr, '%s') < 0 ? expr : printf(expr, a:stateexpr)
             let expr = expr[0:1] == 's:' ? '<SID>'.expr[2:] : expr
@@ -262,13 +262,14 @@ function! s:open(args)
         return
     endif
 
-    let state = {}
-    let state.cursor = 0
-    let state.input = ''
-    let state.line = 0
-    let state.limit = g:qgrep.limit
-    let state.results = []
-    let state.mode = empty(a:args) ? g:qgrep.mode : a:args[0]
+    let mode = empty(a:args) ? g:qgrep.mode : a:args[0]
+    let state = {'cursor': 0, 'input': '', 'line': 0, 'results': [], 'mode': mode, 'config': {}}
+    let config = items(g:qgrep) + (has_key(g:qgrep, mode) ? items(g:qgrep[mode]) : [])
+
+    for p in config
+        let state.config[p[0]] = p[1]
+    endfor
+
 	let state.winrestore = [winrestcmd(), &lines, winnr('$')]
 
     let s:state = state
@@ -280,7 +281,7 @@ function! s:open(args)
     if qgrep#utils#syntax()
         call s:initSyntax()
     endif
-    call s:initKeys('<SID>state()')
+    call s:initKeys(state, '<SID>state()')
 
     call s:modecall(state, 'init', [])
 
@@ -356,7 +357,10 @@ endfunction
 function! qgrep#selectProject(...)
     if a:0
         let g:qgrep.project = a:1
-        call qgrep#update()
+        if exists('s:state')
+            let s:state.config.project = a:1
+            call qgrep#update()
+        endif
         if exists('s:grepprg')
             call call('qgrep#replaceGrep', s:grepprg)
         endif
@@ -404,6 +408,6 @@ if has('autocmd')
 	augroup QgrepAug
 		autocmd!
 		autocmd BufLeave Qgrep call s:close()
-        autocmd CursorHold Qgrep if g:qgrep.lazyupdate | call s:update(s:state) | endif
+        autocmd CursorHold Qgrep if s:state.config.lazyupdate | call s:update(s:state) | endif
 	augroup END
 endif
