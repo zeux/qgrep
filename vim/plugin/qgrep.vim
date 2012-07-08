@@ -17,6 +17,9 @@ let g:qgrep = {
         \ 'qgrep#acceptSelection()': ['<CR>'],
         \ },
     \ 'mode': 'files',
+    \ 'search': {
+        \ 'lazyupdate': 1
+        \ },
     \ }
 
 " Commands
