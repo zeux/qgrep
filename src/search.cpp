@@ -78,6 +78,8 @@ static void highlightMatch(Regex* re, HighlightBuffer& hlbuf, const char* match,
 static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
 	const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength, const char* matchRange)
 {
+#define HL(g) (output->options & SO_HIGHLIGHT ? kHighlight##g : "")
+
 	const char* lineBefore = ":";
 	const char* lineAfter = ":";
 	
@@ -92,11 +94,13 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 		lineAfter = "):";
 	}
 
-	char colnumber[16] = "";
+	char colnumber[64] = "";
 
 	if (output->options & SO_COLUMNNUMBER)
 	{
-		sprintf(colnumber, "%c%d", (output->options & SO_VISUALSTUDIO) ? ',' : ':', column);
+		sprintf(colnumber, "%s%c%s%d",
+			HL(Separator), (output->options & SO_VISUALSTUDIO) ? ',' : ':',
+			HL(Number), column);
 	}
 
 	if (output->options & SO_HIGHLIGHT)
@@ -107,7 +111,15 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 		matchLength = hlbuf.result.size();
 	}
 	
-	output->output.write(chunk, "%.*s%s%d%s%s %.*s\n", static_cast<unsigned>(pathLength), path, lineBefore, line, colnumber, lineAfter, static_cast<unsigned>(matchLength), match);
+	output->output.write(chunk, "%s%.*s%s%s%s%d%s%s%s%s%.*s\n",
+		HL(Path), static_cast<unsigned>(pathLength), path,
+		HL(Separator), lineBefore,
+		HL(Number), line,
+		colnumber,
+		HL(Separator), lineAfter, HL(End),
+		static_cast<unsigned>(matchLength), match);
+
+#undef HL
 }
 
 static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
