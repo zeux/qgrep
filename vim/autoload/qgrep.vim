@@ -123,7 +123,7 @@ endfunction
 function! s:onInsertChar(state, char)
     let state = a:state
     let state.input = strpart(state.input, 0, state.cursor) . a:char . strpart(state.input, state.cursor)
-    let state.cursor += 1
+    let state.cursor += len(a:char)
     call s:onInputChanged(state)
 endfunction
 
@@ -269,6 +269,7 @@ function! s:open(args)
     let state.limit = g:qgrep.limit
     let state.results = []
     let state.mode = empty(a:args) ? g:qgrep.mode : a:args[0]
+	let state.winrestore = [winrestcmd(), &lines, winnr('$')]
 
     let s:state = state
 
@@ -293,6 +294,11 @@ function! s:close()
         endfor
 
         bunload!
+
+        if s:state.winrestore[1] >= &lines && s:state.winrestore[2] == winnr('$')
+            execute s:state.winrestore[0]
+        endif
+
         echo
         unlet! s:state
     endif
