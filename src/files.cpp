@@ -269,6 +269,48 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, boo
 			[](const FileFileEntry& e) { return e.nameOffset; }, processMatch);
 }
 
+static void processMatchHighlightPathName(Regex* re, bool matchPaths, FilesHighlightBuffer& hlbuf, const FileFileEntry& entry, const char* data, FilesOutput* output)
+{
+	const char* path = entry.pathOffset + data;
+
+	const char* pathEnd = strchr(path, '\n');
+	assert(pathEnd);
+
+	const char* name = pathEnd;
+	while (name > path && name[-1] != '/' && name[-1] != '\\') name--;
+
+	const char* match = matchPaths ? path : name;
+
+	hlbuf.ranges.clear();
+	highlightRegex(hlbuf.ranges, re, match, pathEnd - match, nullptr, 0, match - path);
+
+	hlbuf.result.clear();
+	highlight(hlbuf.result, path, pathEnd - path, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
+
+	processMatch(hlbuf.result.c_str(), hlbuf.result.size(), output);
+}
+
+static unsigned int searchFilesPathName(const FileFileHeader& header, const char* data, bool matchPaths, const char* string, FilesOutput* output)
+{
+	unsigned int result = 0;
+
+	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(output->options)));
+
+	FilesHighlightBuffer hlbuf;
+
+	searchFilesRegex(header, data, matchPaths,
+		re.get(), output->limit, [&](const FileFileEntry& e) {
+			if (output->options & SO_HIGHLIGHT_MATCHES)
+				processMatchHighlightPathName(re.get(), matchPaths, hlbuf, e, data, output);
+			else
+				processMatch(e, data, output);
+
+			result++;
+		});
+
+	return result;
+}
+
 static bool isPathComponent(const char* str)
 {
 	return strchr(str, '/') != 0;
@@ -359,11 +401,37 @@ static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const 
 	return entries.size();
 }
 
+static void processMatchHighlightCommandT(FuzzyMatcher& matcher, bool ranked, FilesHighlightBuffer& hlbuf, const FileFileEntry& entry, const char* data, FilesOutput* output)
+{
+	const char* path = entry.pathOffset + data;
+
+	const char* pathEnd = strchr(path, '\n');
+	assert(pathEnd);
+
+	assert(matcher.size() > 0);
+	hlbuf.posbuf.resize(matcher.size());
+
+	if (ranked)
+		matcher.rank(path, pathEnd - path, &hlbuf.posbuf[0]);
+	else
+		matcher.match(path, pathEnd - path, &hlbuf.posbuf[0]);
+
+	hlbuf.ranges.resize(hlbuf.posbuf.size());
+	for (size_t i = 0; i < hlbuf.posbuf.size(); ++i) hlbuf.ranges[i] = std::make_pair(hlbuf.posbuf[i], 1);
+
+	hlbuf.result.clear();
+	highlight(hlbuf.result, path, pathEnd - path, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
+
+	processMatch(hlbuf.result.c_str(), hlbuf.result.size(), output);
+}
+
 static unsigned int searchFilesCommandT(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
 	FuzzyMatcher matcher(string);
 
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
+
+	FilesHighlightBuffer hlbuf;
 
 	unsigned int matches = 0;
 
@@ -377,33 +445,17 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 		if (matcher.match(path, pathe - path))
 		{
 			matches++;
-			processMatch(e, data, output);
+
+			if (output->options & SO_HIGHLIGHT_MATCHES)
+				processMatchHighlightCommandT(matcher, /* ranked= */ false, hlbuf, e, data, output);
+			else
+				processMatch(e, data, output);
 
 			if (matches >= output->limit) break;
 		}
 	}
 
 	return matches;
-}
-
-static void processMatchHighlightCommandTRanked(FuzzyMatcher& matcher, FilesHighlightBuffer& hlbuf, const FileFileEntry& entry, const char* data, FilesOutput* output)
-{
-	const char* path = entry.pathOffset + data;
-
-	const char* pathEnd = strchr(path, '\n');
-	assert(pathEnd);
-
-	assert(matcher.size() > 0);
-	hlbuf.posbuf.resize(matcher.size());
-	matcher.rank(path, pathEnd - path, &hlbuf.posbuf[0]);
-
-	hlbuf.ranges.resize(hlbuf.posbuf.size());
-	for (size_t i = 0; i < hlbuf.posbuf.size(); ++i) hlbuf.ranges[i] = std::make_pair(hlbuf.posbuf[i], 1);
-
-	hlbuf.result.clear();
-	highlight(hlbuf.result, path, pathEnd - path, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
-
-	processMatch(hlbuf.result.c_str(), hlbuf.result.size(), output);
 }
 
 static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
@@ -456,7 +508,7 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 		const FileFileEntry& e = *m.second;
 
 		if (output->options & SO_HIGHLIGHT_MATCHES)
-			processMatchHighlightCommandTRanked(matcher, hlbuf, e, data, output);
+			processMatchHighlightCommandT(matcher, /* ranked= */ true, hlbuf, e, data, output);
 		else
 			processMatch(e, data, output);
 	}
@@ -497,16 +549,7 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 	if (*string == 0)
 		return dumpFiles(header, data, &output);
 	else if (options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX))
-	{
-		unsigned int result = 0;
-
-		std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(options)));
-
-		searchFilesRegex(header, data, (options & SO_FILE_PATHREGEX) != 0,
-			re.get(), output.limit, [&](const FileFileEntry& e) { processMatch(e, data, &output); result++; });
-
-		return result;
-	}
+		return searchFilesPathName(header, data, (options & SO_FILE_PATHREGEX) != 0, string, &output);
 	else if (options & SO_FILE_VISUALASSIST)
 		return searchFilesVisualAssist(header, data, string, &output);
 	else if (options & SO_FILE_COMMANDT)

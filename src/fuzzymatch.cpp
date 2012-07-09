@@ -119,7 +119,7 @@ FuzzyMatcher::FuzzyMatcher(const char* query)
     }
 }
 
-bool FuzzyMatcher::match(const char* data, size_t size)
+bool FuzzyMatcher::match(const char* data, size_t size, int* positions)
 {
     const char* pattern = cfquery.c_str();
 
@@ -132,6 +132,7 @@ bool FuzzyMatcher::match(const char* data, size_t size)
 
         if (begin == end) return false;
 
+		if (positions) *positions++ = begin - data;
         begin++;
         pattern++;
     }
