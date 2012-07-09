@@ -1,6 +1,8 @@
 #include "common.hpp"
 #include "highlight.hpp"
 
+#include "regex.hpp"
+
 #include <algorithm>
 
 static bool isSequenceSorted(const HighlightRange* data, size_t count)
@@ -57,4 +59,25 @@ void highlight(std::string& result, const char* data, size_t dataSize, Highlight
     }
 
     result.insert(result.end(), data + last, data + dataSize);
+}
+
+void highlightRegex(std::vector<HighlightRange>& ranges, Regex* re, const char* data, size_t size, const char* preparedRange, size_t offset)
+{
+	const char* range = preparedRange ? preparedRange : re->rangePrepare(data, size);
+
+	while (RegexMatch match = (offset < size) ? re->rangeSearch(range + offset, size - offset) : RegexMatch())
+	{
+		size_t position = match.data - range;
+
+		if (match.size > 0)
+		{
+			ranges.push_back(std::make_pair(position, match.size));
+
+			offset = position + match.size;
+		}
+		else
+			offset = position + 1;
+	}
+
+	if (!preparedRange) re->rangeFinalize(range);
 }

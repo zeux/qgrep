@@ -45,34 +45,12 @@ struct HighlightBuffer
 	std::string result;
 };
 
-static void highlightMatch(Regex* re, HighlightBuffer& hlbuf, const char* match, size_t matchLength, const char* matchRange, size_t offset = 0)
+static void highlightMatch(Regex* re, HighlightBuffer& hlbuf, const char* match, size_t matchLength, const char* matchRange)
 {
 	hlbuf.ranges.clear();
+	highlightRegex(hlbuf.ranges, re, match, matchLength, matchRange);
 
-	while (RegexMatch match = (offset < matchLength) ? re->rangeSearch(matchRange + offset, matchLength - offset) : RegexMatch())
-	{
-		size_t position = match.data - matchRange;
-
-		if (match.size > 0)
-		{
-			hlbuf.ranges.push_back(std::make_pair(position, match.size));
-
-			offset = position + match.size;
-		}
-		else
-			offset = position + 1;
-	}
-
-	if (hlbuf.ranges.empty())
-	{
-		hlbuf.result.assign(match, match + matchLength);
-	}
-	else
-	{
-		hlbuf.result.clear();
-
-		highlight(hlbuf.result, match, matchLength, &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
-	}
+	highlight(hlbuf.result, match, matchLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
 }
 
 static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
