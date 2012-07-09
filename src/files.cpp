@@ -176,6 +176,13 @@ struct FilesOutput
 	unsigned int limit;
 };
 
+struct FilesHighlightBuffer
+{
+	std::vector<int> posbuf;
+	std::vector<HighlightRange> ranges;
+	std::string result;
+};
+
 static void processMatch(const char* path, size_t pathLength, FilesOutput* output)
 {
 	if (output->options & SO_VISUALSTUDIO)
@@ -267,6 +274,32 @@ static bool isPathComponent(const char* str)
 	return strchr(str, '/') != 0;
 }
 
+static void processMatchHighlightVisualAssist(const std::vector<std::string>& fragments, const std::vector<std::unique_ptr<Regex>>& res,
+	FilesHighlightBuffer& hlbuf, const FileFileEntry& entry, const char* data, FilesOutput* output)
+{
+	const char* path = entry.pathOffset + data;
+
+	const char* pathEnd = strchr(path, '\n');
+	assert(pathEnd);
+
+	const char* name = pathEnd;
+	while (name > path && name[-1] != '/' && name[-1] != '\\') name--;
+
+	hlbuf.ranges.clear();
+
+	for (size_t i = 0; i < fragments.size(); ++i)
+	{
+		const char* match = isPathComponent(fragments[i].c_str()) ? path : name;
+
+		highlightRegex(hlbuf.ranges, res[i].get(), match, pathEnd - match, nullptr, 0, match - path);
+	}
+
+	hlbuf.result.clear();
+	highlight(hlbuf.result, path, pathEnd - path, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
+
+	processMatch(hlbuf.result.c_str(), hlbuf.result.size(), output);
+}
+
 static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
 {
 	std::vector<std::string> fragments = split(string, isspace);
@@ -313,8 +346,15 @@ static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const 
 		entries.resize(output->limit);
 
 	// output results
+	FilesHighlightBuffer hlbuf;
+
 	for (auto& e: entries)
-		processMatch(*e, data, output);
+	{
+		if (output->options & SO_HIGHLIGHT_MATCHES)
+			processMatchHighlightVisualAssist(fragments, res, hlbuf, *e, data, output);
+		else
+			processMatch(*e, data, output);
+	}
 
 	return entries.size();
 }
@@ -346,29 +386,24 @@ static unsigned int searchFilesCommandT(const FileFileHeader& header, const char
 	return matches;
 }
 
-static void processMatchHighlight(FuzzyMatcher& matcher, const FileFileEntry& entry, const char* data, FilesOutput* output)
+static void processMatchHighlightCommandTRanked(FuzzyMatcher& matcher, FilesHighlightBuffer& hlbuf, const FileFileEntry& entry, const char* data, FilesOutput* output)
 {
 	const char* path = entry.pathOffset + data;
 
 	const char* pathEnd = strchr(path, '\n');
 	assert(pathEnd);
 
-	static std::vector<int> posbuf;
+	assert(matcher.size() > 0);
+	hlbuf.posbuf.resize(matcher.size());
+	matcher.rank(path, pathEnd - path, &hlbuf.posbuf[0]);
 
-	posbuf.resize(matcher.size());
-	matcher.rank(path, pathEnd - path, &posbuf[0]);
+	hlbuf.ranges.resize(hlbuf.posbuf.size());
+	for (size_t i = 0; i < hlbuf.posbuf.size(); ++i) hlbuf.ranges[i] = std::make_pair(hlbuf.posbuf[i], 1);
 
-	static std::vector<HighlightRange> rbuf;
+	hlbuf.result.clear();
+	highlight(hlbuf.result, path, pathEnd - path, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
 
-	rbuf.resize(posbuf.size());
-	for (size_t i = 0; i < posbuf.size(); ++i) rbuf[i] = std::make_pair(posbuf[i], 1);
-
-	static std::string result;
-	result.clear();
-
-	highlight(result, path, pathEnd - path, &rbuf[0], rbuf.size(), kHighlightMatch);
-
-	processMatch(result.c_str(), result.size(), output);
+	processMatch(hlbuf.result.c_str(), hlbuf.result.size(), output);
 }
 
 static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, const char* data, const char* string, FilesOutput* output)
@@ -414,12 +449,14 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 		matches.resize(output->limit);
 	}
 
+	FilesHighlightBuffer hlbuf;
+
 	for (auto& m: matches)
 	{
 		const FileFileEntry& e = *m.second;
 
 		if (output->options & SO_HIGHLIGHT_MATCHES)
-			processMatchHighlight(matcher, e, data, output);
+			processMatchHighlightCommandTRanked(matcher, hlbuf, e, data, output);
 		else
 			processMatch(e, data, output);
 	}
