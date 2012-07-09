@@ -176,6 +176,8 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 		parseSearchOptions(argv[i], options, limit);
 	}
 
+	const char* query = argc > 3 ? argv[argc - 1] : "";
+
 	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT | SO_FILE_COMMANDT_RANKED)) == 0)
 	{
 		options |= SO_FILE_PATHREGEX;
@@ -186,7 +188,11 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 		options |= SO_HIGHLIGHT_MATCHES;
 	}
 
-	const char* query = argc > 3 ? argv[argc - 1] : "";
+	if (*query == 0)
+	{
+		// There's no use highlighting matches from an empty query, and it substantially slows down output (since it matches on every character)
+		options &= ~SO_HIGHLIGHT_MATCHES;
+	}
 
 	for (size_t i = 0; limit > 0 && i < paths.size(); ++i)
 	{
