@@ -419,7 +419,7 @@ static unsigned int searchFilesCommandTRanked(const FileFileHeader& header, cons
 	{
 		const FileFileEntry& e = *m.second;
 
-		if (output->options & SO_HIGHLIGHT)
+		if (output->options & SO_HIGHLIGHT_MATCHES)
 			processMatchHighlight(matcher, e, data, output);
 		else
 			processMatch(e, data, output);

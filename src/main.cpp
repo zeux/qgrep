@@ -98,11 +98,25 @@ unsigned int parseSearchFileOption(char opt)
 	}
 }
 
-std::pair<unsigned int, int> parseSearchOptions(const char* opts)
+bool parseHighlightOption(char opt, unsigned int& options)
 {
-	unsigned int options = 0;
-	int limit = -1;
-	
+	switch (opt)
+	{
+	case 'D':
+		options &= ~(SO_HIGHLIGHT | SO_HIGHLIGHT_MATCHES);
+		return true;
+
+	case 'M':
+		options |= SO_HIGHLIGHT_MATCHES;
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& limit)
+{
 	for (const char* s = opts; *s; ++s)
 	{
 		switch (*s)
@@ -127,13 +141,14 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 			break;
 
 		case 'H':
-			options |= SO_HIGHLIGHT;
+			if (parseHighlightOption(s[1], options)) s++;
+			else options |= SO_HIGHLIGHT;
 			break;
 
 		case 'L':
 			{
 				char* end = 0;
-				limit = strtol(s + 1, &end, 10);
+				limit = strtoul(s + 1, &end, 10);
 				s = end - 1;
 			}
 			break;
@@ -147,8 +162,6 @@ std::pair<unsigned int, int> parseSearchOptions(const char* opts)
 			throw std::runtime_error(std::string("Unknown search option '") + *s + "'");
 		}
 	}
-	
-	return std::make_pair(options, limit);
 }
 
 void processSearchCommand(Output* output, int argc, const char** argv, unsigned int (*search)(Output*, const char*, const char*, unsigned int, unsigned int))
@@ -160,15 +173,17 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 
 	for (int i = 3; i + 1 < argc; ++i)
 	{
-		auto p = parseSearchOptions(argv[i]);
-
-		options |= p.first;
-		if (p.second >= 0) limit = p.second;
+		parseSearchOptions(argv[i], options, limit);
 	}
 
 	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT | SO_FILE_COMMANDT_RANKED)) == 0)
 	{
 		options |= SO_FILE_PATHREGEX;
+	}
+
+	if (options & SO_HIGHLIGHT)
+	{
+		options |= SO_HIGHLIGHT_MATCHES;
 	}
 
 	const char* query = argc > 3 ? argv[argc - 1] : "";

@@ -103,7 +103,7 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 			HL(Number), column);
 	}
 
-	if (output->options & SO_HIGHLIGHT)
+	if (output->options & SO_HIGHLIGHT_MATCHES)
 	{
 		highlightMatch(re, hlbuf, match, matchLength, matchRange);
 
