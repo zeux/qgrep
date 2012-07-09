@@ -88,7 +88,7 @@ std::vector<std::string> getProjectPaths(const char* name)
 	
 	for (std::string n: split(name, [](char ch) { return ch == ','; }))
 	{
-		if (n == "*" || n.back() == '/')
+		if (n == "*" || n == "%" || n.back() == '/')
 		{
 			auto projects = getProjectsByPrefix(n.back() == '/' ? n.substr(0, n.length() - 1).c_str() : "");
 			names.insert(names.end(), projects.begin(), projects.end());
