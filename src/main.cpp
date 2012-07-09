@@ -157,6 +157,9 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 			s++;
 			options |= parseSearchFileOption(*s);
 			break;
+
+		case ' ':
+			break;
 			
 		default:
 			throw std::runtime_error(std::string("Unknown search option '") + *s + "'");
@@ -164,29 +167,44 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 	}
 }
 
+std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** argv)
+{
+	unsigned int options = 0;
+	unsigned int limit = ~0u;
+
+	const char* gopts = getenv("QGREP_OPTIONS");
+
+	// parse global options
+	if (gopts)
+		parseSearchOptions(gopts, options, limit);
+
+	// parse command-line options
+	for (int i = 3; i + 1 < argc; ++i)
+		parseSearchOptions(argv[i], options, limit);
+
+	// choose default file search type
+	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT | SO_FILE_COMMANDT_RANKED)) == 0)
+		options |= SO_FILE_PATHREGEX;
+
+	// highlighting includes match highlighting
+	if (options & SO_HIGHLIGHT)
+		options |= SO_HIGHLIGHT_MATCHES;
+
+	// L0 means "no limit"
+	if (limit == 0)
+		limit = ~0u;
+
+	return std::make_pair(options, limit);
+}
+
 void processSearchCommand(Output* output, int argc, const char** argv, unsigned int (*search)(Output*, const char*, const char*, unsigned int, unsigned int))
 {
 	std::vector<std::string> paths = getProjectPaths(argv[2]);
 
-	unsigned int options = 0;
-	unsigned int limit = ~0u;
-
-	for (int i = 3; i + 1 < argc; ++i)
-	{
-		parseSearchOptions(argv[i], options, limit);
-	}
-
 	const char* query = argc > 3 ? argv[argc - 1] : "";
 
-	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT | SO_FILE_COMMANDT_RANKED)) == 0)
-	{
-		options |= SO_FILE_PATHREGEX;
-	}
-
-	if (options & SO_HIGHLIGHT)
-	{
-		options |= SO_HIGHLIGHT_MATCHES;
-	}
+	unsigned int options, limit;
+	std::tie(options, limit) = getSearchOptions(argc, argv);
 
 	if (*query == 0)
 	{
