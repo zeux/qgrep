@@ -212,11 +212,9 @@ static unsigned int dumpFiles(const FileFileHeader& header, const char* data, Fi
 }
 
 template <typename ExtractOffset, typename ProcessMatch>
-static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, unsigned int bufferSize, const char* string,
-	unsigned int options, unsigned int limit, ExtractOffset extractOffset, ProcessMatch processMatch)
+static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* buffer, unsigned int bufferSize,
+	Regex* re, unsigned int limit, ExtractOffset extractOffset, ProcessMatch processMatch)
 {
-	std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(options)));
-
 	const FileFileEntry* entries = reinterpret_cast<const FileFileEntry*>(data);
 
 	const char* range = re->rangePrepare(buffer, bufferSize);
@@ -254,14 +252,13 @@ static void searchFilesRegex(const FileFileHeader& header, const char* data, con
 }
 
 template <typename ProcessMatch>
-static void searchFilesRegex(const FileFileHeader& header, const char* data, const char* string, bool matchPaths,
-	unsigned int options, unsigned int limit, ProcessMatch processMatch)
+static void searchFilesRegex(const FileFileHeader& header, const char* data, bool matchPaths, Regex* re, unsigned int limit, ProcessMatch processMatch)
 {
 	if (matchPaths)
-		searchFilesRegex(header, data, data + header.pathBufferOffset, header.pathBufferLength, string, options, limit,
+		searchFilesRegex(header, data, data + header.pathBufferOffset, header.pathBufferLength, re, limit,
 			[](const FileFileEntry& e) { return e.pathOffset; }, processMatch);
 	else
-		searchFilesRegex(header, data, data + header.nameBufferOffset, header.nameBufferLength, string, options, limit,
+		searchFilesRegex(header, data, data + header.nameBufferOffset, header.nameBufferLength, re, limit,
 			[](const FileFileEntry& e) { return e.nameOffset; }, processMatch);
 }
 
@@ -284,22 +281,24 @@ static unsigned int searchFilesVisualAssist(const FileFileHeader& header, const 
 			return (lpath != rpath) ? lpath < rpath : lhs.length() > rhs.length();
 		});
 
-	// force literal searches
-	unsigned int options = output->options | SO_LITERAL;
+	// compile regular expressions
+	std::vector<std::unique_ptr<Regex>> res;
+
+	for (auto& f: fragments)
+		res.emplace_back(createRegex(f.c_str(), getRegexOptions(output->options | SO_LITERAL)));
 
 	// gather files by first component
 	std::vector<const FileFileEntry*> entries;
 
-	searchFilesRegex(header, data, fragments[0].c_str(), isPathComponent(fragments[0].c_str()),
-		options, (fragments.size() == 1) ? output->limit : ~0u, [&](const FileFileEntry& e) { entries.push_back(&e); });
+	searchFilesRegex(header, data, isPathComponent(fragments[0].c_str()), res[0].get(),
+		(fragments.size() == 1) ? output->limit : ~0u, [&](const FileFileEntry& e) { entries.push_back(&e); });
 
 	// filter results by subsequent components
 	for (size_t i = 1; i < fragments.size(); ++i)
 	{
 		const char* query = fragments[i].c_str();
 		bool queryPath = isPathComponent(query);
-
-		std::unique_ptr<Regex> re(createRegex(query, getRegexOptions(output->options)));
+		Regex* re = res[i].get();
 
 		entries.erase(std::remove_if(entries.begin(), entries.end(), [&](const FileFileEntry* e) -> bool {
 			const char* begin = data + (queryPath ? e->pathOffset : e->nameOffset);
@@ -464,8 +463,10 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 	{
 		unsigned int result = 0;
 
-		searchFilesRegex(header, data, string, (options & SO_FILE_PATHREGEX) != 0,
-			output.options, output.limit, [&](const FileFileEntry& e) { processMatch(e, data, &output); result++; });
+		std::unique_ptr<Regex> re(createRegex(string, getRegexOptions(options)));
+
+		searchFilesRegex(header, data, (options & SO_FILE_PATHREGEX) != 0,
+			re.get(), output.limit, [&](const FileFileEntry& e) { processMatch(e, data, &output); result++; });
 
 		return result;
 	}
