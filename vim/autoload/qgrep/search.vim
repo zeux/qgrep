@@ -13,7 +13,7 @@ function! qgrep#search#parseInput(state, input)
 endfunction
 
 function! qgrep#search#getResults(state, pattern)
-    return qgrep#execute(['search', a:state.config.project, 'L'.a:state.config.limit, a:pattern])
+    return qgrep#execute(['search', a:state.config.project, 'HM', 'L'.a:state.config.limit, a:pattern])
 endfunction
 
 function! qgrep#search#formatResults(state, results)
