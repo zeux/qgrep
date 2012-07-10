@@ -43,6 +43,7 @@ public:
 		opts.set_perl_classes(true);
 		opts.set_word_boundary(true);
 		opts.set_one_line(false);
+		opts.set_never_nl(true);
 		opts.set_literal((options & RO_LITERAL) != 0);
 		opts.set_log_errors(false);
 		

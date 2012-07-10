@@ -233,8 +233,18 @@ public:
 
 		std::vector<std::string> atomstr;
 
-		tree.Add(re2::Prefilter::FromRE2(r));
-		tree.Compile(&atomstr);
+		if (re2::Prefilter* prf = re2::Prefilter::FromRE2(r))
+		{
+			if (prf->op() != re2::Prefilter::NONE)
+			{
+				tree.Add(prf);
+				tree.Compile(&atomstr);
+			}
+			else
+			{
+				delete prf;
+			}
+		}
 
 		for (size_t i = 0; i < atomstr.size(); ++i)
 			atoms.push_back(ngramExtract(atomstr[i]));
