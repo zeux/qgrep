@@ -192,7 +192,8 @@ static void processMatch(const char* path, size_t pathLength, FilesOutput* outpu
 		path = buffer;
 	}
 
-	output->output->print("%.*s\n", static_cast<unsigned>(pathLength), path);
+	output->output->rawprint(path, pathLength);
+	output->output->rawprint("\n", 1);
 }
 
 static void processMatch(const FileFileEntry& entry, const char* data, FilesOutput* output)
