@@ -42,16 +42,14 @@ struct SearchOutput
 struct HighlightBuffer
 {
 	std::vector<HighlightRange> ranges;
-	std::string result;
 };
 
-static void highlightMatch(Regex* re, HighlightBuffer& hlbuf, const char* match, size_t matchLength, const char* matchRange)
+static void highlightMatch(std::string& result, Regex* re, HighlightBuffer& hlbuf, const char* match, size_t matchLength, const char* matchRange)
 {
 	hlbuf.ranges.clear();
 	highlightRegex(hlbuf.ranges, re, match, matchLength, matchRange);
 
-	hlbuf.result.clear();
-	highlight(hlbuf.result, match, matchLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
+	highlight(result, match, matchLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
 }
 
 static char* printString(char* dest, const char* src)
@@ -121,14 +119,6 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	char linecolumn[256];
 	size_t linecolumnsize = printMatchLineColumn(line, column, output->options, linecolumn);
 
-	if (output->options & SO_HIGHLIGHT_MATCHES)
-	{
-		highlightMatch(re, hlbuf, match, matchLength, matchRange);
-
-		match = hlbuf.result.c_str();
-		matchLength = hlbuf.result.size();
-	}
-
 	chunk->result.reserve(chunk->result.size() + pathLength + matchLength + 256);
 
 	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightPath;
@@ -136,7 +126,11 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	chunk->result.insert(chunk->result.end(), linecolumn, linecolumn + linecolumnsize);
 	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightEnd;
 
-	chunk->result.insert(chunk->result.end(), match, match + matchLength);
+	if (output->options & SO_HIGHLIGHT_MATCHES)
+		highlightMatch(chunk->result, re, hlbuf, match, matchLength, matchRange);
+	else
+		chunk->result.insert(chunk->result.end(), match, match + matchLength);
+
 	chunk->result += "\n";
 
 	output->output.write(chunk);
