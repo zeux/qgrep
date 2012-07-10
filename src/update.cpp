@@ -5,11 +5,10 @@
 #include "build.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
+#include "filestream.hpp"
 #include "project.hpp"
 #include "files.hpp"
-#include "streamutil.hpp"
 
-#include <fstream>
 #include <memory>
 #include <vector>
 #include <string>
@@ -157,7 +156,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 
 static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats, const char* path)
 {
-	std::ifstream in(path, std::ios::in | std::ios::binary);
+	FileStream in(path, "rb");
 	if (!in) return true;
 
 	DataFileHeader header;

@@ -4,6 +4,7 @@
 #include "output.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
+#include "filestream.hpp"
 #include "workqueue.hpp"
 #include "regex.hpp"
 #include "orderedoutput.hpp"
@@ -12,10 +13,8 @@
 #include "stringutil.hpp"
 #include "bloom.hpp"
 #include "casefold.hpp"
-#include "streamutil.hpp"
 #include "highlight.hpp"
 
-#include <fstream>
 #include <algorithm>
 #include <memory>
 
@@ -284,7 +283,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 	NgramRegex ngregex((options & SO_BRUTEFORCE) ? nullptr : regex.get());
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
-	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
+	FileStream in(dataPath.c_str(), "rb");
 	if (!in)
 	{
 		output_->error("Error reading data file %s\n", dataPath.c_str());
@@ -313,7 +312,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 		{
 			if (ngregex.empty() || chunk.indexSize == 0)
 			{
-				in.seekg(chunk.indexSize, std::ios::cur);
+				in.skip(chunk.indexSize);
 			}
 			else
 			{
@@ -335,7 +334,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 
 				if (!ngregex.match(index, chunk.indexHashIterations))
 				{
-					in.seekg(chunk.compressedSize, std::ios::cur);
+					in.skip(chunk.compressedSize);
 					continue;
 				}
 			}

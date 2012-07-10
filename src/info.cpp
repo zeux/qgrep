@@ -5,9 +5,8 @@
 #include "format.hpp"
 #include "stringutil.hpp"
 #include "fileutil.hpp"
-#include "streamutil.hpp"
+#include "filestream.hpp"
 
-#include <fstream>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -182,7 +181,7 @@ static void processChunkData(Output* output, ProjectInfo& info, const DataChunkH
 
 static bool processFile(Output* output, ProjectInfo& info, const char* path)
 {
-	std::ifstream in(path, std::ios::in | std::ios::binary);
+	FileStream in(path, "rb");
 	if (!in)
 	{
 		output->error("Error reading data file %s\n", path);

@@ -124,6 +124,9 @@
     <ClCompile Include="highlight.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="filestream.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -222,9 +225,6 @@
     <ClInclude Include="info.hpp">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="streamutil.hpp">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="common.hpp">
       <Filter>src</Filter>
     </ClInclude>
@@ -232,6 +232,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="highlight.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="filestream.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

@@ -4,18 +4,17 @@
 #include "output.hpp"
 #include "project.hpp"
 #include "fileutil.hpp"
+#include "filestream.hpp"
 #include "format.hpp"
 #include "search.hpp"
 #include "regex.hpp"
 #include "stringutil.hpp"
-#include "streamutil.hpp"
 #include "highlight.hpp"
 #include "fuzzymatch.hpp"
 
 #include "lz4/lz4.h"
 #include "lz4/lz4hc.h"
 
-#include <fstream>
 #include <memory>
 #include <algorithm>
 #include <limits.h>
@@ -110,7 +109,7 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 	{
 		createPathForFile(tempPath.c_str());
 
-		std::ofstream out(tempPath.c_str(), std::ios::out | std::ios::binary);
+		FileStream out(tempPath.c_str(), "wb");
 		if (!out)
 		{
 			output->error("Error saving data file %s\n", tempPath.c_str());
@@ -132,7 +131,7 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 		header.pathBufferOffset = data.second.second.first;
 		header.pathBufferLength = data.second.second.second;
 
-		out.write(reinterpret_cast<char*>(&header), sizeof(header));
+		out.write(&header, sizeof(header));
 		if (!compressed.empty()) out.write(&compressed[0], compressed.size());
 	}
 
@@ -521,7 +520,7 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 	FilesOutput output(output_, options, limit);
 
 	std::string dataPath = replaceExtension(file, ".qgf");
-	std::ifstream in(dataPath.c_str(), std::ios::in | std::ios::binary);
+	FileStream in(dataPath.c_str(), "rb");
 	if (!in)
 	{
 		output_->error("Error reading data file %s\n", dataPath.c_str());

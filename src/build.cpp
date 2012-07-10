@@ -4,6 +4,7 @@
 #include "output.hpp"
 #include "format.hpp"
 #include "fileutil.hpp"
+#include "filestream.hpp"
 #include "constants.hpp"
 #include "project.hpp"
 #include "encoding.hpp"
@@ -11,7 +12,6 @@
 #include "bloom.hpp"
 #include "casefold.hpp"
 
-#include <fstream>
 #include <vector>
 #include <list>
 #include <numeric>
@@ -50,13 +50,13 @@ public:
 	{
         createPathForFile(path);
 
-		outData.open(path, std::ios::out | std::ios::binary);
+		outData.open(path, "wb");
 		if (!outData) return false;
 
 		DataFileHeader header;
 		memcpy(header.magic, kDataFileHeaderMagic, sizeof(header.magic));
 
-		outData.write(reinterpret_cast<char*>(&header), sizeof(header));
+		outData.write(&header, sizeof(header));
 
 		return true;
 	}
@@ -112,17 +112,17 @@ public:
 		return result;
     }
 
-	static std::vector<char> readFile(std::ifstream& in)
+	static std::vector<char> readFile(FileStream& in)
 	{
 		std::vector<char> result;
 
         // read file as is
-		while (!in.eof())
-		{
-			char buffer[65536];
-			in.read(buffer, sizeof(buffer));
+		char buffer[65536];
+		size_t readsize;
 
-			result.insert(result.end(), buffer, buffer + in.gcount());
+		while ((readsize = in.read(buffer, sizeof(buffer))) > 0)
+		{
+			result.insert(result.end(), buffer, buffer + readsize);
 		}
 
         // normalize new lines in a cross-platform way (don't rely on text-mode file I/O)
@@ -138,7 +138,7 @@ public:
 
 	bool appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize)
 	{
-		std::ifstream in(path, std::ios::in | std::ios::binary);
+		FileStream in(path, "rb");
 		if (!in) return false;
 
 		try
@@ -259,7 +259,7 @@ private:
 	std::list<File> pendingFiles;
 	size_t pendingSize;
 	
-	std::ofstream outData;
+	FileStream outData;
 	Statistics statistics;
 
 	static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t dataSize)
@@ -562,7 +562,7 @@ private:
 		header.indexSize = index.first.size();
 		header.indexHashIterations = index.second;
 
-		outData.write(reinterpret_cast<const char*>(&header), sizeof(header));
+		outData.write(&header, sizeof(header));
 		if (!index.first.empty()) outData.write(&index.first[0], index.first.size());
 		outData.write(&cdata[0], cdata.size());
 
@@ -578,7 +578,7 @@ private:
 
 	void writeChunk(const DataChunkHeader& header, const char* compressedData, const char* index, bool firstFileIsSuffix)
 	{
-		outData.write(reinterpret_cast<const char*>(&header), sizeof(header));
+		outData.write(&header, sizeof(header));
 		outData.write(index, header.indexSize);
 		outData.write(compressedData, header.compressedSize);
 

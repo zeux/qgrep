@@ -114,6 +114,7 @@
     <ClCompile Include="build.cpp" />
     <ClCompile Include="encoding.cpp" />
     <ClCompile Include="files.cpp" />
+    <ClCompile Include="filestream.cpp" />
     <ClCompile Include="fileutil.cpp" />
     <ClCompile Include="fileutil_win.cpp" />
     <ClCompile Include="fuzzymatch.cpp" />
@@ -150,6 +151,7 @@
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="encoding.hpp" />
     <ClInclude Include="files.hpp" />
+    <ClInclude Include="filestream.hpp" />
     <ClInclude Include="fileutil.hpp" />
     <ClInclude Include="fuzzymatch.hpp" />
     <ClInclude Include="highlight.hpp" />
@@ -161,7 +163,6 @@
     <ClInclude Include="format.hpp" />
     <ClInclude Include="regex.hpp" />
     <ClInclude Include="search.hpp" />
-    <ClInclude Include="streamutil.hpp" />
     <ClInclude Include="stringutil.hpp" />
     <ClInclude Include="bloom.hpp" />
     <ClInclude Include="update.hpp" />
