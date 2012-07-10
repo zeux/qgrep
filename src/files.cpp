@@ -282,7 +282,7 @@ static void processMatchHighlightPathName(Regex* re, bool matchPaths, FilesHighl
 	const char* match = matchPaths ? path : name;
 
 	hlbuf.ranges.clear();
-	highlightRegex(hlbuf.ranges, re, match, pathEnd - match, nullptr, 0, match - path);
+	highlightRegex(hlbuf.ranges, re, path, pathEnd - path, nullptr, match - path);
 
 	hlbuf.result.clear();
 	highlight(hlbuf.result, path, pathEnd - path, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
@@ -333,7 +333,7 @@ static void processMatchHighlightVisualAssist(const std::vector<std::string>& fr
 	{
 		const char* match = isPathComponent(fragments[i].c_str()) ? path : name;
 
-		highlightRegex(hlbuf.ranges, res[i].get(), match, pathEnd - match, nullptr, 0, match - path);
+		highlightRegex(hlbuf.ranges, res[i].get(), path, pathEnd - path, nullptr, match - path);
 	}
 
 	hlbuf.result.clear();

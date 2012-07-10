@@ -50,6 +50,7 @@ static void highlightMatch(Regex* re, HighlightBuffer& hlbuf, const char* match,
 	hlbuf.ranges.clear();
 	highlightRegex(hlbuf.ranges, re, match, matchLength, matchRange);
 
+	hlbuf.result.clear();
 	highlight(hlbuf.result, match, matchLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
 }
 

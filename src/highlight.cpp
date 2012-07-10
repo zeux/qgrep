@@ -41,8 +41,6 @@ void highlight(std::string& result, const char* data, size_t dataSize, Highlight
 
     size_t last = 0;
 
-    result.clear();
-
     for (size_t i = 0; i < rangesMerged; ++i)
     {
         const HighlightRange& r = ranges[i];
@@ -61,7 +59,7 @@ void highlight(std::string& result, const char* data, size_t dataSize, Highlight
     result.insert(result.end(), data + last, data + dataSize);
 }
 
-void highlightRegex(std::vector<HighlightRange>& ranges, Regex* re, const char* data, size_t size, const char* preparedRange, size_t offset, size_t basePosition)
+void highlightRegex(std::vector<HighlightRange>& ranges, Regex* re, const char* data, size_t size, const char* preparedRange, size_t offset)
 {
 	const char* range = preparedRange ? preparedRange : re->rangePrepare(data, size);
 
@@ -71,7 +69,7 @@ void highlightRegex(std::vector<HighlightRange>& ranges, Regex* re, const char* 
 
 		if (match.size > 0)
 		{
-			ranges.push_back(std::make_pair(basePosition + position, match.size));
+			ranges.push_back(std::make_pair(position, match.size));
 
 			offset = position + match.size;
 		}
