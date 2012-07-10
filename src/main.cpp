@@ -21,6 +21,11 @@ namespace re2 { int RunningOnValgrind() { return 0; } }
 class StandardOutput: public Output
 {
 public:
+	virtual void rawprint(const char* data, size_t size)
+	{
+		fwrite(data, 1, size, stdout);
+	}
+
 	virtual void print(const char* message, ...)
 	{
 		va_list l;
@@ -46,6 +51,13 @@ class StringOutput: public Output
 public:
 	StringOutput(std::string& buf): result(buf)
 	{
+	}
+
+	virtual void rawprint(const char* data, size_t size)
+	{
+		std::unique_lock<std::mutex> lock(mutex);
+
+		result.insert(result.end(), data, data + size);
 	}
 
 	virtual void print(const char* message, ...)

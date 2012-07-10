@@ -17,10 +17,11 @@ static void writeThreadFun(Output* output, BlockingQueue<OrderedOutput::Chunk*>&
 		for (unsigned int i = total; i < limit && pos < chunk->result.length(); ++i)
 		{
 			const char* line = chunk->result.c_str() + pos;
+			size_t length = strlen(line);
 
-			output->print("%s", line);
+			output->rawprint(line, length);
 			total++;
-			pos += strlen(line) + 1;
+			pos += length + 1;
 		}
 
 		delete chunk;
