@@ -44,14 +44,6 @@ struct HighlightBuffer
 	std::vector<HighlightRange> ranges;
 };
 
-static void highlightMatch(std::string& result, Regex* re, HighlightBuffer& hlbuf, const char* match, size_t matchLength, const char* matchRange)
-{
-	hlbuf.ranges.clear();
-	highlightRegex(hlbuf.ranges, re, match, matchLength, matchRange);
-
-	highlight(result, match, matchLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
-}
-
 static char* printString(char* dest, const char* src)
 {
 	while (*src) *dest++ = *src++;
@@ -105,8 +97,18 @@ static size_t printMatchLineColumn(unsigned int line, unsigned int column, unsig
 	return pos - buf;
 }
 
+static void printHighlightMatch(std::string& result, Regex* re, HighlightBuffer& hlbuf, const char* line, size_t lineLength, const char* preparedRange, size_t matchOffset, size_t matchLength)
+{
+	hlbuf.ranges.clear();
+	hlbuf.ranges.push_back(HighlightRange(matchOffset, matchLength));
+	highlightRegex(hlbuf.ranges, re, line, lineLength, preparedRange, matchOffset + matchLength);
+
+	highlight(result, line, lineLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
+}
+
 static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
-	const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength, const char* matchRange)
+	const char* path, size_t pathLength, const char* line, size_t lineLength, unsigned int lineNumber,
+	const char* preparedRange, size_t matchOffset, size_t matchLength)
 {
 	if (output->options & SO_VISUALSTUDIO)
 	{
@@ -117,9 +119,9 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	}
 
 	char linecolumn[256];
-	size_t linecolumnsize = printMatchLineColumn(line, column, output->options, linecolumn);
+	size_t linecolumnsize = printMatchLineColumn(lineNumber, matchOffset + 1, output->options, linecolumn);
 
-	chunk->result.reserve(chunk->result.size() + pathLength + matchLength + 256);
+	chunk->result.reserve(chunk->result.size() + pathLength + lineLength + 256);
 
 	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightPath;
 	chunk->result.insert(chunk->result.end(), path, path + pathLength);
@@ -127,9 +129,9 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightEnd;
 
 	if (output->options & SO_HIGHLIGHT_MATCHES)
-		highlightMatch(chunk->result, re, hlbuf, match, matchLength, matchRange);
+		printHighlightMatch(chunk->result, re, hlbuf, line, lineLength, preparedRange, matchOffset, matchLength);
 	else
-		chunk->result.insert(chunk->result.end(), match, match + matchLength);
+		chunk->result.insert(chunk->result.end(), line, line + lineLength);
 
 	chunk->result += "\n";
 
@@ -157,7 +159,7 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 		// print match
 		const char* lbeg = findLineStart(begin, match.data);
 		const char* lend = findLineEnd(match.data + match.size, end);
-		processMatch(re, output, chunk, hlbuf, path, pathLength, line, (match.data - lbeg) + 1, (lbeg - range) + data, lend - lbeg, lbeg);
+		processMatch(re, output, chunk, hlbuf, path, pathLength, (lbeg - range) + data, lend - lbeg, line, lbeg, match.data - lbeg, match.size);
 		
 		// move to next line
 		if (lend == end) break;
