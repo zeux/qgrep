@@ -336,13 +336,13 @@ static void pinModule()
 #define DLLEXPORT
 #endif
 
-extern "C" DLLEXPORT void entryPointConsole(int argc, const char** argv)
+extern "C" DLLEXPORT void qgrepConsole(int argc, const char** argv)
 {
 	StandardOutput output;
 	mainImpl(&output, argc, argv);
 }
 
-extern "C" DLLEXPORT const char* entryPointVim(const char* args)
+extern "C" DLLEXPORT const char* qgrepVim(const char* args)
 {
 	pinModule();
 

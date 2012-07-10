@@ -1,5 +1,5 @@
 {
-	entryPointVim;
-	entryPointConsole;
+	qgrepVim;
+	qgrepConsole;
 };
 

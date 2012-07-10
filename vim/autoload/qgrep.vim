@@ -342,7 +342,7 @@ function! qgrep#execute(args)
     try
         if path[0:7] == 'libcall:'
             let args = join(a:args, "\n")
-            let results = libcall(path[8:], 'entryPointVim', args)
+            let results = libcall(path[8:], 'qgrepVim', args)
         else
             let args = map(copy(a:args), 'shellescape(v:val)')
             let results = system(path . ' ' . join(args, ' '))
