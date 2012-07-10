@@ -61,6 +61,11 @@ void OrderedOutput::write(Chunk* chunk, const char* format, ...)
 	strprintf(chunk->result, format, args);
 	va_end(args);
 
+	write(chunk);
+}
+
+void OrderedOutput::write(Chunk* chunk)
+{
 	chunk->result.push_back(0);
 	chunk->lines++;
 

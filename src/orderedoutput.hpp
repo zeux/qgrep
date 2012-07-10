@@ -27,6 +27,7 @@ public:
 
     Chunk* begin(unsigned int id);
     void write(Chunk* chunk, const char* format, ...);
+    void write(Chunk* chunk);
     void end(Chunk* chunk);
 
 	unsigned int getLineCount() const;
