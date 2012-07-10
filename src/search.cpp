@@ -53,33 +53,72 @@ static void highlightMatch(Regex* re, HighlightBuffer& hlbuf, const char* match,
 	highlight(hlbuf.result, match, matchLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
 }
 
+static char* printString(char* dest, const char* src)
+{
+	while (*src) *dest++ = *src++;
+	return dest;
+}
+
+static char* printNumber(char* dest, unsigned int value)
+{
+	char buf[32];
+
+	char* end = buf + sizeof(buf);
+	*--end = 0;
+
+	do
+	{
+		*--end = '0' + (value % 10);
+		value /= 10;
+	}
+	while (value > 0);
+
+	return printString(dest, end);
+}
+
+static size_t printMatchLineColumn(unsigned int line, unsigned int column, unsigned int options, char (&buf)[256])
+{
+	char* pos = buf;
+
+	const char* sepbeg = (options & SO_VISUALSTUDIO) ? "(" : ":";
+	const char* sepmid = (options & SO_VISUALSTUDIO) ? "," : ":";
+	const char* sepend = (options & SO_VISUALSTUDIO) ? "):" : ":";
+
+	if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightSeparator);
+	pos = printString(pos, sepbeg);
+
+	if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightNumber);
+	pos = printNumber(pos, line);
+
+	if (options & SO_COLUMNNUMBER)
+	{
+		if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightSeparator);
+		pos = printString(pos, sepmid);
+
+		if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightNumber);
+		pos = printNumber(pos, column);
+	}
+
+	if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightSeparator);
+	pos = printString(pos, sepend);
+
+	assert(pos <= buf + sizeof(buf));
+	return pos - buf;
+}
+
 static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
 	const char* path, size_t pathLength, unsigned int line, unsigned int column, const char* match, size_t matchLength, const char* matchRange)
 {
-#define HL(g) (output->options & SO_HIGHLIGHT ? kHighlight##g : "")
-
-	const char* lineBefore = ":";
-	const char* lineAfter = ":";
-	
 	if (output->options & SO_VISUALSTUDIO)
 	{
 		char* buffer = static_cast<char*>(alloca(pathLength));
 		
 		std::transform(path, path + pathLength, buffer, BackSlashTransformer());
 		path = buffer;
-		
-		lineBefore = "(";
-		lineAfter = "):";
 	}
 
-	char colnumber[64] = "";
-
-	if (output->options & SO_COLUMNNUMBER)
-	{
-		sprintf(colnumber, "%s%c%s%d",
-			HL(Separator), (output->options & SO_VISUALSTUDIO) ? ',' : ':',
-			HL(Number), column);
-	}
+	char linecolumn[256];
+	size_t linecolumnsize = printMatchLineColumn(line, column, output->options, linecolumn);
 
 	if (output->options & SO_HIGHLIGHT_MATCHES)
 	{
@@ -88,16 +127,18 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 		match = hlbuf.result.c_str();
 		matchLength = hlbuf.result.size();
 	}
-	
-	output->output.write(chunk, "%s%.*s%s%s%s%d%s%s%s%s%.*s\n",
-		HL(Path), static_cast<unsigned>(pathLength), path,
-		HL(Separator), lineBefore,
-		HL(Number), line,
-		colnumber,
-		HL(Separator), lineAfter, HL(End),
-		static_cast<unsigned>(matchLength), match);
 
-#undef HL
+	chunk->result.reserve(chunk->result.size() + pathLength + matchLength + 256);
+
+	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightPath;
+	chunk->result.insert(chunk->result.end(), path, path + pathLength);
+	chunk->result.insert(chunk->result.end(), linecolumn, linecolumn + linecolumnsize);
+	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightEnd;
+
+	chunk->result.insert(chunk->result.end(), match, match + matchLength);
+	chunk->result += "\n";
+
+	output->output.write(chunk);
 }
 
 static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
