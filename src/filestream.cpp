@@ -3,6 +3,10 @@
 
 #include <stdio.h>
 
+#ifdef _WIN32
+#   define fseeko _fseeki64
+#endif
+
 FileStream::FileStream(): file(0)
 {
 }
@@ -31,7 +35,7 @@ FileStream::operator bool() const
 
 void FileStream::skip(size_t offset)
 {
-    fseek(static_cast<FILE*>(file), offset, SEEK_CUR);
+    fseeko(static_cast<FILE*>(file), offset, SEEK_CUR);
 }
 
 size_t FileStream::read(void* data, size_t size)
