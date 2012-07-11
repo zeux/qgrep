@@ -15,8 +15,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+// isatty
 #ifdef _WIN32
-#include <io.h>
+#	include <io.h>
+#else
+#	include <unistd.h>
 #endif
 
 #include <mutex>
