@@ -120,6 +120,7 @@
     <ClCompile Include="fileutil_win.cpp" />
     <ClCompile Include="fuzzymatch.cpp" />
     <ClCompile Include="highlight.cpp" />
+    <ClCompile Include="highlight_win.cpp" />
     <ClCompile Include="info.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="main.cpp" />

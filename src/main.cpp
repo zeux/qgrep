@@ -9,10 +9,12 @@
 #include "files.hpp"
 #include "info.hpp"
 #include "stringutil.hpp"
+#include "highlight.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <io.h>
 
 #include <mutex>
 
@@ -21,8 +23,17 @@ namespace re2 { int RunningOnValgrind() { return 0; } }
 class StandardOutput: public Output
 {
 public:
+	StandardOutput()
+	{
+		istty = isatty(fileno(stdout)) != 0;
+	}
+
 	virtual void rawprint(const char* data, size_t size)
 	{
+	#ifdef _WIN32
+		if (istty) return printEscapeCodedStringToConsole(data, size);
+	#endif
+
 		fwrite(data, 1, size, stdout);
 	}
 
@@ -44,6 +55,14 @@ public:
 		vfprintf(stderr, message, l);
 		va_end(l);
 	}
+
+	virtual bool supportsEscapeCodes()
+	{
+		return istty;
+	}
+
+private:
+	bool istty;
 };
 
 class StringOutput: public Output
@@ -179,9 +198,9 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 	}
 }
 
-std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** argv)
+std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** argv, bool istty)
 {
-	unsigned int options = 0;
+	unsigned int options = istty ? SO_HIGHLIGHT : 0;
 	unsigned int limit = ~0u;
 
 	const char* gopts = getenv("QGREP_OPTIONS");
@@ -216,7 +235,7 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 	const char* query = argc > 3 ? argv[argc - 1] : "";
 
 	unsigned int options, limit;
-	std::tie(options, limit) = getSearchOptions(argc, argv);
+	std::tie(options, limit) = getSearchOptions(argc, argv, output->supportsEscapeCodes());
 
 	if (*query == 0)
 	{

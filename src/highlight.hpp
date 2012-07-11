@@ -19,3 +19,7 @@ void highlight(std::string& result, const char* data, size_t dataSize, Highlight
 // Highlighting helpers
 void highlightRegex(std::vector<HighlightRange>& ranges, class Regex* re, const char* data, size_t size, const char* preparedRange = 0, size_t offset = 0);
 
+#ifdef _WIN32
+// Win32 ANSI escape codes printer
+void printEscapeCodedStringToConsole(const char* data, size_t size);
+#endif

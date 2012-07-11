@@ -9,4 +9,6 @@ public:
 
 	virtual void print(const char* message, ...) = 0;
 	virtual void error(const char* message, ...) = 0;
+
+	virtual bool supportsEscapeCodes() { return false; }
 };
