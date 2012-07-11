@@ -575,8 +575,9 @@ private:
 	}
 };
 
-Builder::Builder(Output* output, BuilderImpl* impl, unsigned int fileCount): impl(impl), output(output), fileCount(fileCount), lastResultSize(0)
+Builder::Builder(Output* output, BuilderImpl* impl, unsigned int fileCount): impl(impl), output(output), fileCount(fileCount), lastResultSize(~0ull)
 {
+	printStatistics();
 }
 
 Builder::~Builder()
@@ -623,11 +624,11 @@ void Builder::printStatistics()
 {
 	const BuilderImpl::Statistics& s = impl->getStatistics();
 
-	if (fileCount == 0 || lastResultSize == s.resultSize) return;
+	if (lastResultSize == s.resultSize) return;
 
 	lastResultSize = s.resultSize;
 	
-	int percent = s.fileCount * 100 / fileCount;
+	int percent = fileCount == 0 ? 100 : s.fileCount * 100 / fileCount;
 
 	output->print("\r[%3d%%] %d files, %d Mb in, %d Mb out\r", percent, s.fileCount, (int)(s.fileSize / 1024 / 1024), (int)(s.resultSize / 1024 / 1024));
 }
