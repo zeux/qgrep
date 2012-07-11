@@ -11,25 +11,11 @@
 #include "stringutil.hpp"
 #include "highlight.hpp"
 #include "fuzzymatch.hpp"
-
-#include "lz4/lz4.h"
-#include "lz4/lz4hc.h"
+#include "compression.hpp"
 
 #include <memory>
 #include <algorithm>
 #include <limits.h>
-
-static std::vector<char> compressData(const std::vector<char>& data)
-{
-	std::vector<char> cdata(LZ4_compressBound(data.size()));
-	
-	int csize = LZ4_compressHC(const_cast<char*>(&data[0]), &cdata[0], data.size());
-	assert(csize >= 0 && static_cast<size_t>(csize) <= cdata.size());
-
-	cdata.resize(csize);
-
-	return cdata;
-}
 
 static std::vector<const char*> getFileNames(const char** files, unsigned int count)
 {
@@ -117,7 +103,7 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 		}
 
 		std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> data = prepareFileData(files, count);
-		std::vector<char> compressed = compressData(data.first);
+		std::vector<char> compressed = compress(data.first);
 
 		FileFileHeader header;
 		memcpy(header.magic, kFileFileHeaderMagic, sizeof(header.magic));
@@ -544,7 +530,7 @@ unsigned int searchFiles(Output* output_, const char* file, const char* string, 
 	}
 
 	char* data = buffer.get() + header.compressedSize;
-	LZ4_uncompress(buffer.get(), data, header.uncompressedSize);
+	decompress(data, header.uncompressedSize, buffer.get(), header.compressedSize);
 
 	if (*string == 0)
 		return dumpFiles(header, data, &output);

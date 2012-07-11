@@ -8,14 +8,13 @@
 #include "filestream.hpp"
 #include "project.hpp"
 #include "files.hpp"
+#include "compression.hpp"
 
 #include <memory>
 #include <vector>
 #include <string>
 
 #include <string.h>
-
-#include "lz4/lz4.h"
 
 struct UpdateStatistics
 {
@@ -181,7 +180,7 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 
 		char* uncompressed = data.get() + chunk.compressedSize;
 
-		LZ4_uncompress(data.get(), uncompressed, chunk.uncompressedSize);
+		decompress(uncompressed, chunk.uncompressedSize, data.get(), chunk.compressedSize);
 		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data.get(), index.get());
 	}
 

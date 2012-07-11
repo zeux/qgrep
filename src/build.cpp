@@ -11,6 +11,7 @@
 #include "files.hpp"
 #include "bloom.hpp"
 #include "casefold.hpp"
+#include "compression.hpp"
 
 #include <vector>
 #include <list>
@@ -20,9 +21,6 @@
 #include <unordered_set>
 
 #include <string.h>
-
-#include "lz4/lz4.h"
-#include "lz4/lz4hc.h"
 
 class Builder::BuilderImpl
 {
@@ -360,18 +358,6 @@ private:
 		flushChunk(chunk);
 	}
 
-	static std::vector<char> compressData(const std::vector<char>& data)
-	{
-		std::vector<char> cdata(LZ4_compressBound(data.size()));
-		
-		int csize = LZ4_compressHC(const_cast<char*>(&data[0]), &cdata[0], data.size());
-		assert(csize >= 0 && static_cast<size_t>(csize) <= cdata.size());
-
-		cdata.resize(csize);
-
-		return cdata;
-	}
-
 	void flushChunk(const Chunk& chunk)
 	{
 		if (chunk.files.empty()) return;
@@ -553,7 +539,7 @@ private:
 
 	void writeChunk(const Chunk& chunk, const std::pair<std::vector<char>, unsigned int>& index, const std::vector<char>& data)
 	{
-		std::vector<char> cdata = compressData(data);
+		std::vector<char> cdata = compress(data);
 
 		DataChunkHeader header = {};
 		header.fileCount = chunk.files.size();

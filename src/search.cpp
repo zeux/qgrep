@@ -14,11 +14,11 @@
 #include "bloom.hpp"
 #include "casefold.hpp"
 #include "highlight.hpp"
+#include "compression.hpp"
 
 #include <algorithm>
 #include <memory>
 
-#include "lz4/lz4.h"
 #include "re2/prefilter.h"
 #include "re2/prefilter_tree.h"
 
@@ -351,7 +351,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				char* compressed = data.get();
 				char* uncompressed = data.get() + chunk.compressedSize;
 
-				LZ4_uncompress(compressed, uncompressed, chunk.uncompressedSize);
+				decompress(uncompressed, chunk.uncompressedSize, compressed, chunk.compressedSize);
 				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount);
 			}, chunk.compressedSize + chunk.uncompressedSize);
 

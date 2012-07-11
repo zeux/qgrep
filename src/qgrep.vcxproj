@@ -112,6 +112,7 @@
     <ClCompile Include="..\extern\re2\util\strutil.cc" />
     <ClCompile Include="blockpool.cpp" />
     <ClCompile Include="build.cpp" />
+    <ClCompile Include="compression.cpp" />
     <ClCompile Include="encoding.cpp" />
     <ClCompile Include="files.cpp" />
     <ClCompile Include="filestream.cpp" />
@@ -148,6 +149,7 @@
     <ClInclude Include="build.hpp" />
     <ClInclude Include="casefold.hpp" />
     <ClInclude Include="common.hpp" />
+    <ClInclude Include="compression.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="encoding.hpp" />
     <ClInclude Include="files.hpp" />

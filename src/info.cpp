@@ -6,12 +6,11 @@
 #include "stringutil.hpp"
 #include "fileutil.hpp"
 #include "filestream.hpp"
+#include "compression.hpp"
 
 #include <memory>
 #include <string>
 #include <type_traits>
-
-#include "lz4/lz4.h"
 
 template <typename T> struct Statistics
 {
@@ -222,7 +221,7 @@ static bool processFile(Output* output, ProjectInfo& info, const char* path)
 
 		char* uncompressed = data.get() + chunk.compressedSize;
 
-		LZ4_uncompress(data.get(), uncompressed, chunk.uncompressedSize);
+		decompress(uncompressed, chunk.uncompressedSize, data.get(), chunk.compressedSize);
 		processChunkData(output, info, chunk, uncompressed);
 	}
 

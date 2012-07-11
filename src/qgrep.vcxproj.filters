@@ -127,6 +127,9 @@
     <ClCompile Include="filestream.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="compression.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -235,6 +238,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="filestream.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="compression.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
