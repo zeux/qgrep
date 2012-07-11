@@ -26,6 +26,12 @@ public:
 	StandardOutput()
 	{
 		istty = isatty(fileno(stdout)) != 0;
+
+	#ifndef _WIN32
+		const char* term = getenv("TERM");
+
+		istty = istty && term && strcmp(term, "dumb") != 0;
+	#endif
 	}
 
 	virtual void rawprint(const char* data, size_t size)
