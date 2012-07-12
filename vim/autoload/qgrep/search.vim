@@ -8,6 +8,10 @@ function! qgrep#search#init(state)
     endif
 endfunction
 
+function! qgrep#search#getStatus(state)
+    return [a:state.config.project]
+endfunction
+
 function! qgrep#search#parseInput(state, input)
     return a:input
 endfunction

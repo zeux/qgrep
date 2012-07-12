@@ -1,4 +1,13 @@
 function! qgrep#files#init(state)
+    if qgrep#utils#syntax()
+        syntax match QgrepFilesPath "\(\%o33\@!.\)\+\(/\|\(\%o33.\+/\)\@=\)" oneline
+
+        highlight default link QgrepFilesPath Comment
+    endif
+endfunction
+
+function! qgrep#files#getStatus(state)
+    return [a:state.config.project]
 endfunction
 
 function! qgrep#files#parseInput(state, input)

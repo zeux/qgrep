@@ -71,7 +71,7 @@ function! s:renderStatus(state, matches, time)
     let res = []
 
     call add(res, 'qgrep '.a:state.mode)
-    call add(res, a:state.config.project)
+    let res += s:modecall(a:state, 'getStatus', [])
 
     if a:matches < a:state.config.limit
         call add(res, printf("%d matches", a:matches))
@@ -165,7 +165,7 @@ function! s:initSyntax()
         syntax region QgrepMatch
             \ matchgroup=QgrepMatchBeg start=/\%o33\[.\{-}m/
             \ matchgroup=QgrepMatchEnd end=/\%o33\[0m/
-            \ concealends
+            \ oneline concealends
 
         highlight default link QgrepMatch Identifier
 
@@ -336,16 +336,19 @@ function! qgrep#acceptSelection(...)
     endif
 endfunction
 
-function! qgrep#execute(args)
+function! qgrep#execute(args, ...)
     let path = g:qgrep.qgrep
+    let input = a:0 ? (type(a:1) == type('') ? a:1 : join(a:1, "\n")) : ''
 
     try
         if path[0:7] == 'libcall:'
             let args = join(a:args, "\n")
+            let args = len(input) ? args . "\2" . input : args
             let results = libcall(path[8:], 'qgrepVim', args)
         else
             let args = map(copy(a:args), 'shellescape(v:val)')
-            let results = system(path . ' ' . join(args, ' '))
+            let cmd = path . ' ' . join(args, ' ')
+            let results = len(input) ? system(cmd, input) : system(cmd)
         endif
 
         return split(results, "\n")
