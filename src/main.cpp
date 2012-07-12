@@ -10,6 +10,7 @@
 #include "info.hpp"
 #include "stringutil.hpp"
 #include "highlight.hpp"
+#include "filterutil.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -210,7 +211,7 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 	}
 }
 
-std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** argv, bool istty)
+std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** argv, int startarg, bool istty)
 {
 	unsigned int options = istty ? SO_HIGHLIGHT : 0;
 	unsigned int limit = ~0u;
@@ -222,7 +223,7 @@ std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** ar
 		parseSearchOptions(gopts, options, limit);
 
 	// parse command-line options
-	for (int i = 3; i + 1 < argc; ++i)
+	for (int i = startarg; i + 1 < argc; ++i)
 		parseSearchOptions(argv[i], options, limit);
 
 	// choose default file search type
@@ -247,7 +248,7 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 	const char* query = argc > 3 ? argv[argc - 1] : "";
 
 	unsigned int options, limit;
-	std::tie(options, limit) = getSearchOptions(argc, argv, output->supportsEscapeCodes());
+	std::tie(options, limit) = getSearchOptions(argc, argv, 3, output->supportsEscapeCodes());
 
 	if (*query == 0)
 	{
@@ -264,7 +265,20 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 	}
 }
 
-void mainImpl(Output* output, int argc, const char** argv)
+void processFilterCommand(Output* output, int argc, const char** argv, const char* input, size_t inputSize)
+{
+	const char* query = argc > 2 ? argv[argc - 1] : "";
+
+	unsigned int options, limit;
+	std::tie(options, limit) = getSearchOptions(argc, argv, 2, output->supportsEscapeCodes());
+
+	if (input)
+		filterBuffer(output, query, options, limit, input, inputSize);
+	else
+		filterStdin(output, query, options, limit);
+}
+
+void mainImpl(Output* output, int argc, const char** argv, const char* input, size_t inputSize)
 {
 	try
 	{
@@ -310,6 +324,10 @@ void mainImpl(Output* output, int argc, const char** argv)
 				if (i != 0) output->print("\n");
 				printProjectInfo(output, paths[i].c_str());
 			}
+		}
+		else if (argc > 1 && strcmp(argv[1], "filter") == 0)
+		{
+			processFilterCommand(output, argc, argv, input, inputSize);
 		}
 		else
 		{
@@ -370,7 +388,7 @@ static void pinModule()
 extern "C" DLLEXPORT void qgrepConsole(int argc, const char** argv)
 {
 	StandardOutput output;
-	mainImpl(&output, argc, argv);
+	mainImpl(&output, argc, argv, 0, 0);
 }
 
 extern "C" DLLEXPORT const char* qgrepVim(const char* args)
@@ -398,7 +416,7 @@ extern "C" DLLEXPORT const char* qgrepVim(const char* args)
 	result.clear();
 
 	StringOutput output(result);
-	mainImpl(&output, argv.size(), &argv[0]);
+	mainImpl(&output, argv.size(), &argv[0], 0, 0);
 
 	return result.c_str();
 }

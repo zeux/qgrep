@@ -119,6 +119,7 @@
     <ClCompile Include="fileutil.cpp" />
     <ClCompile Include="fileutil_win.cpp" />
     <ClCompile Include="filter.cpp" />
+    <ClCompile Include="filterutil.cpp" />
     <ClCompile Include="fuzzymatch.cpp" />
     <ClCompile Include="highlight.cpp" />
     <ClCompile Include="highlight_win.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="filestream.hpp" />
     <ClInclude Include="fileutil.hpp" />
     <ClInclude Include="filter.hpp" />
+    <ClInclude Include="filterutil.hpp" />
     <ClInclude Include="fuzzymatch.hpp" />
     <ClInclude Include="highlight.hpp" />
     <ClInclude Include="info.hpp" />
