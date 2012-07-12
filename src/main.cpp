@@ -395,10 +395,15 @@ extern "C" DLLEXPORT const char* qgrepVim(const char* args)
 {
 	pinModule();
 
+	size_t argsLength = strlen(args);
+
+	const char* argsInput = strchr(args, '\2');
+	if (argsInput) argsInput++;
+
 	std::vector<const char*> argv;
 	argv.push_back("qgrep");
 
-	std::string argstr = args;
+	std::string argstr(args, argsInput ? argsInput - 1 : args + argsLength);
 	argstr += '\n';
 
 	size_t last = 0;
@@ -416,7 +421,7 @@ extern "C" DLLEXPORT const char* qgrepVim(const char* args)
 	result.clear();
 
 	StringOutput output(result);
-	mainImpl(&output, argv.size(), &argv[0], 0, 0);
+	mainImpl(&output, argv.size(), &argv[0], argsInput, args + argsLength - argsInput);
 
 	return result.c_str();
 }
