@@ -1,5 +1,24 @@
-function! qgrep#utils#syntax()
-	return has('syntax') && exists('g:syntax_on')
+function! qgrep#utils#syntax(...)
+    let syn = has('syntax') && exists('g:syntax_on')
+
+    if syn
+        for i in a:000
+            if i == 'Path'
+                syntax match QgrepPath "[/\\]\|\(\%o33\@!.\)\+\([/\\]\|\(\%o33.\+/\)\@=\)" oneline
+
+                highlight default link QgrepPath SpecialComment
+            elseif i == 'Match' && has('conceal')
+                syntax region QgrepMatch
+                    \ matchgroup=QgrepMatchBeg start=/\%o33\[.\{-}m/
+                    \ matchgroup=QgrepMatchEnd end=/\%o33\[0m/
+                    \ oneline concealends
+
+                highlight default link QgrepMatch Identifier
+            endif
+        endfor
+    endif
+
+    return syn
 endfunction
 
 function! qgrep#utils#splitex(input)

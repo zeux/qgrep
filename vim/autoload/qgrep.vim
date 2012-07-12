@@ -161,17 +161,7 @@ function! s:initSyntax()
     highlight default link QgrepStatusOdd LineNr
     highlight default link QgrepStatusEven None
 
-    if has('conceal')
-        syntax region QgrepMatch
-            \ matchgroup=QgrepMatchBeg start=/\%o33\[.\{-}m/
-            \ matchgroup=QgrepMatchEnd end=/\%o33\[0m/
-            \ oneline concealends
-
-        highlight default link QgrepMatch Identifier
-
-        setlocal concealcursor=n
-        setlocal conceallevel=2
-    endif
+    call qgrep#utils#syntax('Match')
 endfunction
 
 function! s:initOptions(state)
@@ -204,6 +194,11 @@ function! s:initOptions(state)
     setlocal noswapfile
     setlocal winfixheight
     setlocal nowrap
+    
+    if has('conceal')
+        setlocal concealcursor=n
+        setlocal conceallevel=2
+    endif
 
     " Custom options
     if a:state.config.lazyupdate
@@ -332,7 +327,9 @@ function! qgrep#acceptSelection(...)
 
     if line >= 0 && line < len(state.results)
         call qgrep#close()
-        call s:modecall(state, 'acceptResult', [state.input, state.results[line]] + a:000)
+
+        let result = substitute(state.results[line], '\%o33\[.\{-}m', '', 'g')
+        call s:modecall(state, 'acceptResult', [state.input, result] + a:000)
     endif
 endfunction
 

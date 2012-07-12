@@ -1,6 +1,8 @@
 let s:cache = {}
 
 function! qgrep#glob#init(state)
+    call qgrep#utils#syntax('Path')
+
     let dir = getcwd()
     if has_key(s:cache, dir)
         let files = s:cache[dir]
@@ -11,12 +13,6 @@ function! qgrep#glob#init(state)
 
     let a:state.dir = dir
     let a:state.files = files
-
-    if qgrep#utils#syntax()
-        syntax match QgrepGlobPath "\(\%o33\@!.\)\+\([/\\]\|\(\%o33.\+/\)\@=\)" oneline
-
-        highlight default link QgrepGlobPath SpecialComment
-    endif
 endfunction
 
 function! qgrep#glob#getStatus(state)
@@ -36,7 +32,6 @@ function! qgrep#glob#formatResults(state, results)
 endfunction
 
 function! qgrep#glob#acceptResult(state, input, result, ...)
-    let result = a:state.dir . substitute(a:result, '\%o33\[.\{-}m', '', 'g')
-    let cmd = qgrep#utils#splitex(result)[1]
-    call qgrep#utils#gotoFile(result, a:0 ? a:1 : a:state.config.switchbuf, cmd)
+    let cmd = qgrep#utils#splitex(a:input)[1]
+    call qgrep#utils#gotoFile(a:state.dir . a:result, a:0 ? a:1 : a:state.config.switchbuf, cmd)
 endfunction

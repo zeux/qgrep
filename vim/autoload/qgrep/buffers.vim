@@ -1,9 +1,5 @@
 function! qgrep#buffers#init(state)
-    if qgrep#utils#syntax()
-        syntax match QgrepBuffersPath "\(\%o33\@!.\)\+\([/\\]\|\(\%o33.\+/\)\@=\)" oneline
-
-        highlight default link QgrepBuffersPath SpecialComment
-    endif
+    call qgrep#utils#syntax('Path')
 endfunction
 
 function! qgrep#buffers#getStatus(state)
@@ -25,7 +21,6 @@ function! qgrep#buffers#formatResults(state, results)
 endfunction
 
 function! qgrep#buffers#acceptResult(state, input, result, ...)
-    let result = substitute(a:result, '\%o33\[.\{-}m', '', 'g')
-    let cmd = qgrep#utils#splitex(result)[1]
-    call qgrep#utils#gotoFile(result, a:0 ? a:1 : a:state.config.switchbuf, cmd)
+    let cmd = qgrep#utils#splitex(a:input)[1]
+    call qgrep#utils#gotoFile(a:result, a:0 ? a:1 : a:state.config.switchbuf, cmd)
 endfunction

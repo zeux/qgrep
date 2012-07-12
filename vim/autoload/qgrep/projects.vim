@@ -18,6 +18,5 @@ function! qgrep#projects#formatResults(state, results)
 endfunction
 
 function! qgrep#projects#acceptResult(state, input, result, ...)
-    let result = substitute(a:result, '\%o33\[.\{-}m', '', 'g')
-    call qgrep#selectProject(result)
+    call qgrep#selectProject(a:result)
 endfunction
