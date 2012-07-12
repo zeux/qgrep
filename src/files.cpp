@@ -11,6 +11,8 @@
 
 #include <memory>
 
+#include <string.h>
+
 static std::vector<const char*> getFileNames(const char** files, unsigned int count)
 {
 	std::vector<const char*> result(count);
