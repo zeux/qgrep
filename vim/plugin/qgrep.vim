@@ -16,10 +16,8 @@ let g:qgrep = {
         \ 'qgrep#selectProject()':  ['<C-q>'],
         \ 'qgrep#acceptSelection()': ['<CR>'],
         \ },
+    \ 'searchtype': 'ft',
     \ 'mode': 'files',
-    \ 'files': {
-        \ 'searchtype': 'ft'
-        \ },
     \ 'search': {
         \ 'lazyupdate': 1
         \ },

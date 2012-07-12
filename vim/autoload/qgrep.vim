@@ -81,7 +81,7 @@ function! s:renderStatus(state, matches, time)
 
     let groups = ['QgrepStatusOdd', 'QgrepStatusEven']
 
-    let &l:statusline = join(map(copy(res), '"%#" . groups[v:key % len(groups)] . "# " . v:val . " %*"'), '') . printf('%%=%.f ms', a:time)
+    let &l:statusline = join(map(copy(res), 'len(v:val) ? ("%#" . groups[v:key % len(groups)] . "# " . v:val . " %*") : " "'), '') . printf('%%=%.f ms', a:time)
 endfunction
 
 function! s:diffms(start, end)
@@ -355,6 +355,10 @@ function! qgrep#execute(args, ...)
     catch
         return []
     endtry
+endfunction
+
+function! qgrep#filter(state, pattern, input)
+    return qgrep#execute(['filter', a:state.config.searchtype, qgrep#utils#syntax() && has('conceal') ? 'H' : '', 'L'.a:state.config.limit, a:pattern], a:input)
 endfunction
 
 function! qgrep#selectProject(...)

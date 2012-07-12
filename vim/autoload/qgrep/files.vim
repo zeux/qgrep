@@ -1,8 +1,8 @@
 function! qgrep#files#init(state)
     if qgrep#utils#syntax()
-        syntax match QgrepFilesPath "\(\%o33\@!.\)\+\(/\|\(\%o33.\+/\)\@=\)" oneline
+        syntax match QgrepFilesPath "\(\%o33\@!.\)\+\([/\\]\|\(\%o33.\+/\)\@=\)" oneline
 
-        highlight default link QgrepFilesPath Comment
+        highlight default link QgrepFilesPath SpecialComment
     endif
 endfunction
 
