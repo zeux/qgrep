@@ -133,6 +133,9 @@
     <ClCompile Include="highlight_win.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="filter.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\lz4\lz4.h">
@@ -244,6 +247,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="compression.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="filter.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
