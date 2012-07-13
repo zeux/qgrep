@@ -153,9 +153,6 @@ struct VisualAssistFragment
     std::string text;
     std::unique_ptr<Regex> re;
     bool ispath;
-
-private:
-	VisualAssistFragment(const VisualAssistFragment&);
 };
 
 static void processMatchHighlightVisualAssist(const std::vector<VisualAssistFragment>& fragments,
