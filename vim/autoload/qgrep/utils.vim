@@ -4,7 +4,7 @@ function! qgrep#utils#syntax(...)
     if syn
         for i in a:000
             if i == 'Path'
-                syntax match QgrepPath "[/\\]\|\(\%o33\@!.\)\+\([/\\]\|\(\%o33.\+/\)\@=\)" oneline
+                syntax region QgrepPath start="^" end="\ze[^/\\]*$" contains=QgrepMatch oneline
 
                 highlight default link QgrepPath SpecialComment
             elseif i == 'Match' && has('conceal')
