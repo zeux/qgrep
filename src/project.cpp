@@ -173,7 +173,8 @@ static std::unique_ptr<ProjectGroup> buildGroup(std::unique_ptr<ProjectGroup> gr
 	return move(group);
 }
 
-static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* file, unsigned int& lineId, ProjectGroup* parent, std::map<std::string, std::shared_ptr<Regex>>& regexCache)
+static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* file, unsigned int& lineId, ProjectGroup* parent,
+	std::map<std::string, std::shared_ptr<Regex>>& regexCache, const char* pathBase)
 {
 	std::string line, suffix;
 	std::vector<std::string> include, exclude;
@@ -192,12 +193,12 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 		else if (extractSuffix(line, "path", suffix))
 		{
 			if (suffix.empty()) throw std::runtime_error("No path specified");
-			result->paths.push_back(suffix);
+			result->paths.push_back(normalizePath(pathBase, suffix.c_str()));
 		}
 		else if (extractSuffix(line, "file", suffix))
 		{
 			if (suffix.empty()) throw std::runtime_error("No path specified");
-			result->files.push_back(suffix);
+			result->files.push_back(normalizePath(pathBase, suffix.c_str()));
 		}
 		else if (extractSuffix(line, "include", suffix))
 		{
@@ -210,7 +211,7 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 			exclude.push_back(suffix);
 		}
 		else if (extractSuffix(line, "group", suffix))
-			result->groups.push_back(parseGroup(in, file, lineId, result.get(), regexCache));
+			result->groups.push_back(parseGroup(in, file, lineId, result.get(), regexCache, pathBase));
 		else if (extractSuffix(line, "endgroup", suffix))
 		{
 			if (!parent) throw std::runtime_error("Mismatched endgroup");
@@ -239,12 +240,15 @@ static std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* fi
 		return std::unique_ptr<ProjectGroup>();
 	}
 
+	// treat all project paths as project file-relative; treat project file path as current directory-relative
+	std::string pathBase = normalizePath(getCurrentDirectory().c_str(), (std::string(file) + "/..").c_str());
+
 	unsigned int line = 0;
 	std::map<std::string, std::shared_ptr<Regex>> regexCache;
 
 	try
 	{
-		return parseGroup(in, file, line, 0, regexCache);
+		return parseGroup(in, file, line, 0, regexCache, pathBase.c_str());
 	}
 	catch (const std::exception& e)
 	{
