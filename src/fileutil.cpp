@@ -8,11 +8,6 @@ static bool isSeparator(char ch)
 	return ch == '/' || ch == '\\';
 }
 
-static bool isDriveLetter(char ch)
-{
-    return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
-}
-
 void createPath(const char* path)
 {
 	std::string p = path;
@@ -109,16 +104,31 @@ static void appendPathComponents(std::string& buf, const char* path)
     }
 }
 
+static bool isUNCPath(const char* path)
+{
+    return (path[0] == '\\' && path[1] == '\\');
+}
+
+static bool isDriveLetter(char ch)
+{
+    return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
+}
+
+static bool isDrivePath(const char* path)
+{
+    return isDriveLetter(path[0]) && path[1] == ':' && (path[2] == 0 || isSeparator(path[2]));
+}
+
 static void appendPath(std::string& buf, const char* path)
 {
     // handle absolute paths
-    if (path[0] == '\\' && path[1] == '\\')
+    if (isUNCPath(path))
     {
-        // UNC prefix; keep backslashes
+        // UNC path; keep backslashes (all other backslashes are replaced with forward slashes)
         buf = "\\\\";
         path += 2;
     }
-    else if (isDriveLetter(path[0]) && path[1] == ':' && (path[2] == 0 || isSeparator(path[2])))
+    else if (isDrivePath(path))
     {
         // Windows drive path
         buf = std::string(path, path + 2);
@@ -126,13 +136,21 @@ static void appendPath(std::string& buf, const char* path)
     }
     else if (isSeparator(path[0]))
     {
-        // rooted path; note that we can't simply set buf to "/" because we have to handle cases where buf is an UNC or drive path
-        size_t pos = buf.find('/');
+        if (isUNCPath(buf.c_str()) || isDrivePath(buf.c_str()))
+        {
+            // go to UNC or drive root
+            size_t pos = buf.find('/');
 
-        if (pos != std::string::npos)
-            buf.erase(buf.begin() + (pos == 0 ? 1 : pos), buf.end());
+            if (pos != std::string::npos) buf.erase(buf.begin() + pos, buf.end());
+        }
+        else
+        {
+            // go to FS root
+            buf = "/";
+        }
     }
 
+    // handle other path components as relative
     appendPathComponents(buf, path);
 }
 
