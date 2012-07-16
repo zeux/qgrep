@@ -15,5 +15,6 @@ bool renameFile(const char* oldpath, const char* newpath);
 
 std::string replaceExtension(const char* path, const char* ext);
 void joinPaths(std::string& buf, const char* lhs, const char* rhs);
+std::string normalizePath(const char* base, const char* path);
 
 bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size);
