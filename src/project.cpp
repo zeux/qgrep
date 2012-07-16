@@ -220,10 +220,12 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 		else
 		{
 			// path without any special directive
+			std::string path = normalizePath(pathBase, line.c_str());
+
 			if (line.back() == '/' || line.back() == '\\')
-				result->paths.push_back(line);
+				result->paths.push_back(path);
 			else
-				result->files.push_back(line);
+				result->files.push_back(path);
 		}
 	}
 
