@@ -12,6 +12,7 @@ void createDirectory(const char* path);
 void createPath(const char* path);
 void createPathForFile(const char* path);
 bool renameFile(const char* oldpath, const char* newpath);
+std::string getCurrentDirectory();
 
 std::string replaceExtension(const char* path, const char* ext);
 void joinPaths(std::string& buf, const char* lhs, const char* rhs);

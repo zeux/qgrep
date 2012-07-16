@@ -101,4 +101,16 @@ void createDirectory(const char* path)
     CreateDirectoryA(path, NULL);
 }
 
+std::string getCurrentDirectory()
+{
+    DWORD length = GetCurrentDirectoryA(0, NULL);
+    if (length == 0) return "";
+
+    std::string result;
+	result.resize(length);
+    result.resize(GetCurrentDirectoryA(length, &result[0]));
+
+    return std::move(result);
+}
+
 #endif

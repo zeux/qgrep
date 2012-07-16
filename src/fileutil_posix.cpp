@@ -8,6 +8,7 @@
 
 #include <string.h>
 #include <dirent.h>
+#include <unistd.h>
 #include <sys/stat.h>
 
 static bool readDirectory(const char* path, std::vector<dirent>& result)
@@ -98,6 +99,22 @@ bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)
 void createDirectory(const char* path)
 {
 	mkdir(path, 0755);
+}
+
+std::string getCurrentDirectory()
+{
+    long length = pathconf(".", _PC_PATH_MAX);
+    if (length <= 0) return "";
+
+    std::string result;
+    result.resize(length);
+
+    const char* path = getcwd(&result[0], length);
+    if (!path) return "";
+
+    result.resize(strlen(path));
+
+    return std::move(result);
 }
 
 #endif
