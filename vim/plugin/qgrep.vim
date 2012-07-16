@@ -13,7 +13,7 @@ let g:qgrep = {
     \ 'maxheight': 7,
     \ 'switchbuf': '',
     \ 'keymap': {
-        \ 'qgrep#selectProject()':  ['<C-q>'],
+        \ 'qgrep#selectProject()':  ['<C-p>'],
         \ 'qgrep#acceptSelection()': ['<CR>'],
         \ },
     \ 'searchtype': 'ft',
