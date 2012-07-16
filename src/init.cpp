@@ -6,8 +6,21 @@
 
 #include <fstream>
 
+static bool fileExists(const char* path)
+{
+	std::ifstream in(path);
+
+	return !!in;
+}
+
 void initProject(Output* output, const char* name, const char* file, const char* path)
 {
+	if (fileExists(file))
+	{
+		output->error("Error: project %s already exists\n", file);
+		return;
+	}
+
 	createPathForFile(file);
 
 	std::ofstream out(file);
