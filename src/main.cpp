@@ -175,6 +175,7 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 
 		case 'b':
 			options |= SO_BRUTEFORCE;
+			break;
 			
 		case 'V':
 			options |= SO_VISUALSTUDIO;
