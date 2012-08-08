@@ -279,6 +279,49 @@ void processFilterCommand(Output* output, int argc, const char** argv, const cha
 		filterStdin(output, query, options, limit);
 }
 
+void printHelp(Output* output, bool extended)
+{
+	output->print(
+"Qgrep (http://hg.zeuxcg.org/qgrep)\n"
+"\n"
+"Basic commands:\n"
+"  qgrep init <project> <path>\n"
+"  qgrep update <project-list>\n"
+"  qgrep search <project-list> <search-options> <query>\n"
+"  qgrep help\n");
+
+    if (extended)
+        output->print(
+"\n"
+"Advanced commands:\n"
+"  qgrep build <project-list>\n"
+"  qgrep files <project-list>\n"
+"  qgrep files <project-list> <search-options> <query>\n"
+"  qgrep filter <search-options> <query>\n"
+"  qgrep info <project-list>\n"
+"  qgrep projects\n");
+
+    output->print(
+"\n"
+"<project> is a project name (stored in ~/.qgrep) or a path to .cfg file\n"
+"<project-list> is * or % (all projects) or a comma-separated list of names\n"
+"<query> is a regular expression\n"
+"\n"
+"<search-options> can include:\n"
+"  i - case-insensitive search          l - literal (substring) search\n"
+"  V - Visual Studio formatting         C - include column number in output\n"
+"  Lnum - limit output to <num> lines\n");
+
+
+    if (extended)
+        output->print(
+"\n"
+"<search-options> can include additional options for files/filter commands:\n"
+"  fp - search in file paths (default)  fn - search in file names\n"
+"  ft - Command-T like fuzzy search     fs - search in file names/paths using\n"
+"  fT - Command-T search w/out ranking       a space-delimited query (VAX-like)\n");
+}
+
 void mainImpl(Output* output, int argc, const char** argv, const char* input, size_t inputSize)
 {
 	try
@@ -332,33 +375,9 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 		}
 		else
 		{
-			output->error("Usage:\n"
-				"qgrep init <project> <path>\n"
-				"qgrep build <project-list>\n"
-				"qgrep search <project-list> <search-options> <query>\n"
-				"qgrep files <project-list>\n"
-				"qgrep files <project-list> <search-options> <query>\n"
-				"qgrep info <project-list>\n"
-				"qgrep projects\n"
-				"\n"
-				"<project> is either a project name (stored in ~/.qgrep) or a project path\n"
-				"<project-list> is either * (all projects) or a comma-separated list of project names\n"
-				"<search-options> can include:\n"
-				"  i - case-insensitive search\n"
-				"  l - literal search (query is treated as a literal string)\n"
-				"  b - bruteforce search: skip indexing optimizations\n"
-				"  V - Visual Studio style formatting\n"
-				"  C - include column number in output\n"
-				"  Lnumber - limit output to <number> lines\n"
-				"<search-options> can include additional options for file search:\n"
-				"  fp - search in file paths (default)\n"
-				"  fn - search in file names\n"
-				"  fs - search in file names/paths using a space-delimited literal query\n"
-				"       paths are grepped for components with slashes, names are grepped for the rest\n"
-				"  ft - search in file paths using a Command-T like fuzzy search with ranking\n"
-				"  fT - search in file paths using a Command-T like fuzzy search without ranking\n"
-				"<query> is a regular expression\n"
-				);
+			bool extended = argc > 1 && strcmp(argv[1], "help") == 0;
+
+			printHelp(output, extended);
 		}
 	}
 	catch (const std::exception& e)
