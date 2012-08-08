@@ -15,6 +15,17 @@
 namespace re2 {
 
 #ifdef USE_SSE2
+inline int countTrailingZeros(int value)
+{
+#ifdef _MSC_VER
+	unsigned long r;
+	_BitScanForward(&r, value);
+	return r;
+#else
+	return __builtin_ctz(value);
+#endif
+}
+
 inline const void * memchr ( const void * ptr, int value, size_t num )
 {
 	const unsigned char* data = static_cast<const unsigned char*>(ptr);
@@ -30,15 +41,7 @@ inline const void * memchr ( const void * ptr, int value, size_t num )
 		if (mask == 0)
 			;
 		else
-        {
-        #ifdef _MSC_VER
-            unsigned long r;
-            _BitScanForward(&r, mask);
-			return data + r;
-        #else
-			return data + __builtin_ctz(mask);
-        #endif
-        }
+			return data + countTrailingZeros(mask);
 
 		data += 16;
 		num -= 16;
