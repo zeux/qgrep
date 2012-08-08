@@ -316,6 +316,10 @@ void printHelp(Output* output, bool extended)
     if (extended)
         output->print(
 "\n"
+"<search-options> can include additional options for output highlighting:\n"
+"  H - force enable highlighting        HD - force disable highlighting\n"
+"      (default for TTY output)         HM - only highlight search matches\n"  
+"\n"
 "<search-options> can include additional options for files/filter commands:\n"
 "  fp - search in file paths (default)  fn - search in file names\n"
 "  ft - Command-T like fuzzy search     fs - search in file names/paths using\n"
