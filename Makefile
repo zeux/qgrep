@@ -1,13 +1,15 @@
 CC=gcc
-CFLAGS=-c -Wall -fPIC -O3 -msse2 -DUSE_SSE2 -DHAVE_PTHREAD -DHAVE_RWLOCK -D_FILE_OFFSET_BITS=64
-CXXFLAGS=$(CFLAGS) -std=c++0x -Iextern -Iextern/re2
-LDFLAGS=-pie -lpthread -lstdc++
+CCFLAGS=-c -Wall -fPIC -O3 -msse2 -DUSE_SSE2 -DHAVE_PTHREAD -DHAVE_RWLOCK -D_FILE_OFFSET_BITS=64 -Iextern -Iextern/re2
+CXXFLAGS=-std=c++0x
+LDFLAGS=-lpthread -lstdc++
 
 ifeq ($(shell uname),Darwin)
 # Use gcc from MacPorts on OS X (clang from Xcode crashes on lambdas)
-CC=gcc-mp-4.7
+CC=clang
+CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -arch i386 -arch x86_64 -stdlib=libc++
+LDFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -arch i386 -arch x86_64 -stdlib=libc++
 else
-LDFLAGS+=-Wl,--dynamic-list=src/qgrep.dynlist
+LDFLAGS+=-pie -Wl,--dynamic-list=src/qgrep.dynlist
 endif
 
 SOURCES=
@@ -27,15 +29,15 @@ $(EXECUTABLE): $(OBJECTS)
 
 obj/%.cc.o: %.cc
 	mkdir -p $(dir $@)
-	$(CC) $(CXXFLAGS) $< -o $@
+	$(CC) $(CCFLAGS) $(CXXFLAGS) $< -o $@
 
 obj/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)
-	$(CC) $(CXXFLAGS) $< -o $@
+	$(CC) $(CCFLAGS) $(CXXFLAGS) $< -o $@
 
 obj/%.c.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CCFLAGS) $< -o $@
 
 clean:
 	rm -rf obj
