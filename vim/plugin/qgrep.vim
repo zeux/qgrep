@@ -13,7 +13,7 @@ let g:qgrep = {
     \ 'maxheight': 7,
     \ 'switchbuf': '',
     \ 'keymap': {
-        \ 'qgrep#selectProject()':  ['<C-p>'],
+        \ 'qgrep#selectProjectGUI()':  ['<C-p>'],
         \ 'qgrep#acceptSelection()': ['<CR>'],
         \ },
     \ 'searchtype': 'ft',
@@ -24,8 +24,16 @@ let g:qgrep = {
     \ }
 
 " Commands
-command! -n=? Qgrep call qgrep#open(<f-args>)
-command! -n=? QgrepProject call qgrep#selectProject(<f-args>)
+command! -n=* Qgrep call qgrep#open(<f-args>)
+command! -n=* QgrepSelectProject call qgrep#selectProject(<f-args>)
+command! -n=* QgrepRun execute '!'.fnamemodify(g:qgrep.qgrep, ':s/^libcall://:r') <q-args>
+
+" Commands for bundled extensions
+command! -n=* QgrepBuffers call qgrep#open('buffers', <f-args>)
+command! -n=* QgrepFiles call qgrep#open('files', <f-args>)
+command! -n=* QgrepGlob call qgrep#open('glob', <f-args>)
+command! -n=* QgrepProjects call qgrep#open('projects', <f-args>)
+command! -n=* QgrepSearch call qgrep#open('search', <f-args>)
 
 " Mappings
 silent! nnoremap <silent> <C-p> :Qgrep<CR>
