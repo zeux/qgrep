@@ -1,1 +1,1 @@
-http://lz4.googlecode.com/svn/trunk/ r66
+http://lz4.googlecode.com/svn/trunk/ r77
