@@ -350,7 +350,7 @@ function! qgrep#execute(args, ...)
 
         return split(results, "\n")
     catch
-        return []
+        return ['Error: ' . v:exception]
     endtry
 endfunction
 
@@ -368,9 +368,12 @@ function! qgrep#selectProject(...)
         if exists('s:grepprg')
             call call('qgrep#replaceGrep', s:grepprg)
         endif
-        return
+    else
+        call qgrep#selectProjectGUI()
     endif
+endfunction
 
+function! qgrep#selectProjectGUI()
     let projects = qgrep#execute(['projects'])
 
     if has('menu') && has('gui_running')
