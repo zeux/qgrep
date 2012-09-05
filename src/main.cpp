@@ -24,6 +24,7 @@
 #endif
 
 #include <mutex>
+#include <chrono>
 
 namespace re2 { int RunningOnValgrind() { return 0; } }
 
@@ -198,6 +199,10 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 			}
 			break;
 
+		case 'S':
+			options |= SO_SUMMARY;
+			break;
+
 		case 'f':
 			s++;
 			options |= parseSearchFileOption(*s);
@@ -257,12 +262,24 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 		options &= ~SO_HIGHLIGHT_MATCHES;
 	}
 
+	unsigned int total = 0;
+
+	auto start = std::chrono::high_resolution_clock::now();
+
 	for (size_t i = 0; limit > 0 && i < paths.size(); ++i)
 	{
 		unsigned int result = search(output, paths[i].c_str(), query, options, limit);
 
 		assert(result <= limit);
 		limit -= result;
+		total += result;
+	}
+
+	if (options & SO_SUMMARY)
+	{
+		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start);
+
+		output->print("Search complete, found %d%s matches in %.2f sec\n", total, (limit == 0 ? "+" : ""), static_cast<double>(time.count()) / 1000.0);
 	}
 }
 
@@ -310,7 +327,7 @@ void printHelp(Output* output, bool extended)
 "<search-options> can include:\n"
 "  i - case-insensitive search          l - literal (substring) search\n"
 "  V - Visual Studio formatting         C - include column number in output\n"
-"  Lnum - limit output to <num> lines\n");
+"  Lnum - limit output to <num> lines   S - print search summary\n");
 
 
     if (extended)

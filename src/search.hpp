@@ -19,6 +19,8 @@ enum SearchOptions
 
 	SO_HIGHLIGHT = 1 << 10,
 	SO_HIGHLIGHT_MATCHES = 1 << 11,
+
+	SO_SUMMARY = 1 << 12
 };
 
 unsigned int getRegexOptions(unsigned int options);
