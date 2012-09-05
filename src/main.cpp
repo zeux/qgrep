@@ -139,7 +139,7 @@ unsigned int parseSearchFileOption(char opt)
 		return SO_FILE_COMMANDT;
 
 	default:
-		throw std::runtime_error(std::string("Unknown search option 'f") + opt + "'");
+		throw std::runtime_error("Unknown search option 'f" + std::string(opt != 0, opt) + "'");
 	}
 }
 
@@ -160,7 +160,20 @@ bool parseHighlightOption(char opt, unsigned int& options)
 	}
 }
 
-void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& limit)
+const char* parseOrRegex(std::string& result, const char* str)
+{
+	const char* end = str;
+	while (*end && *end != ' ') end++;
+
+	if (!result.empty()) result += "|";
+	result += "(";
+	result += std::string(str, end);
+	result += ")";
+
+	return end;
+}
+
+void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& limit, std::string& include, std::string& exclude)
 {
 	for (const char* s = opts; *s; ++s)
 	{
@@ -205,7 +218,13 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 
 		case 'f':
 			s++;
-			options |= parseSearchFileOption(*s);
+
+			if (*s == 'i')
+				s = parseOrRegex(include, s + 1) - 1;
+			else if (*s == 'e')
+				s = parseOrRegex(exclude, s + 1) - 1;
+			else
+				options |= parseSearchFileOption(*s);
 			break;
 
 		case ' ':
@@ -217,20 +236,21 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 	}
 }
 
-std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** argv, int startarg, bool istty)
+std::tuple<unsigned int, unsigned int, std::string, std::string> getSearchOptions(int argc, const char** argv, int startarg, bool istty)
 {
 	unsigned int options = istty ? SO_HIGHLIGHT : 0;
 	unsigned int limit = ~0u;
+	std::string include, exclude;
 
 	const char* gopts = getenv("QGREP_OPTIONS");
 
 	// parse global options
 	if (gopts)
-		parseSearchOptions(gopts, options, limit);
+		parseSearchOptions(gopts, options, limit, include, exclude);
 
 	// parse command-line options
 	for (int i = startarg; i + 1 < argc; ++i)
-		parseSearchOptions(argv[i], options, limit);
+		parseSearchOptions(argv[i], options, limit, include, exclude);
 
 	// choose default file search type
 	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT | SO_FILE_COMMANDT_RANKED)) == 0)
@@ -244,17 +264,18 @@ std::pair<unsigned int, unsigned int> getSearchOptions(int argc, const char** ar
 	if (limit == 0)
 		limit = ~0u;
 
-	return std::make_pair(options, limit);
+	return std::make_tuple(options, limit, include, exclude);
 }
 
-void processSearchCommand(Output* output, int argc, const char** argv, unsigned int (*search)(Output*, const char*, const char*, unsigned int, unsigned int))
+void processSearchCommand(Output* output, int argc, const char** argv, unsigned int (*search)(Output*, const char*, const char*, unsigned int, unsigned int, const char*, const char*))
 {
 	std::vector<std::string> paths = getProjectPaths(argv[2]);
 
 	const char* query = argc > 3 ? argv[argc - 1] : "";
 
 	unsigned int options, limit;
-	std::tie(options, limit) = getSearchOptions(argc, argv, 3, output->supportsEscapeCodes());
+	std::string include, exclude;
+	std::tie(options, limit, include, exclude) = getSearchOptions(argc, argv, 3, output->supportsEscapeCodes());
 
 	if (*query == 0)
 	{
@@ -268,7 +289,7 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 
 	for (size_t i = 0; limit > 0 && i < paths.size(); ++i)
 	{
-		unsigned int result = search(output, paths[i].c_str(), query, options, limit);
+		unsigned int result = search(output, paths[i].c_str(), query, options, limit, include.empty() ? 0 : include.c_str(), exclude.empty() ? 0 : exclude.c_str());
 
 		assert(result <= limit);
 		limit -= result;
@@ -288,7 +309,8 @@ void processFilterCommand(Output* output, int argc, const char** argv, const cha
 	const char* query = argc > 2 ? argv[argc - 1] : "";
 
 	unsigned int options, limit;
-	std::tie(options, limit) = getSearchOptions(argc, argv, 2, output->supportsEscapeCodes());
+	std::string include, exclude;
+	std::tie(options, limit, include, exclude) = getSearchOptions(argc, argv, 2, output->supportsEscapeCodes());
 
 	if (input)
 		filterBuffer(output, query, options, limit, input, inputSize);
@@ -326,12 +348,15 @@ void printHelp(Output* output, bool extended)
 "\n"
 "<search-options> can include:\n"
 "  i - case-insensitive search          l - literal (substring) search\n"
-"  V - Visual Studio formatting         C - include column number in output\n"
-"  Lnum - limit output to <num> lines   S - print search summary\n");
-
+"  V - Visual Studio formatting         S - print search summary\n");
 
     if (extended)
         output->print(
+"  C - output match column number       L<num> - limit output to <num> lines\n"
+"\n"
+"<search-options> can include flags for restricting searches to certain files:\n"
+"  fi<re> - only search in files with paths matching regex <re>\n"
+"  fe<re> - don't search in files with paths matching regex <re>\n"
 "\n"
 "<search-options> can include additional options for output highlighting:\n"
 "  H - force enable highlighting        HD - force disable highlighting\n"

@@ -171,7 +171,7 @@ static void buildFilterEntries(FilterEntries& result, std::unique_ptr<FilterEntr
     }
 }
 
-unsigned int searchFiles(Output* output, const char* file, const char* string, unsigned int options, unsigned int limit)
+unsigned int searchFiles(Output* output, const char* file, const char* string, unsigned int options, unsigned int limit, const char* include, const char* exclude)
 {
 	std::string dataPath = replaceExtension(file, ".qgf");
 	FileStream in(dataPath.c_str(), "rb");

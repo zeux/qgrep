@@ -168,7 +168,7 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 	re->rangeFinalize(range);
 }
 
-static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount)
+static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe)
 {
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
@@ -181,6 +181,12 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 		for (size_t i = 0; i < fileCount; ++i)
 		{
 			const DataChunkFileHeader& f = files[i];
+
+			if (includeRe && !includeRe->search(data + f.nameOffset, f.nameLength))
+				continue;
+
+			if (excludeRe && excludeRe->search(data + f.nameOffset, f.nameLength))
+				continue;
 			
 			processFile(re, output, chunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
 		}
@@ -276,10 +282,12 @@ private:
 	re2::PrefilterTree tree;
 };
 
-unsigned int searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit)
+unsigned int searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit, const char* include, const char* exclude)
 {
 	SearchOutput output(output_, options, limit);
 	std::unique_ptr<Regex> regex(createRegex(string, getRegexOptions(options)));
+	std::unique_ptr<Regex> includeRe(include ? createRegex(include, RO_IGNORECASE) : 0);
+	std::unique_ptr<Regex> excludeRe(exclude ? createRegex(exclude, RO_IGNORECASE) : 0);
 	NgramRegex ngregex((options & SO_BRUTEFORCE) ? nullptr : regex.get());
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
@@ -347,12 +355,12 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				return 0;
 			}
 
-			queue.push([=, &regex, &output]() {
+			queue.push([=, &regex, &output, &includeRe, &excludeRe]() {
 				char* compressed = data.get();
 				char* uncompressed = data.get() + chunk.compressedSize;
 
 				decompress(uncompressed, chunk.uncompressedSize, compressed, chunk.compressedSize);
-				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount);
+				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount, includeRe.get(), excludeRe.get());
 			}, chunk.compressedSize + chunk.uncompressedSize);
 
 			chunkIndex++;

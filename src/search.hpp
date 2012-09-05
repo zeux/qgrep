@@ -24,5 +24,5 @@ enum SearchOptions
 };
 
 unsigned int getRegexOptions(unsigned int options);
-	
-unsigned int searchProject(Output* output, const char* file, const char* string, unsigned int options, unsigned int limit);
+
+unsigned int searchProject(Output* output, const char* file, const char* string, unsigned int options, unsigned int limit, const char* include, const char* exclude);
