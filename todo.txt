@@ -1,11 +1,11 @@
 features:
-5. vim script
+5. vim script (docs)
 6. stale file support
-7. incremental update based on stale file list
 9. recognize (?i) at the beginning of regular expression as case-insensitive marker (check that it's not toggled off later)
-11. search with filename filtering
 13. incremental update based on ntfs journal / fsevents / inotify
 14. proper unicode support wrt lowercasing (i.e. sometimes we'll have to revert back to slow casefold using re2, or do utf8 casefold)
 15. #! support in .cfg files
 17. jobified chunk compression in builder
-18. colored output in unix terminals
+21. tags
+22. optimize lowercasing for short strings (small TLS buffer?)
+23. optimize single-character highlighting by constructing a special regex: re -> (re)+ (literal?)
