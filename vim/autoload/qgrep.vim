@@ -61,7 +61,7 @@ endfunction
 function! s:renderResults(lines, maxheight)
     let height = min([len(a:lines), a:maxheight])
     setlocal modifiable
-    silent! execute '%"_d'
+    silent! execute '%d _'
     silent! execute 'resize' height
     call setline(1, map(copy(a:lines), '"  ".v:val'))
     setlocal nomodifiable
