@@ -345,7 +345,7 @@ function! s:close()
             silent! execute 'let &'.k.'='.string(v)
         endfor
 
-        bunload!
+        bdelete!
 
         if s:state.winrestore[1] >= &lines && s:state.winrestore[2] == winnr('$')
             execute s:state.winrestore[0]
