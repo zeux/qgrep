@@ -28,6 +28,9 @@ let s:keymap = {
     \ 'qgrep#close()':              ['<Esc>', '<C-c>'],
     \ }
 
+" Per-mode history (save old state)
+let s:history = {}
+
 function! s:state()
     return s:state
 endfunction
@@ -49,12 +52,17 @@ function! s:renderPrompt(state)
 
     redraw
     call s:echoHighlight('QgrepPromptPrompt', '>>> ')
-    call s:echoHighlight('QgrepPromptText', strpart(text, 0, cursor))
-    call s:echoHighlight('QgrepPromptCursor', strpart(text, cursor, 1))
-    call s:echoHighlight('QgrepPromptText', strpart(text, cursor + 1))
 
-    if cursor >= len(text)
-        call s:echoHighlight('QgrepPromptCursor', '_')
+    if cursor < 0
+        call s:echoHighlight('QgrepPromptTextSelected', text)
+    else
+        call s:echoHighlight('QgrepPromptText', strpart(text, 0, cursor))
+        call s:echoHighlight('QgrepPromptCursor', strpart(text, cursor, 1))
+        call s:echoHighlight('QgrepPromptText', strpart(text, cursor + 1))
+
+        if cursor >= len(text)
+            call s:echoHighlight('QgrepPromptCursor', '_')
+        endif
     endif
 endfunction
 
@@ -88,6 +96,14 @@ function! s:diffms(start, end)
     return str2float(reltimestr(reltime(a:start, a:end))) * 1000
 endfunction
 
+function! s:redrawResults(state, results)
+    let state = a:state
+    let lines = s:modecall(state, 'formatResults', [a:results])
+    call s:renderResults(lines, state.config.maxheight)
+    call cursor(state.line, 1)
+    call s:renderStatus(state, len(a:results), 0)
+endfunction
+
 function! s:updateResults(state)
     let state = a:state
     let pattern = s:modecall(state, 'parseInput', [state.input])
@@ -98,9 +114,7 @@ function! s:updateResults(state)
 
     let start = reltime()
     let results = s:modecall(state, 'getResults', [pattern])
-    let lines = s:modecall(state, 'formatResults', [results])
-    call s:renderResults(lines, state.config.maxheight)
-    call cursor(state.line, 1)
+    call s:redrawResults(state, results)
     let end = reltime()
 
     let state.results = results
@@ -120,8 +134,19 @@ function! s:onPromptChanged(state)
     call s:renderPrompt(a:state)
 endfunction
 
+function! s:tryReplaceInput(state)
+    let state = a:state
+
+    if state.cursor < 0
+        let state.input = ''
+        let state.cursor = 0
+        let state.line = 0
+    endif
+endfunction
+
 function! s:onInsertChar(state, char)
     let state = a:state
+    call s:tryReplaceInput(state)
     let state.input = strpart(state.input, 0, state.cursor) . a:char . strpart(state.input, state.cursor)
     let state.cursor += len(a:char)
     call s:onInputChanged(state)
@@ -129,6 +154,7 @@ endfunction
 
 function! s:onDeleteChar(state, offset)
     let state = a:state
+    call s:tryReplaceInput(state)
     let state.input = strpart(state.input, 0, state.cursor + a:offset) . strpart(state.input, state.cursor + a:offset + 1)
     if state.cursor > 0 && a:offset < 0
         let state.cursor -= 1
@@ -138,6 +164,9 @@ endfunction
 
 function! s:onMoveCursor(state, diff)
     let state = a:state
+    if state.cursor < 0
+        let state.cursor = len(state.input)
+    endif
     let state.cursor += a:diff
     let state.cursor = max([0, min([state.cursor, len(state.input)])])
     call s:onPromptChanged(state)
@@ -152,10 +181,15 @@ function! s:onMoveLine(state, type)
 endfunction
 
 function! s:initSyntax()
+    if !qgrep#utils#syntax()
+        return
+    endif
+
     syntax clear
 
     highlight default link QgrepPromptPrompt Comment
     highlight default link QgrepPromptText Normal
+    highlight default link QgrepPromptTextSelected Visual
     highlight default link QgrepPromptCursor Constant
 
     highlight default link QgrepStatusOdd LineNr
@@ -252,39 +286,61 @@ function! s:iscmdwin()
 	return v:errmsg =~ '^E11:'
 endfunction
 
+function! s:mergeConfig(target, source)
+    for p in items(a:source)
+        if has_key(a:target, p[0]) && type(a:target[p[0]]) == type({})
+            call extend(a:target[p[0]], p[1])
+        else
+            let a:target[p[0]] = copy(p[1])
+        endif
+    endfor
+endfunction
+
 function! s:open(args)
     if exists('s:state') || s:iscmdwin()
         return
     endif
 
+    " get state from history or from sensible defaults
     let mode = empty(a:args) ? g:qgrep.mode : a:args[0]
-    let state = {'cursor': 0, 'input': '', 'line': 0, 'results': [], 'mode': mode, 'config': {}}
-    let config = items(g:qgrep) + (has_key(g:qgrep, mode) ? items(g:qgrep[mode]) : [])
+    let state = has_key(s:history, mode) ? s:history[mode] : {'cursor': 0, 'input': '', 'line': 0, 'results': [], 'mode': mode}
 
-    for p in config
-        let state.config[p[0]] = p[1]
-    endfor
+    " make sure that any existing input triggers the 'selected' state
+    let state.cursor = len(state.input) ? -1 : 0
 
+    " add all entries from global and mode-specific config to state config
+    let state.config = copy(g:qgrep)
+    call s:mergeConfig(state.config, has_key(g:qgrep, mode) ? g:qgrep[mode] : {})
+
+    " save commands to current window state
 	let state.winrestore = [winrestcmd(), &lines, winnr('$')]
 
     let s:state = state
 
+    " create Qgrep window
 	silent! keepalt botright 1new Qgrep
-    abclear <buffer>
 
+    " initialize buffer
     call s:initOptions(state)
-    if qgrep#utils#syntax()
-        call s:initSyntax()
-    endif
+    call s:initSyntax()
     call s:initKeys(state, '<SID>state()')
 
+    " custom mode initializer
     call s:modecall(state, 'init', [])
 
+    " if we have some results from history, display them in new buffer
+    if has_key(state, 'results')
+        call s:redrawResults(state, state.results)
+    endif
+
+    " update prompt and results
     call s:update(state)
 endfunction
 
 function! s:close()
     if exists('s:state')
+        let s:history[s:state.mode] = s:state
+
         for [k, v] in items(s:state.globalopts)
             silent! execute 'let &'.k.'='.string(v)
         endfor
