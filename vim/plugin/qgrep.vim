@@ -16,10 +16,17 @@ let g:qgrep = {
         \ 'qgrep#selectProjectGUI()':  ['<C-p>'],
         \ 'qgrep#acceptSelection()': ['<CR>'],
         \ },
-    \ 'searchtype': 'ft',
     \ 'mode': 'files',
+    \ 'files': {
+        \ 'searchtype': 'ft',
+        \ },
     \ 'search': {
-        \ 'lazyupdate': 1
+        \ 'lazyupdate': 1,
+        \ 'maxheight': 15,
+        \ 'keymap': {
+            \ 'qgrep#search#toggleIgnoreCase(%s)': ['<C-i>'],
+            \ 'qgrep#search#toggleLiteral(%s)': ['<C-l>'],
+            \ },
         \ },
     \ }
 
@@ -36,4 +43,7 @@ command! -n=* QgrepProjects call qgrep#open('projects', <f-args>)
 command! -n=* QgrepSearch call qgrep#open('search', <f-args>)
 
 " Mappings
-silent! nnoremap <silent> <C-p> :Qgrep<CR>
+if !exists('g:qgrep_map') || g:qgrep_map == 1
+    silent! nnoremap <silent> <C-p> :Qgrep<CR>
+    silent! nnoremap <silent> <C-s> :QgrepSearch<CR>
+endif
