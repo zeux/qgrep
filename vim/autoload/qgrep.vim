@@ -303,19 +303,19 @@ function! s:open(args)
 
     " get state from history or from sensible defaults
     let mode = empty(a:args) ? g:qgrep.mode : a:args[0]
-    let state = has_key(s:history, mode) ? s:history[mode] : {'cursor': 0, 'input': '', 'line': 0, 'results': [], 'mode': mode}
+    let state = has_key(s:history, mode) ? copy(s:history[mode]) : {'cursor': 0, 'input': '', 'line': 0, 'results': [], 'mode': mode, 'config': {}}
+    let s:state = state
 
     " make sure that any existing input triggers the 'selected' state
     let state.cursor = len(state.input) ? -1 : 0
 
     " add all entries from global and mode-specific config to state config
+    let oldconfig = state.config
     let state.config = copy(g:qgrep)
     call s:mergeConfig(state.config, has_key(g:qgrep, mode) ? g:qgrep[mode] : {})
 
     " save commands to current window state
 	let state.winrestore = [winrestcmd(), &lines, winnr('$')]
-
-    let s:state = state
 
     " create Qgrep window
 	silent! keepalt botright 1new Qgrep
@@ -328,9 +328,11 @@ function! s:open(args)
     " custom mode initializer
     call s:modecall(state, 'init', [])
 
-    " if we have some results from history, display them in new buffer
-    if has_key(state, 'results')
+    " if we have some (valid) results from history, display them in new buffer
+    if has_key(state, 'results') && oldconfig ==# state.config
         call s:redrawResults(state, state.results)
+    elseif has_key(state, 'lastpattern')
+        unlet! state.lastpattern
     endif
 
     " update prompt and results
@@ -339,16 +341,17 @@ endfunction
 
 function! s:close()
     if exists('s:state')
-        let s:history[s:state.mode] = s:state
+        let state = s:state
+        let s:history[state.mode] = state
 
-        for [k, v] in items(s:state.globalopts)
+        for [k, v] in items(state.globalopts)
             silent! execute 'let &'.k.'='.string(v)
         endfor
 
         bdelete!
 
-        if s:state.winrestore[1] >= &lines && s:state.winrestore[2] == winnr('$')
-            execute s:state.winrestore[0]
+        if state.winrestore[1] >= &lines && state.winrestore[2] == winnr('$')
+            execute state.winrestore[0]
         endif
 
         echo
