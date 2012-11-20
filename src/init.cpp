@@ -6,6 +6,18 @@
 
 #include <fstream>
 
+static const char* kDefaultLanguages[] =
+{
+	"C/C++", "cpp|cxx|cc|c|hpp|hxx|hh|h|inl",
+	"Objective C/C++", "m|mm",
+	"Java, C#, VB.NET", "java|cs|vb",
+	"Perl, Python, Ruby", "pl|py|pm|rb",
+	"PHP, JavaScript, ActionScript", "php|js|as",
+	"F#, OCaml, Haskell", "fs|fsi|fsx|ml|mli|hs",
+	"Lua, Squirrel", "lua|nut",
+	"Shaders", "hlsl|glsl|cg|fx|cgfx",
+};
+
 static bool fileExists(const char* path)
 {
 	std::ifstream in(path);
@@ -33,8 +45,13 @@ void initProject(Output* output, const char* name, const char* file, const char*
 	std::string cwd = getCurrentDirectory();
 	std::string npath = normalizePath(cwd.c_str(), path);
 	
-	out << "path " << npath << std::endl;
-	out << "include \\.(cpp|cxx|cc|c|hpp|hxx|hh|h|inl|py|pl|pm|js|as|hlsl|cg|fx)$" << std::endl;
+	out << "path " << npath << std::endl << std::endl;
 
-	output->print("Project file %s created for folder %s, run 'qgrep build %s' to build\n", file, npath.c_str(), name);
+	for (size_t i = 0; i + 1 < sizeof(kDefaultLanguages) / sizeof(kDefaultLanguages[0]); i += 2)
+	{
+		out << "# " << kDefaultLanguages[i] << std::endl;
+		out << "include \\.(" << kDefaultLanguages[i + 1] << ")$" << std::endl;
+	}
+
+	output->print("Project file %s created, run `qgrep update %s` to build\n", file, name);
 }
