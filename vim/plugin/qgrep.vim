@@ -31,7 +31,8 @@ let g:qgrep = {
 " Commands
 command! -n=* Qgrep call qgrep#open(<f-args>)
 command! -n=* QgrepSelectProject call qgrep#selectProject(<f-args>)
-command! -n=* QgrepRun execute '!'.fnamemodify(g:qgrep.qgrep, ':s/^libcall://:r') <q-args>
+command! -n=* QgrepRun execute '!'.fnamemodify(g:qgrep.qgrep, ':s/^libcall://:r') join(map([<f-args>], 'shellescape(v:val)'))
+command! -n=* QgrepUpdate if len(<q-args>) | execute 'QgrepRun' 'update' <args> | else | execute 'QgrepRun' 'update' g:qgrep.project | endif
 
 " Commands for bundled extensions
 command! -n=* QgrepBuffers call qgrep#open('buffers', <f-args>)
