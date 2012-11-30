@@ -152,6 +152,12 @@ function! s:onInsertChar(state, char)
     call s:onInputChanged(state)
 endfunction
 
+function! s:onInsertRegister(state, reg)
+    let text = getreg(a:reg)
+    let text = substitute(text, "[^ -~]", "", "g")
+    call s:onInsertChar(a:state, text)
+endfunction
+
 function! s:onDeleteChar(state, offset)
     let state = a:state
     call s:tryReplaceInput(state)
@@ -265,7 +271,11 @@ function! s:initKeys(state, stateexpr)
 
 	for [key, ch] in items(kprange)
 		execute printf(charcmd, printf('<k%s>', key), a:stateexpr, ch)
-	endfo
+	endfor
+
+    " Ctrl-R + register
+    " note: we can't use chords and have to resort to getchar() because timeoutlen is 0 (it's 0 to disable user mappings i.e. <Leader>letter)
+    execute printf('nnoremap <buffer> <silent> <C-R> :call <SID>onInsertRegister(%s, nr2char(getchar()))<CR>', a:stateexpr)
 
     " special keys
     for keymap in [s:keymap, a:state.config.keymap]
