@@ -34,7 +34,7 @@ obj/%.cpp.o: %.cpp
 
 obj/%.c.o: %.c
 	mkdir -p $(dir $@)
-	$(CXX) $(CCFLAGS) $< -o $@
+	$(CC) $(CCFLAGS) $< -o $@
 
 clean:
 	rm -rf obj
