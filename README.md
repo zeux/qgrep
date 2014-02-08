@@ -1,4 +1,5 @@
-qgrep, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
+qgrep [![Build Status](https://travis-ci.org/zeux/qgrep.png?branch=master)](https://travis-ci.org/zeux/qgrep)
+=====
 
 qgrep is an implementation of grep database, which allows you to perform
 grepping (i.e. full-text searches using regular expressions) over a large set
