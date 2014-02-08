@@ -1,11 +1,8 @@
-CC=gcc
 CCFLAGS=-c -Wall -fPIC -O3 -msse2 -DUSE_SSE2 -DHAVE_PTHREAD -DHAVE_RWLOCK -D_FILE_OFFSET_BITS=64 -Iextern -Iextern/re2
 CXXFLAGS=-std=c++0x
 LDFLAGS=-lpthread -lstdc++
 
 ifeq ($(shell uname),Darwin)
-# Use gcc from MacPorts on OS X (clang from Xcode crashes on lambdas)
-CC=clang
 CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -arch i386 -arch x86_64 -stdlib=libc++
 LDFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -arch i386 -arch x86_64 -stdlib=libc++
 else
@@ -25,19 +22,19 @@ EXECUTABLE=qgrep
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
 obj/%.cc.o: %.cc
 	mkdir -p $(dir $@)
-	$(CC) $(CCFLAGS) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CCFLAGS) $(CXXFLAGS) $< -o $@
 
 obj/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)
-	$(CC) $(CCFLAGS) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CCFLAGS) $(CXXFLAGS) $< -o $@
 
 obj/%.c.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) $(CCFLAGS) $< -o $@
+	$(CXX) $(CCFLAGS) $< -o $@
 
 clean:
 	rm -rf obj
