@@ -1,4 +1,4 @@
-qgrep [![Build Status](https://travis-ci.org/zeux/qgrep.png?branch=master)](https://travis-ci.org/zeux/qgrep)
+qgrep [![Build status](https://travis-ci.org/zeux/qgrep.png?branch=master)](https://travis-ci.org/zeux/qgrep)
 =====
 
 qgrep is an implementation of grep database, which allows you to perform
@@ -8,7 +8,8 @@ of the source data, thus they are much faster compared to vanilla grep -R.
 
 qgrep runs on Windows (Vista+, XP is not supported), Linux and MacOS X.
 
-0. Basic setup
+Basic setup
+-----------
 
 The easiest way to start using qgrep is to use the init command:
 
@@ -32,7 +33,8 @@ Note that you'll have to rebuild the database from time to time in order to
 keep the search results current; you can run `qgrep build mygame` as a scheduled
 task or manually.
 
-1. Projects
+Projects
+--------
 
 Qgrep stores one database for each project, where project is a collection of
 text files. Projects are set up using configuration files, which normally live
@@ -50,7 +52,8 @@ Projects have short names that are essentially relative paths from .qgrep folder
 without the extension - i.e. project 'foo' corresponds to project configuration
 file ~/.qgrep/foo.cfg. Project names can be hierarchical - i.e. foo/bar.
 
-2. Project list
+Project list
+------------
 
 Most commands (except init) accept a project list. It is a comma-separated list
 of items, where each item can be one of:
@@ -66,7 +69,8 @@ For example:
     mygame,mygame/art - include ~/.qgrep/mygame.cfg and ~/.qgrep/mygame/art.cfg
     *,D:\mygame\source.cfg - all projects in ~/.qgrep and D:\mygame\source.cfg
 
-2. Project configuration file format
+Project configuration file format
+---------------------------------
 
 Project configuration files are line-based text files, which specify a nested
 set of groups, where each group can have a set of file paths, a set of folder
@@ -104,7 +108,8 @@ contains two more files, designdoc.txt and technicaldesigndoc.txt.
 Since you can omit 'file' prefix for single file names, a file list works as a
 valid project configuration file.
 
-4. Building the project
+Building the project
+--------------------
 
 Building the project is done with
 
@@ -128,7 +133,8 @@ file size (however, this is extremely rare, so is probably not a big concern).
 Remember that you can use * as a shorthand for all projects: `qgrep build *'
 builds everything.
 
-5. Searching the project
+Searching the project
+---------------------
 
 The command for searching the project is:
 
@@ -154,7 +160,8 @@ output formats (with column number included), limited to 100 results:
 
     qgrep search * i VC L100 hello\s+world
 
-6. Searching for project files
+Searching for project files
+---------------------------
 
 Since the database contains file list in addition to file contents, qgrep can be
 used to search for files by paths or names. The command for that is:
@@ -198,7 +205,8 @@ select a search style using the following options
 
     fT - search in file paths using a Command-T like fuzzy matching without ranking.
 
-7. Feedback
+Feedback
+--------
 
 You can report bugs, feature requests, submit patches and download new versions
 from qgrep site:
@@ -209,11 +217,12 @@ Alternatively, you can contact the author using the e-mail:
 
     Arseny Kapoulkine <arseny.kapoulkine@gmail.com>
 
-8. License
+License
+-------
 
 qgrep is distributed under the BSD license:
 
-   Copyright (c) 2011-2012, Arseny Kapoulkine
+   Copyright (c) 2011-2014, Arseny Kapoulkine
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
