@@ -45,6 +45,8 @@ OrderedOutput::~OrderedOutput()
 	writeThread.join();
 
 	assert(chunks.empty());
+
+    (void)output;
 }
 
 OrderedOutput::Chunk* OrderedOutput::begin(unsigned int id)
