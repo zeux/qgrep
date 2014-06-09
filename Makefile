@@ -16,7 +16,7 @@ SOURCES+=extern/lz4/lz4.c extern/lz4/lz4hc.c
 
 SOURCES+=src/blockpool.cpp src/build.cpp src/compression.cpp src/encoding.cpp src/entrypoint.cpp src/files.cpp src/filestream.cpp src/fileutil.cpp src/fileutil_posix.cpp src/fileutil_win.cpp src/filter.cpp src/filterutil.cpp src/fuzzymatch.cpp src/highlight.cpp src/info.cpp src/init.cpp src/main.cpp src/orderedoutput.cpp src/project.cpp src/regex.cpp src/search.cpp src/stringutil.cpp src/update.cpp src/workqueue.cpp
 
-OBJECTS=$(SOURCES:%=obj/%.o)
+OBJECTS=$(SOURCES:%=build/%.o)
 EXECUTABLE=qgrep
 
 all: $(EXECUTABLE)
@@ -24,19 +24,17 @@ all: $(EXECUTABLE)
 $(EXECUTABLE): $(OBJECTS)
 	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
-obj/%.cc.o: %.cc
-	mkdir -p $(dir $@)
-	$(CXX) $(CCFLAGS) $(CXXFLAGS) $< -o $@
-
-obj/%.cpp.o: %.cpp
-	mkdir -p $(dir $@)
-	$(CXX) $(CCFLAGS) $(CXXFLAGS) $< -o $@
-
-obj/%.c.o: %.c
-	mkdir -p $(dir $@)
-	$(CC) $(CCFLAGS) $< -o $@
-
 clean:
-	rm -rf obj
+	rm -rf build
+
+build/%.c.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CCFLAGS) -MMD -MP $< -o $@
+
+build/%.o: %
+	@mkdir -p $(dir $@)
+	$(CXX) $(CCFLAGS) $(CXXFLAGS) -MMD -MP $< -o $@
+
+-include $(OBJECTS:.o=.d)
 
 .PHONY: all clean
