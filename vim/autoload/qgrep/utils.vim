@@ -68,14 +68,15 @@ function! s:gotoFile(path, mode, cmd)
         endif
     endif
 
+    let epath = escape(path, ' ')
     let splitcmd = match(mode, 'split$')
 
     if count(mode, 'newtab')
-        execute 'tabedit' path
+        execute 'tabedit' epath
     elseif splitcmd >= 0
-        execute mode[splitcmd] path
+        execute mode[splitcmd] epath
     else
-        execute 'edit' path
+        execute 'edit' epath
     endif
 
     return s:jumpCmd(a:cmd)
