@@ -160,6 +160,9 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 		const char* lend = findLineEnd(match.data + match.size, end);
 		processMatch(re, output, chunk, hlbuf, path, pathLength, (lbeg - range) + data, lend - lbeg, line, lbeg, match.data - lbeg, match.size);
 		
+		// early-out for big matches
+		if (output->isLimitReached()) break;
+
 		// move to next line
 		if (lend == end) break;
 		begin = lend + 1;
@@ -174,22 +177,23 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 	OrderedOutput::Chunk* chunk = output->output.begin(chunkIndex);
 
-	if (!output->isLimitReached())
+	HighlightBuffer hlbuf;
+
+	for (size_t i = 0; i < fileCount; ++i)
 	{
-		HighlightBuffer hlbuf;
+		// early-out for big matches
+		if (output->isLimitReached())
+			break;
 
-		for (size_t i = 0; i < fileCount; ++i)
-		{
-			const DataChunkFileHeader& f = files[i];
+		const DataChunkFileHeader& f = files[i];
 
-			if (includeRe && !includeRe->search(data + f.nameOffset, f.nameLength))
-				continue;
+		if (includeRe && !includeRe->search(data + f.nameOffset, f.nameLength))
+			continue;
 
-			if (excludeRe && excludeRe->search(data + f.nameOffset, f.nameLength))
-				continue;
-			
-			processFile(re, output, chunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
-		}
+		if (excludeRe && excludeRe->search(data + f.nameOffset, f.nameLength))
+			continue;
+
+		processFile(re, output, chunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
 	}
 
 	output->output.end(chunk);
