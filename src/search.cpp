@@ -28,9 +28,9 @@ struct SearchOutput
 	{
 	}
 
-	bool isLimitReached() const
+	bool isLimitReached(OrderedOutput::Chunk* chunk = nullptr) const
 	{
-		return output.getLineCount() >= limit;
+		return (chunk && chunk->lines >= limit) || output.getLineCount() >= limit;
 	}
 
 	unsigned int options;
@@ -161,7 +161,7 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 		processMatch(re, output, chunk, hlbuf, path, pathLength, (lbeg - range) + data, lend - lbeg, line, lbeg, match.data - lbeg, match.size);
 		
 		// early-out for big matches
-		if (output->isLimitReached()) break;
+		if (output->isLimitReached(chunk)) break;
 
 		// move to next line
 		if (lend == end) break;
@@ -182,7 +182,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 	for (size_t i = 0; i < fileCount; ++i)
 	{
 		// early-out for big matches
-		if (output->isLimitReached())
+		if (output->isLimitReached(chunk))
 			break;
 
 		const DataChunkFileHeader& f = files[i];
