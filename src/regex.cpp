@@ -19,6 +19,7 @@ static bool transformRegexCasefold(const char* pattern, std::string& res, bool l
 	{
 		if (*p == '\\' && !literal)
 		{
+			if (p[1] == 0) return false;
 			if (p[1] == 'p' || p[1] == 'P') return false;
 			res.push_back(*p);
 			p++;
