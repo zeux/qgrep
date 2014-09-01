@@ -22,7 +22,7 @@ void decompress(void* dest, size_t destSize, const void* source, size_t sourceSi
 {
 	if (sourceSize == 0 && destSize == 0) return;
 
-	int result = LZ4_uncompress(static_cast<const char*>(source), static_cast<char*>(dest), destSize);
+	int result = LZ4_decompress_fast(static_cast<const char*>(source), static_cast<char*>(dest), destSize);
 	assert(result >= 0);
 	assert(static_cast<size_t>(result) == sourceSize);
 }
