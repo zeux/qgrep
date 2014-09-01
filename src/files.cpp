@@ -99,13 +99,13 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 		}
 
 		std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> data = prepareFileData(files, count);
-		std::vector<char> compressed = compress(data.first);
+		std::pair<std::unique_ptr<char[]>, size_t> compressed = compress(data.first.data(), data.first.size());
 
 		FileFileHeader header;
 		memcpy(header.magic, kFileFileHeaderMagic, sizeof(header.magic));
 
 		header.fileCount = count;
-		header.compressedSize = compressed.size();
+		header.compressedSize = compressed.second;
 		header.uncompressedSize = data.first.size();
 
 		header.nameBufferOffset = data.second.first.first;
@@ -114,7 +114,7 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 		header.pathBufferLength = data.second.second.second;
 
 		out.write(&header, sizeof(header));
-		if (!compressed.empty()) out.write(&compressed[0], compressed.size());
+		if (compressed.first) out.write(compressed.first.get(), compressed.second);
 	}
 
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))

@@ -539,18 +539,18 @@ private:
 
 	void writeChunk(const Chunk& chunk, const std::pair<std::vector<char>, unsigned int>& index, const std::vector<char>& data)
 	{
-		std::vector<char> cdata = compress(data);
+		std::pair<std::unique_ptr<char[]>, size_t> cdata = compress(data.data(), data.size());
 
 		DataChunkHeader header = {};
 		header.fileCount = chunk.files.size();
 		header.uncompressedSize = data.size();
-		header.compressedSize = cdata.size();
+		header.compressedSize = cdata.second;
 		header.indexSize = index.first.size();
 		header.indexHashIterations = index.second;
 
 		outData.write(&header, sizeof(header));
 		if (!index.first.empty()) outData.write(&index.first[0], index.first.size());
-		outData.write(&cdata[0], cdata.size());
+		outData.write(cdata.first.get(), cdata.second);
 
 		statistics.chunkCount++;
 
@@ -559,7 +559,7 @@ private:
 				statistics.fileCount++;
 
 		statistics.fileSize += data.size();
-		statistics.resultSize += cdata.size();
+		statistics.resultSize += cdata.second;
 	}
 
 	void writeChunk(const DataChunkHeader& header, const char* compressedData, const char* index, bool firstFileIsSuffix)

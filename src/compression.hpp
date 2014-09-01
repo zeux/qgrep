@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
+#include <memory>
+#include <utility>
 
-std::vector<char> compress(const std::vector<char>& data);
+std::pair<std::unique_ptr<char[]>, size_t> compress(const void* data, size_t dataSize);
 
 void decompress(void* dest, size_t destSize, const void* source, size_t sourceSize);
