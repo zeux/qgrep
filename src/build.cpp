@@ -362,10 +362,10 @@ private:
 	{
 		if (chunk.files.empty()) return;
 
-		std::vector<char> data = prepareChunkData(chunk);
-		std::pair<std::vector<char>, unsigned int> index = prepareChunkIndex(chunk);
+		std::pair<std::vector<char>, size_t> data = prepareChunkData(chunk);
+		std::pair<std::vector<char>, unsigned int> index = prepareChunkIndex(data.first, data.second, data.first.size() - data.second);
 
-		writeChunk(chunk, index, data);
+		writeChunk(chunk, index, data.first);
 	}
 
 	size_t getChunkNameTotalSize(const Chunk& chunk)
@@ -388,7 +388,7 @@ private:
 		return result;
 	}
 
-	std::vector<char> prepareChunkData(const Chunk& chunk)
+	std::pair<std::vector<char>, size_t> prepareChunkData(const Chunk& chunk)
 	{
 		size_t headerSize = sizeof(DataChunkFileHeader) * chunk.files.size();
 		size_t nameSize = getChunkNameTotalSize(chunk);
@@ -426,13 +426,11 @@ private:
 
 		assert(nameOffset == headerSize + nameSize && dataOffset == totalSize);
 
-		return data;
+		return std::make_pair(std::move(data), headerSize + nameSize);
 	}
 
-	size_t getChunkIndexSize(const Chunk& chunk)
+	size_t getChunkIndexSize(size_t dataSize)
 	{
-		size_t dataSize = getChunkDataTotalSize(chunk);
-
 		// data compression ratio is ~5x
 		// we want the index to be ~10% of the compressed data
 		// so index is ~50x smaller than the original data
@@ -494,31 +492,27 @@ private:
 		}
 	};
 
-	std::pair<std::vector<char>, unsigned int> prepareChunkIndex(const Chunk& chunk)
+	std::pair<std::vector<char>, unsigned int> prepareChunkIndex(const std::vector<char>& data, size_t offset, size_t size)
 	{
 		// estimate index size
-		size_t indexSize = getChunkIndexSize(chunk);
+		size_t indexSize = getChunkIndexSize(size);
 
 		if (indexSize == 0) return std::make_pair(std::vector<char>(), 0);
 
 		// collect ngram data
-		IntSet ngrams; // std::unordered_set<unsigned int> ngrams;
+		IntSet ngrams;
 
-		for (size_t i = 0; i < chunk.files.size(); ++i)
+		const char* filedata = data.data() + offset;
+
+		for (size_t i = 3; i < size; ++i)
 		{
-			const File& file = chunk.files[i];
-			const char* filedata = file.contents.data();
+			char a = filedata[i - 3], b = filedata[i - 2], c = filedata[i - 1], d = filedata[i];
 
-			for (size_t j = 3; j < file.contents.size(); ++j)
+			// don't waste bits on ngrams that cross lines
+			if (a != '\n' && b != '\n' && c != '\n' && d != '\n')
 			{
-				char a = filedata[j - 3], b = filedata[j - 2], c = filedata[j - 1], d = filedata[j];
-
-				// don't waste bits on ngrams that cross lines
-				if (a != '\n' && b != '\n' && c != '\n' && d != '\n')
-				{
-					unsigned int n = ngram(casefold(a), casefold(b), casefold(c), casefold(d));
-					if (n != 0) ngrams.insert(n);
-				}
+				unsigned int n = ngram(casefold(a), casefold(b), casefold(c), casefold(d));
+				if (n != 0) ngrams.insert(n);
 			}
 		}
 
@@ -528,11 +522,11 @@ private:
 		// fill bloom filter
 		std::vector<char> result(indexSize);
 
-		unsigned char* data = reinterpret_cast<unsigned char*>(&result[0]);
+		unsigned char* index = reinterpret_cast<unsigned char*>(&result[0]);
 
 		for (auto n: ngrams.data)
 			if (n != 0)
-				bloomFilterUpdate(data, indexSize, n, iterations);
+				bloomFilterUpdate(index, indexSize, n, iterations);
 
 		return std::make_pair(result, iterations);
 	}
