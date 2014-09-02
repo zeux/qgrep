@@ -17,14 +17,14 @@ public:
 	{
 	}
 
-	void push(const T& value, size_t size = 0)
+	void push(T value, size_t size = 0)
 	{
 		std::unique_lock<std::mutex> lock(mutex);
 
 		itemsNotFull.wait(lock, [&]() { return !(totalSize != 0 && totalSize + size > totalSizeLimit); });
 
-		Item item = {value, size};
-		items.push(item);
+		Item item = {std::move(value), size};
+		items.push(std::move(item));
 		totalSize += size;
 
 		lock.unlock();
@@ -37,7 +37,7 @@ public:
 
 		itemsNotEmpty.wait(lock, [&]() { return !items.empty(); });
 
-		Item item = items.front();
+		Item item = std::move(items.front());
 		items.pop();
 
 		if (item.size > 0)
@@ -49,7 +49,7 @@ public:
 			itemsNotFull.notify_all();
 		}
 
-		return item.value;
+		return std::move(item.value);
 	}
 
 private:
