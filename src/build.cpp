@@ -612,6 +612,7 @@ private:
 
 	void writeChunk(unsigned int order, const DataChunkHeader& header, std::unique_ptr<char[]> compressedData, std::unique_ptr<char[]> index, bool firstFileIsSuffix)
 	{
+		assert(compressedData);
 		ChunkFileData chunk = { order, header, std::move(compressedData), std::move(index), firstFileIsSuffix };
 
 		writeChunkQueue.push(std::move(chunk));
@@ -634,6 +635,7 @@ private:
 				const ChunkFileData& chunk = chunks.begin()->second;
 				const DataChunkHeader& header = chunk.header;
 
+				// empty compressed data acts as a terminator flag
 				if (!chunk.compressedData)
 					return;
 
