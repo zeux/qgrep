@@ -234,7 +234,7 @@ void updateProject(Output* output, const char* path)
 			stats.filesAdded++;
 		}
 
-		totalChunks = builder->flush();
+		totalChunks = builder->finish();
 	}
 
 	output->print("\n");

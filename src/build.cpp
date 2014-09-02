@@ -12,12 +12,15 @@
 #include "bloom.hpp"
 #include "casefold.hpp"
 #include "compression.hpp"
+#include "workqueue.hpp"
+#include "blockingqueue.hpp"
 
 #include <vector>
 #include <list>
 #include <numeric>
 #include <string>
 #include <memory>
+#include <map>
 #include <unordered_set>
 
 #include <string.h>
@@ -34,14 +37,15 @@ public:
 	};
 
 	BuilderImpl()
+	: pendingSize(0), statistics(), chunkOrder(0)
+	, prepareChunkQueue(std::max(WorkQueue::getIdealWorkerCount(), 2u) - 1, kMaxQueuedChunkData)
+	, writeChunkThread(std::bind(writeChunkThreadFun, std::ref(outData), std::ref(statistics), std::ref(writeChunkQueue)))
 	{
-		pendingSize = 0;
-		statistics = Statistics();
 	}
 
 	~BuilderImpl()
 	{
-		flush();
+		finish();
 	}
 
 	bool start(const char* path)
@@ -138,7 +142,9 @@ public:
 
 		// We should be good to go now
 		assert(pendingSize == 0 && pendingFiles.empty());
-		writeChunk(header, std::move(compressedData), std::move(index), firstFileIsSuffix);
+
+		unsigned int order = chunkOrder++;
+		writeChunk(order, header, std::move(compressedData), std::move(index), firstFileIsSuffix);
 
 		return true;
 	}
@@ -156,6 +162,18 @@ public:
 		while (pendingSize > 0)
 		{
 			flushChunk(kChunkSize);
+		}
+	}
+
+	void finish()
+	{
+		if (writeChunkThread.joinable())
+		{
+			flush();
+
+			ChunkFileData chunkDummy = { chunkOrder };
+			writeChunkQueue.push(std::move(chunkDummy));
+			writeChunkThread.join();
 		}
 	}
 
@@ -211,6 +229,15 @@ private:
 		}
 	};
 
+	struct ChunkData
+	{
+		std::unique_ptr<char[]> data;
+		size_t size;
+
+		size_t dataOffset;
+		size_t dataSize;
+	};
+
 	struct ChunkIndex
 	{
 		std::unique_ptr<char[]> data;
@@ -222,11 +249,26 @@ private:
 		}
 	};
 
+	struct ChunkFileData
+	{
+		unsigned int order;
+
+		DataChunkHeader header;
+		std::unique_ptr<char[]> compressedData;
+		std::unique_ptr<char[]> index;
+		bool firstFileIsSuffix;
+	};
+
 	std::list<File> pendingFiles;
 	size_t pendingSize;
 	
 	FileStream outData;
 	Statistics statistics;
+
+	unsigned int chunkOrder;
+	WorkQueue prepareChunkQueue;
+	BlockingQueue<ChunkFileData> writeChunkQueue;
+	std::thread writeChunkThread;
 
     static size_t normalizeEOL(char* data, size_t size)
     {
@@ -373,10 +415,29 @@ private:
 	{
 		if (chunk.files.empty()) return;
 
-		std::pair<std::vector<char>, size_t> data = prepareChunkData(chunk);
-		ChunkIndex index = prepareChunkIndex(data.first, data.second, data.first.size() - data.second);
+		ChunkData data = prepareChunkData(chunk);
+		unsigned int order = chunkOrder++;
 
-		writeChunk(chunk, std::move(index), data.first);
+		size_t fileCount = chunk.files.size();
+		bool firstFileIsSuffix = !chunk.files.empty() && chunk.files[0].startLine != 0;
+
+		// workaround for lack of generalized capture
+		std::shared_ptr<ChunkData> sdata(new ChunkData(std::move(data)));
+
+		prepareChunkQueue.push([this, sdata, order, fileCount, firstFileIsSuffix] {
+			ChunkIndex index = prepareChunkIndex(sdata->data.get() + sdata->dataOffset, sdata->dataSize);
+
+			std::pair<std::unique_ptr<char[]>, size_t> cdata = compress(sdata->data.get(), sdata->size);
+
+			DataChunkHeader header = {};
+			header.fileCount = fileCount;
+			header.uncompressedSize = sdata->size;
+			header.compressedSize = cdata.second;
+			header.indexSize = index.size;
+			header.indexHashIterations = index.iterations;
+
+			writeChunk(order, header, std::move(cdata.first), std::move(index.data), firstFileIsSuffix);
+		}, sdata->size);
 	}
 
 	size_t getChunkNameTotalSize(const Chunk& chunk)
@@ -399,14 +460,18 @@ private:
 		return result;
 	}
 
-	std::pair<std::vector<char>, size_t> prepareChunkData(const Chunk& chunk)
+	ChunkData prepareChunkData(const Chunk& chunk)
 	{
 		size_t headerSize = sizeof(DataChunkFileHeader) * chunk.files.size();
 		size_t nameSize = getChunkNameTotalSize(chunk);
 		size_t dataSize = getChunkDataTotalSize(chunk);
 		size_t totalSize = headerSize + nameSize + dataSize;
 
-		std::vector<char> data(totalSize);
+		ChunkData result;
+		result.data.reset(new char[totalSize]);
+		result.size = totalSize;
+		result.dataOffset = headerSize + nameSize;
+		result.dataSize = dataSize;
 
 		size_t nameOffset = headerSize;
 		size_t dataOffset = headerSize + nameSize;
@@ -415,10 +480,10 @@ private:
 		{
 			const File& f = chunk.files[i];
 
-			std::copy(f.name.begin(), f.name.end(), data.begin() + nameOffset);
-			std::copy(f.contents.data(), f.contents.data() + f.contents.size(), data.begin() + dataOffset);
+			memcpy(result.data.get() + nameOffset, f.name.c_str(), f.name.length());
+			memcpy(result.data.get() + dataOffset, f.contents.data(), f.contents.size());
 
-			DataChunkFileHeader& h = reinterpret_cast<DataChunkFileHeader*>(&data[0])[i];
+			DataChunkFileHeader& h = reinterpret_cast<DataChunkFileHeader*>(result.data.get())[i];
 
 			h.nameOffset = nameOffset;
 			h.nameLength = f.name.size();
@@ -437,7 +502,7 @@ private:
 
 		assert(nameOffset == headerSize + nameSize && dataOffset == totalSize);
 
-		return std::make_pair(std::move(data), headerSize + nameSize);
+		return result;
 	}
 
 	size_t getChunkIndexSize(size_t dataSize)
@@ -503,7 +568,7 @@ private:
 		}
 	};
 
-	ChunkIndex prepareChunkIndex(const std::vector<char>& data, size_t offset, size_t size)
+	ChunkIndex prepareChunkIndex(const char* data, size_t size)
 	{
 		// estimate index size
 		size_t indexSize = getChunkIndexSize(size);
@@ -513,11 +578,9 @@ private:
 		// collect ngram data
 		IntSet ngrams;
 
-		const char* filedata = data.data() + offset;
-
 		for (size_t i = 3; i < size; ++i)
 		{
-			char a = filedata[i - 3], b = filedata[i - 2], c = filedata[i - 1], d = filedata[i];
+			char a = data[i - 3], b = data[i - 2], c = data[i - 1], d = data[i];
 
 			// don't waste bits on ngrams that cross lines
 			if (a != '\n' && b != '\n' && c != '\n' && d != '\n')
@@ -547,32 +610,46 @@ private:
 		return result;
 	}
 
-	void writeChunk(const Chunk& chunk, ChunkIndex index, const std::vector<char>& data)
+	void writeChunk(unsigned int order, const DataChunkHeader& header, std::unique_ptr<char[]> compressedData, std::unique_ptr<char[]> index, bool firstFileIsSuffix)
 	{
-		std::pair<std::unique_ptr<char[]>, size_t> cdata = compress(data.data(), data.size());
+		ChunkFileData chunk = { order, header, std::move(compressedData), std::move(index), firstFileIsSuffix };
 
-		DataChunkHeader header = {};
-		header.fileCount = chunk.files.size();
-		header.uncompressedSize = data.size();
-		header.compressedSize = cdata.second;
-		header.indexSize = index.size;
-		header.indexHashIterations = index.iterations;
-
-		bool firstFileIsSuffix = !chunk.files.empty() && chunk.files[0].startLine != 0;
-
-		writeChunk(header, std::move(cdata.first), std::move(index.data), firstFileIsSuffix);
+		writeChunkQueue.push(std::move(chunk));
 	}
 
-	void writeChunk(const DataChunkHeader& header, std::unique_ptr<char[]> compressedData, std::unique_ptr<char[]> index, bool firstFileIsSuffix)
+	static void writeChunkThreadFun(FileStream& outData, Statistics& statistics, BlockingQueue<ChunkFileData>& queue)
 	{
-		outData.write(&header, sizeof(header));
-		outData.write(index.get(), header.indexSize);
-		outData.write(compressedData.get(), header.compressedSize);
+		unsigned int order = 0;
+		std::map<unsigned int, ChunkFileData> chunks;
 
-		statistics.chunkCount++;
-		statistics.fileCount += header.fileCount - firstFileIsSuffix;
-		statistics.fileSize += header.uncompressedSize;
-		statistics.resultSize += header.compressedSize;
+		while (true)
+		{
+			ChunkFileData chunk = queue.pop();
+
+			assert(chunks.count(chunk.order) == 0);
+			chunks[chunk.order] = std::move(chunk);
+
+			while (!chunks.empty() && chunks.begin()->first == order)
+			{
+				const ChunkFileData& chunk = chunks.begin()->second;
+				const DataChunkHeader& header = chunk.header;
+
+				if (!chunk.compressedData)
+					return;
+
+				outData.write(&header, sizeof(header));
+				outData.write(chunk.index.get(), header.indexSize);
+				outData.write(chunk.compressedData.get(), header.compressedSize);
+
+				statistics.chunkCount++;
+				statistics.fileCount += header.fileCount - chunk.firstFileIsSuffix;
+				statistics.fileSize += header.uncompressedSize;
+				statistics.resultSize += header.compressedSize;
+
+				chunks.erase(chunks.begin());
+				order++;
+			}
+		}
 	}
 };
 
@@ -583,7 +660,8 @@ Builder::Builder(Output* output, BuilderImpl* impl, unsigned int fileCount): imp
 
 Builder::~Builder()
 {
-	impl->flush();
+	impl->finish();
+
 	printStatistics();
 
 	delete impl;
@@ -614,9 +692,9 @@ bool Builder::appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>
 	return false;
 }
 
-unsigned int Builder::flush()
+unsigned int Builder::finish()
 {
-	impl->flush();
+	impl->finish();
 
 	return impl->getStatistics().chunkCount;
 }
