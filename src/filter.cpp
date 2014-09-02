@@ -134,22 +134,6 @@ static unsigned int filterRegex(const FilterEntries& entries, const FilterEntrie
 
 struct VisualAssistFragment
 {
-	VisualAssistFragment()
-	{
-	}
-
-	VisualAssistFragment(VisualAssistFragment&& other): text(std::move(other.text)), re(std::move(other.re)), ispath(other.ispath)
-	{
-	}
-
-	VisualAssistFragment& operator=(VisualAssistFragment&& other)
-	{
-		text = std::move(other.text);
-		re = std::move(other.re);
-		ispath = other.ispath;
-		return *this;
-	}
-
     std::string text;
     std::unique_ptr<Regex> re;
     bool ispath;

@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <algorithm>
 
 template <typename T> struct Statistics
 {
