@@ -91,49 +91,6 @@ public:
 		flushIfNeeded();
 	}
 
-    static size_t normalizeEOL(char* data, size_t size)
-    {
-        // replace \r\n with \n, replace stray \r with \n
-        size_t result = 0;
-
-        for (size_t i = 0; i < size; ++i)
-        {
-            if (data[i] == '\r')
-            {
-                data[result++] = '\n';
-                if (i + 1 < size && data[i + 1] == '\n') i++;
-            }
-            else
-                data[result++] = data[i];
-        }
-
-		return result;
-    }
-
-	static std::vector<char> readFile(FileStream& in)
-	{
-		std::vector<char> result;
-
-        // read file as is
-		char buffer[65536];
-		size_t readsize;
-
-		while ((readsize = in.read(buffer, sizeof(buffer))) > 0)
-		{
-			result.insert(result.end(), buffer, buffer + readsize);
-		}
-
-        // normalize new lines in a cross-platform way (don't rely on text-mode file I/O)
-        if (!result.empty())
-        {
-            size_t size = normalizeEOL(&result[0], result.size());
-            assert(size <= result.size());
-            result.resize(size);
-        }
-
-		return result;
-	}
-
 	bool appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize)
 	{
 		FileStream in(path, "rb");
@@ -202,7 +159,7 @@ public:
 		}
 	}
 
-	const Statistics& getStatistics() const
+	Statistics getStatistics() const
 	{
 		return statistics;
 	}
@@ -270,6 +227,49 @@ private:
 	
 	FileStream outData;
 	Statistics statistics;
+
+    static size_t normalizeEOL(char* data, size_t size)
+    {
+        // replace \r\n with \n, replace stray \r with \n
+        size_t result = 0;
+
+        for (size_t i = 0; i < size; ++i)
+        {
+            if (data[i] == '\r')
+            {
+                data[result++] = '\n';
+                if (i + 1 < size && data[i + 1] == '\n') i++;
+            }
+            else
+                data[result++] = data[i];
+        }
+
+		return result;
+    }
+
+	static std::vector<char> readFile(FileStream& in)
+	{
+		std::vector<char> result;
+
+        // read file as is
+		char buffer[65536];
+		size_t readsize;
+
+		while ((readsize = in.read(buffer, sizeof(buffer))) > 0)
+		{
+			result.insert(result.end(), buffer, buffer + readsize);
+		}
+
+        // normalize new lines in a cross-platform way (don't rely on text-mode file I/O)
+        if (!result.empty())
+        {
+            size_t size = normalizeEOL(&result[0], result.size());
+            assert(size <= result.size());
+            result.resize(size);
+        }
+
+		return result;
+	}
 
 	static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t dataSize)
 	{
@@ -623,7 +623,7 @@ unsigned int Builder::flush()
 
 void Builder::printStatistics()
 {
-	const BuilderImpl::Statistics& s = impl->getStatistics();
+	BuilderImpl::Statistics s = impl->getStatistics();
 
 	if (lastResultSize == s.resultSize) return;
 
