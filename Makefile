@@ -1,4 +1,4 @@
-CCFLAGS=-c -Wall -fPIC -O3 -msse2 -DUSE_SSE2 -DHAVE_PTHREAD -DHAVE_RWLOCK -D_FILE_OFFSET_BITS=64 -Iextern -Iextern/re2
+CCFLAGS=-c -g -Wall -fPIC -O3 -msse2 -DUSE_SSE2 -DHAVE_PTHREAD -DHAVE_RWLOCK -D_FILE_OFFSET_BITS=64 -Iextern -Iextern/re2
 CXXFLAGS=-std=c++0x
 LDFLAGS=-lpthread -lstdc++
 
