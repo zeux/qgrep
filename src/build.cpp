@@ -153,7 +153,7 @@ public:
 		}
 	}
 
-	bool appendChunk(const DataChunkHeader& header, const char* compressedData, const char* index, bool firstFileIsSuffix)
+	bool appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, bool firstFileIsSuffix)
 	{
 		flushIfNeeded();
 
@@ -181,7 +181,7 @@ public:
 
 		// We should be good to go now
 		assert(pendingSize == 0 && pendingFiles.empty());
-		writeChunk(header, compressedData, index, firstFileIsSuffix);
+		writeChunk(header, std::move(compressedData), std::move(index), firstFileIsSuffix);
 
 		return true;
 	}
@@ -250,6 +250,17 @@ private:
 		size_t totalSize;
 
 		Chunk(): totalSize(0)
+		{
+		}
+	};
+
+	struct ChunkIndex
+	{
+		std::unique_ptr<char[]> data;
+		size_t size;
+		unsigned int iterations;
+
+		ChunkIndex(): size(0), iterations(0)
 		{
 		}
 	};
@@ -363,9 +374,9 @@ private:
 		if (chunk.files.empty()) return;
 
 		std::pair<std::vector<char>, size_t> data = prepareChunkData(chunk);
-		std::pair<std::vector<char>, unsigned int> index = prepareChunkIndex(data.first, data.second, data.first.size() - data.second);
+		ChunkIndex index = prepareChunkIndex(data.first, data.second, data.first.size() - data.second);
 
-		writeChunk(chunk, index, data.first);
+		writeChunk(chunk, std::move(index), data.first);
 	}
 
 	size_t getChunkNameTotalSize(const Chunk& chunk)
@@ -492,12 +503,12 @@ private:
 		}
 	};
 
-	std::pair<std::vector<char>, unsigned int> prepareChunkIndex(const std::vector<char>& data, size_t offset, size_t size)
+	ChunkIndex prepareChunkIndex(const std::vector<char>& data, size_t offset, size_t size)
 	{
 		// estimate index size
 		size_t indexSize = getChunkIndexSize(size);
 
-		if (indexSize == 0) return std::make_pair(std::vector<char>(), 0);
+		if (indexSize == 0) return ChunkIndex();
 
 		// collect ngram data
 		IntSet ngrams;
@@ -520,18 +531,23 @@ private:
 		unsigned int iterations = getIndexHashIterations(indexSize, ngrams.size);
 
 		// fill bloom filter
-		std::vector<char> result(indexSize);
+		ChunkIndex result;
+		result.data.reset(new char[indexSize]);
+		result.size = indexSize;
+		result.iterations = iterations;
 
-		unsigned char* index = reinterpret_cast<unsigned char*>(&result[0]);
+		unsigned char* index = reinterpret_cast<unsigned char*>(result.data.get());
+
+		memset(index, 0, indexSize);
 
 		for (auto n: ngrams.data)
 			if (n != 0)
 				bloomFilterUpdate(index, indexSize, n, iterations);
 
-		return std::make_pair(result, iterations);
+		return result;
 	}
 
-	void writeChunk(const Chunk& chunk, const std::pair<std::vector<char>, unsigned int>& index, const std::vector<char>& data)
+	void writeChunk(const Chunk& chunk, ChunkIndex index, const std::vector<char>& data)
 	{
 		std::pair<std::unique_ptr<char[]>, size_t> cdata = compress(data.data(), data.size());
 
@@ -539,28 +555,19 @@ private:
 		header.fileCount = chunk.files.size();
 		header.uncompressedSize = data.size();
 		header.compressedSize = cdata.second;
-		header.indexSize = index.first.size();
-		header.indexHashIterations = index.second;
+		header.indexSize = index.size;
+		header.indexHashIterations = index.iterations;
 
-		outData.write(&header, sizeof(header));
-		if (!index.first.empty()) outData.write(&index.first[0], index.first.size());
-		outData.write(cdata.first.get(), cdata.second);
+		bool firstFileIsSuffix = !chunk.files.empty() && chunk.files[0].startLine != 0;
 
-		statistics.chunkCount++;
-
-		for (size_t i = 0; i < chunk.files.size(); ++i)
-			if (chunk.files[i].startLine == 0)
-				statistics.fileCount++;
-
-		statistics.fileSize += data.size();
-		statistics.resultSize += cdata.second;
+		writeChunk(header, std::move(cdata.first), std::move(index.data), firstFileIsSuffix);
 	}
 
-	void writeChunk(const DataChunkHeader& header, const char* compressedData, const char* index, bool firstFileIsSuffix)
+	void writeChunk(const DataChunkHeader& header, std::unique_ptr<char[]> compressedData, std::unique_ptr<char[]> index, bool firstFileIsSuffix)
 	{
 		outData.write(&header, sizeof(header));
-		outData.write(index, header.indexSize);
-		outData.write(compressedData, header.compressedSize);
+		outData.write(index.get(), header.indexSize);
+		outData.write(compressedData.get(), header.compressedSize);
 
 		statistics.chunkCount++;
 		statistics.fileCount += header.fileCount - firstFileIsSuffix;
@@ -596,9 +603,9 @@ void Builder::appendFilePart(const char* path, unsigned int startLine, const voi
 	printStatistics();
 }
 
-bool Builder::appendChunk(const DataChunkHeader& header, const void* compressedData, const void* index, bool firstFileIsSuffix)
+bool Builder::appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, bool firstFileIsSuffix)
 {
-	if (impl->appendChunk(header, static_cast<const char*>(compressedData), static_cast<const char*>(index), firstFileIsSuffix))
+	if (impl->appendChunk(header, compressedData, index, firstFileIsSuffix))
 	{
 		printStatistics();
 		return true;

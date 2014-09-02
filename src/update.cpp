@@ -91,7 +91,7 @@ static bool isChunkCurrent(UpdateFileIterator& fileit, const DataChunkHeader& ch
 }
 
 static void processChunkData(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats,
-	const DataChunkHeader& chunk, const char* data, const char* compressed, const char* index)
+	const DataChunkHeader& chunk, const char* data, std::unique_ptr<char[]>& compressed, std::unique_ptr<char[]>& index)
 {
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
@@ -181,7 +181,7 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 		char* uncompressed = data.get() + chunk.compressedSize;
 
 		decompress(uncompressed, chunk.uncompressedSize, data.get(), chunk.compressedSize);
-		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data.get(), index.get());
+		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data, index);
 	}
 
 	return true;
