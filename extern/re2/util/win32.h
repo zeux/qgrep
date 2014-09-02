@@ -40,6 +40,7 @@
 #define snprintf _snprintf
 #endif // snprintf
 
+#if _MSC_VER < 1800
 #ifndef strtof
 #define strtof strtod
 #endif // strtof
@@ -51,6 +52,7 @@
 #ifndef strtoull
 #define strtoull _strtoui64
 #endif // strtoull
+#endif
 
 #ifndef _OFF_T_DEFINED
 typedef long off_t;

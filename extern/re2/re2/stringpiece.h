@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <iosfwd>
 #include <string>
+#include <algorithm>
 
 namespace re2 {
 
