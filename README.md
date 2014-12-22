@@ -211,7 +211,7 @@ Feedback
 You can report bugs, feature requests, submit patches and download new versions
 from qgrep site:
 
-    http://hg.zeuxcg.org/qgrep
+    http://github.com/zeux/qgrep
 
 Alternatively, you can contact the author using the e-mail:
 
