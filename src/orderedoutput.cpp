@@ -41,7 +41,7 @@ OrderedOutput::OrderedOutput(Output* output, size_t memoryLimit, size_t flushThr
 
 OrderedOutput::~OrderedOutput()
 {
-	writeQueue.push(0);
+	writeQueue.push(nullptr);
 	writeThread.join();
 
 	assert(chunks.empty());
