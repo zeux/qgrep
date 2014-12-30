@@ -79,7 +79,6 @@ public:
 		}
 
 		firstLetterPos = firstPos;
-		patternDataPos = dataOffset;
 		firstLetterOffset = firstPos - dataOffset;
 
 		pattern = string;
@@ -96,28 +95,30 @@ public:
 		while (offset + 32 <= size)
 		{
 			__m128i value = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + offset));
-			int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(value, firstLetter));
+			unsigned int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(value, firstLetter));
 
-			if (mask == 0)
-				offset += 16;
-			else
+			// advance offset regardless of match results to reduce number of live values
+			offset += 16;
+
+			while (mask != 0)
 			{
-				offset += re2::countTrailingZeros(mask);
+				unsigned int pos = re2::countTrailingZeros(mask);
+				size_t matchOffset = offset - 16 + pos - firstLetterOffset;
+
+				mask &= ~(1 << pos);
 
 				// check if we have a match
-				__m128i patternMatch = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + offset - firstLetterOffset));
+				__m128i patternMatch = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + matchOffset));
 				__m128i matchMask = _mm_or_si128(patternMask, _mm_cmpeq_epi8(patternMatch, patternData));
 
 				if (_mm_movemask_epi8(matchMask) == 0xffff)
 				{
 					// final check for full pattern
-					if (memcmp(data + offset - firstLetterPos, pattern.c_str(), pattern.size()) == 0)
+					if (memcmp(data + matchOffset, pattern.c_str(), pattern.size()) == 0)
 					{
-						return offset - firstLetterPos;
+						return matchOffset;
 					}
 				}
-
-				offset += 1;
 			}
 		}
 
@@ -129,8 +130,8 @@ private:
 	unsigned char patternData[16];
 	unsigned char patternMask[16];
 	size_t firstLetterPos;
-	size_t patternDataPos;
 	size_t firstLetterOffset;
+
 	std::string pattern;
 
 	static size_t findMatch(const char* x, size_t m, const char* y, size_t n, size_t start)
