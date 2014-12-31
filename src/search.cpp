@@ -121,16 +121,16 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	size_t linecolumnsize = printMatchLineColumn(lineNumber, matchOffset + 1, output->options, linecolumn);
 
 	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightPath;
-	chunk->result.insert(chunk->result.end(), path, path + pathLength);
-	chunk->result.insert(chunk->result.end(), linecolumn, linecolumn + linecolumnsize);
+	chunk->result.append(path, pathLength);
+	chunk->result.append(linecolumn, linecolumnsize);
 	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightEnd;
 
 	if (output->options & SO_HIGHLIGHT_MATCHES)
 		printHighlightMatch(chunk->result, re, hlbuf, line, lineLength, preparedRange, matchOffset, matchLength);
 	else
-		chunk->result.insert(chunk->result.end(), line, line + lineLength);
+		chunk->result.append(line, lineLength);
 
-	chunk->result += "\n";
+	chunk->result += '\n';
 
 	output->output.write(chunk);
 }
