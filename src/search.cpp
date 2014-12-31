@@ -120,8 +120,6 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	char linecolumn[256];
 	size_t linecolumnsize = printMatchLineColumn(lineNumber, matchOffset + 1, output->options, linecolumn);
 
-	chunk->result.reserve(chunk->result.size() + pathLength + lineLength + 256);
-
 	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightPath;
 	chunk->result.insert(chunk->result.end(), path, path + pathLength);
 	chunk->result.insert(chunk->result.end(), linecolumn, linecolumn + linecolumnsize);
