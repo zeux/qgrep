@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string>
 #include <errno.h>
+#include "util/atomicops.h"
 #include "util/util.h"
 #include "util/flags.h"
 #include "re2/prog.h"
@@ -201,9 +202,16 @@ void RE2::Init(const StringPiece& pattern, const Options& options) {
 
 // Returns rprog_, computing it if needed.
 re2::Prog* RE2::ReverseProg() const {
+  MaybeReadMemoryBarrier(); // On alpha we need to ensure read ordering
+  if (rprog_ != NULL)
+    return rprog_;
+
   MutexLock l(mutex_);
   if (rprog_ == NULL && error_ == &empty_string) {
-    rprog_ = suffix_regexp_->CompileToReverseProg(options_.max_mem()/3);
+    re2::Prog* rev = suffix_regexp_->CompileToReverseProg(options_.max_mem()/3);
+    WriteMemoryBarrier(); // Flush rev before linking to it
+    rprog_ = rev;
+
     if (rprog_ == NULL) {
       if (options_.log_errors())
         LOG(ERROR) << "Error reverse compiling '" << trunc(pattern_) << "'";
