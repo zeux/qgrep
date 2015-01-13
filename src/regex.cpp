@@ -5,6 +5,8 @@
 
 #include "re2/re2.h"
 #include "re2/util/stringops.h"
+#include "re2/prefilter.h"
+#include "re2/prefilter_tree.h"
 
 #include <memory>
 #include <stdexcept>
@@ -269,9 +271,38 @@ public:
 		return result ? RegexMatch(result.data - range + data, result.size) : RegexMatch();
 	}
 
-	virtual void* getRegexObject()
+	virtual std::vector<std::string> prefilterPrepare()
 	{
-		return re.get();
+		std::unique_ptr<re2::Prefilter> prf(re2::Prefilter::FromRE2(re.get()));
+
+		if (prf && prf->op() != re2::Prefilter::NONE)
+		{
+			prefilter.reset(new re2::PrefilterTree());
+			prefilter->Add(prf.release());
+
+			std::vector<std::string> result;
+			prefilter->Compile(&result);
+
+			return result;
+		}
+		else
+		{
+			prefilter.reset();
+
+			return {};
+		}
+	}
+
+	virtual bool prefilterMatch(const std::vector<int>& matches)
+	{
+		if (!prefilter)
+			return true;
+
+		std::vector<int> result;
+		prefilter->RegexpsGivenStrings(matches, &result);
+
+		assert(result.size() <= 1);
+		return !result.empty();
 	}
 	
 private:
@@ -279,6 +310,8 @@ private:
 	bool casefold;
 
 	std::unique_ptr<LiteralMatcher> matcher;
+
+	std::unique_ptr<re2::PrefilterTree> prefilter;
 
 	static std::string getPrefix(RE2* re, size_t maxlen)
 	{

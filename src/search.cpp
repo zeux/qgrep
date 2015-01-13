@@ -19,9 +19,6 @@
 #include <algorithm>
 #include <memory>
 
-#include "re2/prefilter.h"
-#include "re2/prefilter_tree.h"
-
 struct SearchOutput
 {
 	SearchOutput(Output* output, unsigned int options, unsigned int limit): options(options), limit(limit), output(output, kMaxBufferedOutput, kBufferedOutputFlushThreshold, limit)
@@ -232,26 +229,11 @@ bool ngramExists(const std::vector<unsigned char>& index, unsigned int iteration
 class NgramRegex
 {
 public:
-	NgramRegex(Regex* re)
+	NgramRegex(Regex* re): re(re)
 	{
 		if (!re) return;
 
-		re2::RE2* r = static_cast<RE2*>(re->getRegexObject());
-
-		std::vector<std::string> atomstr;
-
-		if (re2::Prefilter* prf = re2::Prefilter::FromRE2(r))
-		{
-			if (prf->op() != re2::Prefilter::NONE)
-			{
-				tree.Add(prf);
-				tree.Compile(&atomstr);
-			}
-			else
-			{
-				delete prf;
-			}
-		}
+		std::vector<std::string> atomstr = re->prefilterPrepare();
 
 		for (size_t i = 0; i < atomstr.size(); ++i)
 			atoms.push_back(ngramExtract(atomstr[i]));
@@ -267,11 +249,7 @@ public:
 			if (ngramExists(index, iterations, atoms[i]))
 				matched.push_back(i);
 
-		std::vector<int> res;
-		tree.RegexpsGivenStrings(matched, &res);
-
-		assert(res.size() <= 1);
-		return !res.empty();
+		return re->prefilterMatch(matched);
 	}
 
 	bool empty() const
@@ -281,7 +259,7 @@ public:
 
 private:
 	std::vector<NgramString> atoms;
-	re2::PrefilterTree tree;
+	Regex* re;
 };
 
 unsigned int searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit, const char* include, const char* exclude)
