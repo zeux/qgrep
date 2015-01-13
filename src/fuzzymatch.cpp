@@ -15,7 +15,7 @@ struct RankContext
     int* cache;
     int* cachepos;
 };
-	
+
 template <bool fillPosition>
 static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch, size_t patternOffset)
 {
@@ -42,6 +42,9 @@ static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch,
             int distance = path[i].position - lastMatch;
 
             int charScore = 0;
+
+            if (patternOffset == 0 || patternOffset + 1 == patternLength)
+                charScore = path[i].score;
 
             if (distance > 1 && lastMatch >= 0)
             {
@@ -140,6 +143,27 @@ bool FuzzyMatcher::match(const char* data, size_t size, int* positions)
     return true;
 }
 
+static int rankPair(char first, char second)
+{
+    // boundary character has priority
+    if (second == 0)
+        return 0;
+
+    // if the main character is alphabetical, weigh boundary character
+    if (static_cast<unsigned>((first | ' ') - 'a') <= 26)
+    {
+        // path components
+        if (second == '/' || second == '.')
+            return 1;
+
+        // word components
+        if (second == '_' || second == '-')
+            return 2;
+    }
+
+    return 3;
+}
+
 int FuzzyMatcher::rank(const char* data, size_t size, int* positions)
 {
     size_t offset = 0;
@@ -158,7 +182,9 @@ int FuzzyMatcher::rank(const char* data, size_t size, int* positions)
     {
         unsigned char ch = static_cast<unsigned char>(data[i]);
 
-        bufp[bufsize] = RankPathElement(i, data[i]);
+        int score = std::min(rankPair(data[i], data[i + 1]), rankPair(data[i], i > 0 ? data[i - 1] : 0));
+
+        bufp[bufsize] = RankPathElement(i, data[i], score);
         bufsize += table[ch];
     }
 

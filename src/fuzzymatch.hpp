@@ -6,18 +6,21 @@
 
 struct RankPathElement
 {
-	int position;
+	unsigned int position;
 	char character;
+	unsigned short score;
 
 	RankPathElement()
 		: position(0)
 		, character(0)
+		, score(0)
 	{
 	}
 
-	RankPathElement(int position, char character)
+	RankPathElement(unsigned int position, char character, unsigned short score)
 		: position(position)
 		, character(character)
+		, score(score)
 	{
 	}
 };
