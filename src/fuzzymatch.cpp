@@ -8,7 +8,7 @@
 
 struct RankContext
 {
-    const std::pair<int, char>* path;
+    const RankPathElement* path;
     size_t pathLength;
     const char* pattern;
     size_t patternLength;
@@ -19,7 +19,7 @@ struct RankContext
 template <bool fillPosition>
 static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch, size_t patternOffset)
 {
-    const std::pair<int, char>* path = c.path;
+    const RankPathElement* path = c.path;
     size_t pathLength = c.pathLength;
     const char* pattern = c.pattern;
     size_t patternLength = c.patternLength;
@@ -37,9 +37,9 @@ static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch,
     size_t patternRest = patternLength - patternOffset - 1;
 
     for (size_t i = pathOffset; i + patternRest < pathLength; ++i)
-        if (casefold(path[i].second) == pattern[patternOffset])
+        if (casefold(path[i].character) == pattern[patternOffset])
         {
-            int distance = path[i].first - lastMatch;
+            int distance = path[i].position - lastMatch;
 
             int charScore = 0;
 
@@ -50,7 +50,7 @@ static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch,
 
             int restScore =
                 (patternOffset + 1 < patternLength)
-                ? rankRecursive<fillPosition>(c, i + 1, path[i].first, patternOffset + 1)
+                ? rankRecursive<fillPosition>(c, i + 1, path[i].position, patternOffset + 1)
                 : 0;
 
             if (restScore != INT_MAX)
@@ -75,7 +75,7 @@ static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch,
     return cv = bestScore;
 }
 
-static void fillPositions(int* positions, const std::pair<int, char>* path, size_t pathLength, size_t patternLength, int* cachepos)
+static void fillPositions(int* positions, const RankPathElement* path, size_t pathLength, size_t patternLength, int* cachepos)
 {
     size_t pathOffset = 0;
 
@@ -86,7 +86,7 @@ static void fillPositions(int* positions, const std::pair<int, char>* path, size
         int pos = cachepos[pathOffset * patternLength + i];
         assert(pos >= 0 && pos < (int)pathLength);
 
-        positions[i] = path[pos].first;
+        positions[i] = path[pos].position;
 
         pathOffset = pos + 1;
     }
@@ -151,14 +151,14 @@ int FuzzyMatcher::rank(const char* data, size_t size, int* positions)
 
     if (buf.size() < size + 1) buf.resize(size + 1);
 
-    std::pair<int, char>* bufp = &buf[0];
+    RankPathElement* bufp = &buf[0];
     size_t bufsize = 0;
 
     for (size_t i = offset; i < size; ++i)
     {
         unsigned char ch = static_cast<unsigned char>(data[i]);
 
-        bufp[bufsize] = std::make_pair(i, data[i]);
+        bufp[bufsize] = RankPathElement(i, data[i]);
         bufsize += table[ch];
     }
 
