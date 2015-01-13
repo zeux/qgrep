@@ -41,10 +41,12 @@ static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch,
         {
             int distance = path[i].position - lastMatch;
 
-            int charScore = 0;
-
-            if (patternOffset == 0 || patternOffset + 1 == patternLength)
-                charScore = path[i].score;
+            int charScore =
+                (patternOffset == 0)
+                    ? path[i].leftScore
+                    : (patternRest == 0)
+                        ? path[i].rightScore
+                        : 0;
 
             if (distance > 1 && lastMatch >= 0)
             {
@@ -182,9 +184,10 @@ int FuzzyMatcher::rank(const char* data, size_t size, int* positions)
     {
         unsigned char ch = static_cast<unsigned char>(data[i]);
 
-        int score = std::min(rankPair(data[i], data[i + 1]), rankPair(data[i], i > 0 ? data[i - 1] : 0));
+        int leftScore = rankPair(data[i], i > 0 ? data[i - 1] : 0);
+        int rightScore = rankPair(data[i], i + 1 < size ? data[i + 1] : 0);
 
-        bufp[bufsize] = RankPathElement(i, data[i], score);
+        bufp[bufsize] = RankPathElement(i, data[i], leftScore, rightScore);
         bufsize += table[ch];
     }
 
