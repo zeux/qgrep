@@ -59,7 +59,7 @@ static std::pair<unsigned int, size_t> filterBufferPartial(Output* output, const
 unsigned int filterStdin(Output* output, const char* string, unsigned int options, unsigned int limit)
 {
 	const size_t chunkSize = 1048576;
-	bool allowPartialInput = (options & SO_FILE_COMMANDT_RANKED) == 0;
+	bool allowPartialInput = (options & SO_FILE_FUZZY) == 0;
 
 	std::vector<char> buffer;
 

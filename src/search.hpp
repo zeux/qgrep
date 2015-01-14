@@ -11,16 +11,15 @@ enum SearchOptions
 	SO_FILE_NAMEREGEX = 1 << 3,
 	SO_FILE_PATHREGEX = 1 << 4,
 	SO_FILE_VISUALASSIST = 1 << 5,
-	SO_FILE_COMMANDT = 1 << 6,
-	SO_FILE_COMMANDT_RANKED = 1 << 7,
+	SO_FILE_FUZZY = 1 << 6,
 
-	SO_VISUALSTUDIO = 1 << 8,
-	SO_COLUMNNUMBER = 1 << 9,
+	SO_VISUALSTUDIO = 1 << 7,
+	SO_COLUMNNUMBER = 1 << 8,
 
-	SO_HIGHLIGHT = 1 << 10,
-	SO_HIGHLIGHT_MATCHES = 1 << 11,
+	SO_HIGHLIGHT = 1 << 9,
+	SO_HIGHLIGHT_MATCHES = 1 << 10,
 
-	SO_SUMMARY = 1 << 12
+	SO_SUMMARY = 1 << 11
 };
 
 unsigned int getRegexOptions(unsigned int options);

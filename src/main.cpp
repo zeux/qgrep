@@ -132,11 +132,8 @@ unsigned int parseSearchFileOption(char opt)
 	case 's':
 		return SO_FILE_VISUALASSIST;
 
-	case 't':
-		return SO_FILE_COMMANDT_RANKED;
-
-	case 'T':
-		return SO_FILE_COMMANDT;
+	case 'f':
+		return SO_FILE_FUZZY;
 
 	default:
 		throw std::runtime_error("Unknown search option 'f" + std::string(opt != 0, opt) + "'");
@@ -253,7 +250,7 @@ std::tuple<unsigned int, unsigned int, std::string, std::string> getSearchOption
 		parseSearchOptions(argv[i], options, limit, include, exclude);
 
 	// choose default file search type
-	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_COMMANDT | SO_FILE_COMMANDT_RANKED)) == 0)
+	if ((options & (SO_FILE_NAMEREGEX | SO_FILE_PATHREGEX | SO_FILE_VISUALASSIST | SO_FILE_FUZZY)) == 0)
 		options |= SO_FILE_PATHREGEX;
 
 	// highlighting includes match highlighting
@@ -364,8 +361,7 @@ void printHelp(Output* output, bool extended)
 "\n"
 "<search-options> can include additional options for files/filter commands:\n"
 "  fp - search in file paths (default)  fn - search in file names\n"
-"  ft - Command-T like fuzzy search     fs - search in file names/paths using\n"
-"  fT - Command-T search w/out ranking       a space-delimited query (VAX-like)\n");
+"  ff - fuzzy search with ranking       fs - search for space-delimited words\n");
 }
 
 void mainImpl(Output* output, int argc, const char** argv, const char* input, size_t inputSize)

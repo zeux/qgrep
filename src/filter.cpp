@@ -215,7 +215,7 @@ static unsigned int filterVisualAssist(const FilterEntries& entries, const Filte
 	return results.size();
 }
 
-static void processMatchHighlightCommandT(FuzzyMatcher& matcher, bool ranked, FilterHighlightBuffer& hlbuf, const FilterEntry& entry, const char* buffer, FilterOutput* output)
+static void processMatchHighlightFuzzy(FuzzyMatcher& matcher, bool ranked, FilterHighlightBuffer& hlbuf, const FilterEntry& entry, const char* buffer, FilterOutput* output)
 {
     const char* data = buffer + entry.offset;
 
@@ -236,35 +236,7 @@ static void processMatchHighlightCommandT(FuzzyMatcher& matcher, bool ranked, Fi
 	processMatch(hlbuf.result.c_str(), hlbuf.result.size(), output);
 }
 
-static unsigned int filterCommandT(const FilterEntries& entries, const char* string, FilterOutput* output)
-{
-	FuzzyMatcher matcher(string);
-
-	FilterHighlightBuffer hlbuf;
-
-	unsigned int matches = 0;
-
-	for (size_t i = 0; i < entries.entryCount; ++i)
-	{
-		const FilterEntry& e = entries.entries[i];
-
-		if (matcher.match(entries.buffer + e.offset, e.length))
-		{
-			matches++;
-
-			if (output->options & SO_HIGHLIGHT_MATCHES)
-				processMatchHighlightCommandT(matcher, /* ranked= */ false, hlbuf, e, entries.buffer, output);
-			else
-				processMatch(e, entries.buffer, output);
-
-			if (matches >= output->limit) break;
-		}
-	}
-
-	return matches;
-}
-
-static unsigned int filterCommandTRanked(const FilterEntries& entries, const char* string, FilterOutput* output)
+static unsigned int filterFuzzy(const FilterEntries& entries, const char* string, FilterOutput* output)
 {
 	FuzzyMatcher matcher(string);
 
@@ -310,7 +282,7 @@ static unsigned int filterCommandTRanked(const FilterEntries& entries, const cha
 		const FilterEntry& e = *m.second;
 
 		if (output->options & SO_HIGHLIGHT_MATCHES)
-			processMatchHighlightCommandT(matcher, /* ranked= */ true, hlbuf, e, entries.buffer, output);
+			processMatchHighlightFuzzy(matcher, /* ranked= */ true, hlbuf, e, entries.buffer, output);
 		else
 			processMatch(e, entries.buffer, output);
 	}
@@ -390,10 +362,8 @@ unsigned int filter(Output* output_, const char* string, unsigned int options, u
 		return filterRegex(entries, entries, string, &output);
 	else if (options & SO_FILE_VISUALASSIST)
 		return filterVisualAssist(entries, getNameBuffer(namesOpt, names, entries, nameEntries, nameBuffer), string, &output);
-	else if (options & SO_FILE_COMMANDT)
-		return filterCommandT(entries, string, &output);
-	else if (options & SO_FILE_COMMANDT_RANKED)
-		return filterCommandTRanked(entries, string, &output);
+	else if (options & SO_FILE_FUZZY)
+		return filterFuzzy(entries, string, &output);
 	else
 	{
 		output_->error("Unknown file search type\n");
