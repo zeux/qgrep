@@ -168,27 +168,31 @@ static int rankPair(char first, char second)
 
 int FuzzyMatcher::rank(const char* data, size_t size, int* positions)
 {
-    size_t offset = 0;
+    size_t begin = 0;
+    size_t end = size;
 
-    while (offset < size && casefold(data[offset]) != cfquery.front()) offset++;
-    while (offset < size && casefold(data[size - 1]) != cfquery.back()) size--;
+    while (begin < size && casefold(data[begin]) != cfquery.front()) begin++;
+    while (begin < end && casefold(data[end - 1]) != cfquery.back()) end--;
 
-    if (offset + cfquery.size() > size) return INT_MAX;
+    if (begin + cfquery.size() > end) return INT_MAX;
 
-    if (buf.size() < size + 1) buf.resize(size + 1);
+    if (buf.size() < (end - begin) + 1) buf.resize((end - begin) + 1);
 
     RankPathElement* bufp = &buf[0];
     size_t bufsize = 0;
 
-    for (size_t i = offset; i < size; ++i)
+    for (size_t i = begin; i < end; ++i)
     {
         unsigned char ch = static_cast<unsigned char>(data[i]);
 
-        int leftScore = rankPair(data[i], i > 0 ? data[i - 1] : 0);
-        int rightScore = rankPair(data[i], i + 1 < size ? data[i + 1] : 0);
+        if (table[ch])
+        {
+            int leftScore = rankPair(data[i], i > 0 ? data[i - 1] : 0);
+            int rightScore = rankPair(data[i], i + 1 < size ? data[i + 1] : 0);
 
-        bufp[bufsize] = RankPathElement(i, data[i], leftScore, rightScore);
-        bufsize += table[ch];
+            bufp[bufsize] = RankPathElement(i, data[i], leftScore, rightScore);
+            bufsize++;
+        }
     }
 
     cache.clear();
