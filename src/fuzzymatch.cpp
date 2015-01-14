@@ -41,22 +41,21 @@ static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch,
         {
             int distance = path[i].position - lastMatch;
 
-            int charScore =
-                (patternOffset == 0)
-                    ? path[i].leftScore
-                    : (patternRest == 0)
-                        ? path[i].rightScore
-                        : 0;
+            int charScore = (patternOffset == 0) ? path[i].leftScore : 0;
 
             if (distance > 1 && lastMatch >= 0)
             {
+                assert(lastMatch == path[pathOffset - 1].position);
+
+                charScore += path[pathOffset - 1].rightScore;
                 charScore += 10 + (distance - 2);
+                charScore += path[i].leftScore;
             }
 
             int restScore =
                 (patternOffset + 1 < patternLength)
                 ? rankRecursive<fillPosition>(c, i + 1, path[i].position, patternOffset + 1)
-                : 0;
+                : path[i].rightScore;
 
             if (restScore != INT_MAX)
             {
@@ -163,7 +162,7 @@ static int rankPair(char first, char second)
             return 2;
     }
 
-    return 3;
+    return 4;
 }
 
 int FuzzyMatcher::rank(const char* data, size_t size, int* positions)
