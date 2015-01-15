@@ -10,6 +10,10 @@
 #ifndef RE2_UTIL_MUTEX_H_
 #define RE2_UTIL_MUTEX_H_
 
+#ifdef _WIN32
+#include "util/win32.h"
+#endif // _WIN32
+
 namespace re2 {
 
 #if defined(NO_THREADS)
