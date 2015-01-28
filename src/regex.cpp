@@ -105,16 +105,18 @@ public:
 			while (mask != 0)
 			{
 				unsigned int pos = re2::countTrailingZeros(mask);
-				size_t matchOffset = offset - 16 + pos - firstLetterOffset;
+				size_t dataOffset = offset - 16 + pos - firstLetterOffset;
 
 				mask &= ~(1 << pos);
 
 				// check if we have a match
-				__m128i patternMatch = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + matchOffset));
+				__m128i patternMatch = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + dataOffset));
 				__m128i matchMask = _mm_or_si128(patternMask, _mm_cmpeq_epi8(patternMatch, patternData));
 
 				if (_mm_movemask_epi8(matchMask) == 0xffff)
 				{
+					size_t matchOffset = dataOffset + firstLetterOffset - firstLetterPos;
+
 					// final check for full pattern
 					if (memcmp(data + matchOffset, pattern.c_str(), pattern.size()) == 0)
 					{
