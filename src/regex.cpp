@@ -118,7 +118,7 @@ public:
 					size_t matchOffset = dataOffset + firstLetterOffset - firstLetterPos;
 
 					// final check for full pattern
-					if (memcmp(data + matchOffset, pattern.c_str(), pattern.size()) == 0)
+					if (matchOffset + pattern.size() < size && memcmp(data + matchOffset, pattern.c_str(), pattern.size()) == 0)
 					{
 						return matchOffset;
 					}
