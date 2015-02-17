@@ -21,16 +21,16 @@ i.e.
 
 It will create the project configuration file ~/.qgrep/mygame.cfg that will
 index all source files (from a certain predefined set of extensions) in Source
-folder, including subfolders. After that you have to build the database:
+folder, including subfolders. After that you have to update the database:
 
-    qgrep build mygame
+    qgrep update mygame
 
 And start using it:
 
     qgrep search mygame main\s*\(
 
-Note that you'll have to rebuild the database from time to time in order to
-keep the search results current; you can run `qgrep build mygame` as a scheduled
+Note that you'll have to update the database from time to time in order to
+keep the search results current; you can run `qgrep update mygame` as a scheduled
 task or manually.
 
 Projects
@@ -108,30 +108,27 @@ contains two more files, designdoc.txt and technicaldesigndoc.txt.
 Since you can omit 'file' prefix for single file names, a file list works as a
 valid project configuration file.
 
-Building the project
+Updating the project
 --------------------
 
-Building the project is done with
-
-    qgrep build <project-list>
-
-This builds the project from scratch by reading the project configuration file
-for all specified projects, converting it to file list, then reads all files
-from disk and puts them to the database. For large projects, both reading the
-file list and reading the file contents takes a bit of time, so be patient.
-
-There is an alternative command to build projects,
+Updating the project is done with
 
     qgrep update <project-list>
 
-It works in the same way as build, but tries to reuse the information from the
-existing database (if available) to speed up building process. The update
-implementation relies on file metadata, and will incorrectly preserve the old
-contents if the file contents changed without changing the modification time or
-file size (however, this is extremely rare, so is probably not a big concern).
+This updates the project by reading the project configuration file for all
+specified projects, converting it to file list, then reads all files
+from disk and puts them to the database. For large projects, both reading the
+file list and reading the file contents takes a bit of time, so be patient.
 
-Remember that you can use * as a shorthand for all projects: `qgrep build *'
-builds everything.
+Update tries to reuse the information from the existing database (if available)
+to speed up the process. The implementation relies on file metadata, and will
+incorrectly preserve the old contents if the file contents changed without
+changing the modification time or file size (however, this is extremely rare,
+so is probably not a big concern). You can use `qgrep build` instead of `update`
+to force a clean build.
+
+Remember that you can use * as a shorthand for all projects: `qgrep update *'
+updates everything.
 
 Searching the project
 ---------------------
