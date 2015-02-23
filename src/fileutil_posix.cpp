@@ -26,6 +26,16 @@ static bool readDirectory(const char* path, std::vector<dirent>& result)
 	return false;
 }
 
+static int getFileType(const char* path)
+{
+	struct stat st;
+
+	if (lstat(path, &st) == 0)
+		return IFTODT(st.st_mode);
+
+	return DT_UNKNOWN;
+}
+
 static bool traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, bool needsStat)
 {
 	std::vector<dirent> contents;
@@ -40,21 +50,20 @@ static bool traverseDirectoryImpl(const char* path, const char* relpath, const s
 			if (traverseFileNeeded(data.d_name))
 			{
 				joinPaths(relbuf, relpath, data.d_name);
+				joinPaths(buf, path, data.d_name);
 
-				if (data.d_type == DT_DIR)
+				int type = (data.d_type == DT_UNKNOWN) ? getFileType(buf.c_str()) : data.d_type;
+
+				if (type == DT_DIR)
 				{
-					joinPaths(buf, path, data.d_name);
 					traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback, needsStat);
 				}
-				else
+				else if (type == DT_REG)
 				{
 					uint64_t mtime = 0, size = 0;
 
 					if (needsStat)
-					{
-						joinPaths(buf, path, data.d_name);
 						getFileAttributes(buf.c_str(), &mtime, &size);
-					}
 
 					callback(relbuf.c_str(), mtime, size);
 				}
