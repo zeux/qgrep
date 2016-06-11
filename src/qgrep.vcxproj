@@ -23,6 +23,7 @@
     <ProjectGuid>{6827D800-E969-478D-BF86-2B821F084585}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>qgrep</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -69,23 +70,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\bin\$(Configuration)_$(Platform)\</OutDir>
-    <IntDir>..\obj\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
+    <OutDir>..\</OutDir>
+    <IntDir>..\build\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\bin\$(Configuration)_$(Platform)\</OutDir>
-    <IntDir>..\obj\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
+    <OutDir>..\</OutDir>
+    <IntDir>..\build\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\bin\$(Configuration)_$(Platform)\</OutDir>
-    <IntDir>..\obj\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
+    <OutDir>..\</OutDir>
+    <IntDir>..\build\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\bin\$(Configuration)_$(Platform)\</OutDir>
-    <IntDir>..\obj\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
+    <OutDir>..\</OutDir>
+    <IntDir>..\build\$(ProjectName)_$(Configuration)_$(Platform)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
