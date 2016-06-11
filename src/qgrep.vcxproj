@@ -93,8 +93,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>USE_SSE2;_WIN32_WINNT=0x0600;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../extern;../extern/re2</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -108,8 +108,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;USE_SSE2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../extern;../extern/re2</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -125,8 +125,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>USE_SSE2;_WIN32_WINNT=0x0600;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../extern;../extern/re2</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -144,8 +144,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>USE_SSE2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../extern;../extern/re2</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -156,11 +156,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\extern\lz4\lz4hc.c" />
-    <ClCompile Include="..\extern\lz4\lz4.c" />
+    <ClCompile Include="..\extern\lz4\lib\lz4.c" />
+    <ClCompile Include="..\extern\lz4\lib\lz4hc.c" />
     <ClCompile Include="..\extern\re2\re2\bitstate.cc" />
     <ClCompile Include="..\extern\re2\re2\compile.cc" />
     <ClCompile Include="..\extern\re2\re2\dfa.cc" />
+    <ClCompile Include="..\extern\re2\re2\filtered_re2.cc" />
+    <ClCompile Include="..\extern\re2\re2\mimics_pcre.cc" />
     <ClCompile Include="..\extern\re2\re2\nfa.cc" />
     <ClCompile Include="..\extern\re2\re2\onepass.cc" />
     <ClCompile Include="..\extern\re2\re2\parse.cc" />
@@ -170,15 +172,21 @@
     <ClCompile Include="..\extern\re2\re2\prog.cc" />
     <ClCompile Include="..\extern\re2\re2\re2.cc" />
     <ClCompile Include="..\extern\re2\re2\regexp.cc" />
+    <ClCompile Include="..\extern\re2\re2\set.cc" />
     <ClCompile Include="..\extern\re2\re2\simplify.cc" />
+    <ClCompile Include="..\extern\re2\re2\stringpiece.cc" />
     <ClCompile Include="..\extern\re2\re2\tostring.cc" />
     <ClCompile Include="..\extern\re2\re2\unicode_casefold.cc" />
     <ClCompile Include="..\extern\re2\re2\unicode_groups.cc" />
     <ClCompile Include="..\extern\re2\util\hash.cc" />
+    <ClCompile Include="..\extern\re2\util\logging.cc" />
+    <ClCompile Include="..\extern\re2\util\pcre.cc" />
+    <ClCompile Include="..\extern\re2\util\random.cc" />
     <ClCompile Include="..\extern\re2\util\rune.cc" />
-    <ClCompile Include="..\extern\re2\util\stringpiece.cc" />
     <ClCompile Include="..\extern\re2\util\stringprintf.cc" />
     <ClCompile Include="..\extern\re2\util\strutil.cc" />
+    <ClCompile Include="..\extern\re2\util\test.cc" />
+    <ClCompile Include="..\extern\re2\util\threadwin.cc" />
     <ClCompile Include="blockpool.cpp" />
     <ClCompile Include="build.cpp" />
     <ClCompile Include="compression.cpp" />
@@ -204,18 +212,30 @@
     <ClCompile Include="workqueue.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\extern\lz4\lz4hc.h" />
-    <ClInclude Include="..\extern\lz4\lz4.h" />
+    <ClInclude Include="..\extern\lz4\lib\lz4.h" />
+    <ClInclude Include="..\extern\lz4\lib\lz4hc.h" />
+    <ClInclude Include="..\extern\re2\re2\filtered_re2.h" />
     <ClInclude Include="..\extern\re2\re2\prefilter.h" />
     <ClInclude Include="..\extern\re2\re2\prefilter_tree.h" />
     <ClInclude Include="..\extern\re2\re2\prog.h" />
     <ClInclude Include="..\extern\re2\re2\re2.h" />
     <ClInclude Include="..\extern\re2\re2\regexp.h" />
+    <ClInclude Include="..\extern\re2\re2\set.h" />
+    <ClInclude Include="..\extern\re2\re2\stringpiece.h" />
     <ClInclude Include="..\extern\re2\re2\unicode_casefold.h" />
     <ClInclude Include="..\extern\re2\re2\unicode_groups.h" />
-    <ClInclude Include="..\extern\re2\re2\variadic_function.h" />
+    <ClInclude Include="..\extern\re2\re2\walker-inl.h" />
+    <ClInclude Include="..\extern\re2\util\flags.h" />
+    <ClInclude Include="..\extern\re2\util\logging.h" />
+    <ClInclude Include="..\extern\re2\util\mutex.h" />
+    <ClInclude Include="..\extern\re2\util\pcre.h" />
+    <ClInclude Include="..\extern\re2\util\random.h" />
     <ClInclude Include="..\extern\re2\util\sparse_array.h" />
     <ClInclude Include="..\extern\re2\util\sparse_set.h" />
+    <ClInclude Include="..\extern\re2\util\test.h" />
+    <ClInclude Include="..\extern\re2\util\thread.h" />
+    <ClInclude Include="..\extern\re2\util\utf.h" />
+    <ClInclude Include="..\extern\re2\util\util.h" />
     <ClInclude Include="blockingqueue.hpp" />
     <ClInclude Include="blockpool.hpp" />
     <ClInclude Include="build.hpp" />
