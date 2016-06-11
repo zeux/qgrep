@@ -1,0 +1,5 @@
+version: "{branch}-{build}"
+
+build:
+  project: src/qgrep.sln
+  verbosity: minimal
