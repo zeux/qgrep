@@ -1,6 +1,6 @@
 BUILD=build/make-$(CXX)
 
-CCFLAGS=-c -g -Wall -fPIC -O3 -msse2 -DUSE_SSE2 -DHAVE_PTHREAD -DHAVE_RWLOCK -D_FILE_OFFSET_BITS=64 -Iextern/lz4/lib -Iextern/re2
+CCFLAGS=-c -g -Wall -Werror -fPIC -O3 -msse2 -DUSE_SSE2 -Iextern/lz4/lib -Iextern/re2
 CXXFLAGS=-std=c++11
 LDFLAGS=-lpthread -lstdc++
 

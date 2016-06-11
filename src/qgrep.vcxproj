@@ -97,6 +97,8 @@
       <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DisableSpecificWarnings>4996;4267;4244</DisableSpecificWarnings>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -112,6 +114,8 @@
       <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DisableSpecificWarnings>4996;4267;4244</DisableSpecificWarnings>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,6 +133,8 @@
       <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DisableSpecificWarnings>4996;4267;4244</DisableSpecificWarnings>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,6 +154,8 @@
       <PreprocessorDefinitions>USE_SSE2;NOMINMAX;_WIN32_WINNT=0x0600;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../extern/lz4/lib;../extern/re2</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DisableSpecificWarnings>4996;4267;4244</DisableSpecificWarnings>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

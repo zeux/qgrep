@@ -6,3 +6,7 @@ install:
 build:
   project: src/qgrep.sln
   verbosity: minimal
+
+platform:
+  - x86
+  - x64
