@@ -117,7 +117,7 @@ FuzzyMatcher::FuzzyMatcher(const char* query)
     // add inverse casefolded letters
     for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); ++i)
     {
-        unsigned char ch = static_cast<unsigned char>(casefold(i));
+        unsigned char ch = static_cast<unsigned char>(casefold(char(i)));
 
         table[i] = table[ch];
     }
