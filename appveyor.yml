@@ -8,5 +8,5 @@ build:
   verbosity: minimal
 
 platform:
-  - x86
+  - Win32
   - x64
