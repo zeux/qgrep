@@ -26,7 +26,7 @@
 #include <mutex>
 #include <chrono>
 
-namespace re2 { int RunningOnValgrind() { return 0; } }
+namespace re2 { bool RunningOnValgrind() { return false; } }
 
 class StandardOutput: public Output
 {
