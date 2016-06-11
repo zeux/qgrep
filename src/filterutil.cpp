@@ -9,8 +9,6 @@
 
 #include <stdio.h>
 
-#include "util/stringops.h"
-
 unsigned int filterBuffer(Output* output, const char* string, unsigned int options, unsigned int limit, const char* buffer, size_t bufferSize)
 {
 	if (bufferSize == 0) return 0;
@@ -19,7 +17,7 @@ unsigned int filterBuffer(Output* output, const char* string, unsigned int optio
 
 	for (size_t i = 0; i < bufferSize; )
 	{
-		const void* nextptr = re2::memchr(buffer + i, '\n', bufferSize - i);
+		const void* nextptr = memchr(buffer + i, '\n', bufferSize - i);
 		size_t next = nextptr ? static_cast<const char*>(nextptr) - buffer : bufferSize;
 
 		if (i < next)

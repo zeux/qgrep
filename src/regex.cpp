@@ -6,10 +6,20 @@
 #include "re2/re2.h"
 #include "re2/prefilter.h"
 #include "re2/prefilter_tree.h"
-#include "util/stringops.h"
 
 #include <memory>
 #include <stdexcept>
+
+#include <string.h>
+
+#ifdef USE_SSE2
+#include <emmintrin.h>
+
+#   ifdef _MSC_VER
+#       include <intrin.h>
+#       pragma intrinsic(_BitScanForward)
+#   endif
+#endif
 
 static bool transformRegexCasefold(const char* pattern, std::string& res, bool literal)
 {
@@ -44,28 +54,59 @@ public:
 	virtual size_t match(const char* data, size_t size) = 0;
 };
 
-class LiteralMatcherFirst: public LiteralMatcher
+#ifdef USE_SSE2
+inline int countTrailingZeros(int value)
+{
+#ifdef _MSC_VER
+	unsigned long r;
+	_BitScanForward(&r, value);
+	return r;
+#else
+	return __builtin_ctz(value);
+#endif
+}
+
+class LiteralMatcher1: public LiteralMatcher
 {
 public:
-	LiteralMatcherFirst(const char* string): first(string[0])
+	LiteralMatcher1(const char* string): first(string[0])
 	{
 	}
 
 	virtual size_t match(const char* data, size_t size)
 	{
-		const void* pos = re2::memchr(data, first, size);
-		return pos ? static_cast<const char*>(pos) - data : size;
+		__m128i pattern = _mm_set1_epi8(first);
+
+		size_t offset = 0;
+
+		while (offset + 16 <= size)
+		{
+			__m128i val = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + offset));
+			__m128i maskv = _mm_cmpeq_epi8(val, pattern);
+			int mask = _mm_movemask_epi8(maskv);
+
+			if (mask == 0)
+				;
+			else
+				return offset + countTrailingZeros(mask);
+
+			offset += 16;
+		}
+
+		while (offset < size && data[offset] != first)
+			offset++;
+
+		return offset;
 	}
 
 private:
 	char first;
 };
 
-#ifdef USE_SSE2
-class LiteralMatcherSSE: public LiteralMatcher
+class LiteralMatcher16: public LiteralMatcher
 {
 public:
-	LiteralMatcherSSE(const char* string)
+	LiteralMatcher16(const char* string)
 	{
 		size_t length = strlen(string);
 
@@ -104,7 +145,7 @@ public:
 
 			while (mask != 0)
 			{
-				unsigned int pos = re2::countTrailingZeros(mask);
+				unsigned int pos = countTrailingZeros(mask);
 				size_t dataOffset = offset - 16 + pos - firstLetterOffset;
 
 				mask &= ~(1 << pos);
@@ -215,11 +256,11 @@ public:
 
 		std::string prefix = getPrefix(re.get(), 128);
 
-		if (prefix.length() == 1)
-			matcher.reset(new LiteralMatcherFirst(prefix.c_str()));
 	#ifdef USE_SSE2
+		if (prefix.length() == 1)
+			matcher.reset(new LiteralMatcher1(prefix.c_str()));
 		else if (prefix.length() > 1)
-			matcher.reset(new LiteralMatcherSSE(prefix.c_str()));
+			matcher.reset(new LiteralMatcher16(prefix.c_str()));
 	#endif
 	}
 	
