@@ -1,5 +1,8 @@
 version: "{branch}-{build}"
 
+install:
+  - git submodule update --init --recursive
+
 build:
   project: src/qgrep.sln
   verbosity: minimal
