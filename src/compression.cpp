@@ -1,8 +1,8 @@
 #include "common.hpp"
 #include "compression.hpp"
 
-#include "lz4/lz4.h"
-#include "lz4/lz4hc.h"
+#include "lz4.h"
+#include "lz4hc.h"
 
 std::pair<std::unique_ptr<char[]>, size_t> compress(const void* data, size_t dataSize)
 {
