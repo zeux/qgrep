@@ -110,7 +110,7 @@ std::string getCurrentDirectory()
 	result.resize(length);
     result.resize(GetCurrentDirectoryA(length, &result[0]));
 
-    return std::move(result);
+    return result;
 }
 
 #endif

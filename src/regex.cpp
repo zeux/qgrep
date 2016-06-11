@@ -4,9 +4,9 @@
 #include "casefold.hpp"
 
 #include "re2/re2.h"
-#include "re2/util/stringops.h"
 #include "re2/prefilter.h"
 #include "re2/prefilter_tree.h"
+#include "util/stringops.h"
 
 #include <memory>
 #include <stdexcept>

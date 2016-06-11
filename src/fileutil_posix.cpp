@@ -123,7 +123,7 @@ std::string getCurrentDirectory()
 
     result.resize(strlen(path));
 
-    return std::move(result);
+    return result;
 }
 
 #endif

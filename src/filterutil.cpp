@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 
-#include "re2/util/stringops.h"
+#include "util/stringops.h"
 
 unsigned int filterBuffer(Output* output, const char* string, unsigned int options, unsigned int limit, const char* buffer, size_t bufferSize)
 {

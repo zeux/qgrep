@@ -161,5 +161,5 @@ std::string normalizePath(const char* base, const char* path)
     appendPath(result, base);
     appendPath(result, path);
 
-    return std::move(result);
+    return result;
 }

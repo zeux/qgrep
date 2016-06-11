@@ -170,7 +170,8 @@ static std::unique_ptr<ProjectGroup> buildGroup(std::unique_ptr<ProjectGroup> gr
 {
 	group->include = createOrRegexCached(include, regexCache);
 	group->exclude = createOrRegexCached(exclude, regexCache);
-	return move(group);
+
+	return group;
 }
 
 static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* file, unsigned int& lineId, ProjectGroup* parent,
