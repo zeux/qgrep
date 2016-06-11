@@ -1,3 +1,6 @@
 [submodule "extern/lz4"]
 	path = extern/lz4
 	url = https://github.com/Cyan4973/lz4
+[submodule "extern/re2"]
+	path = extern/re2
+	url = https://github.com/google/re2
