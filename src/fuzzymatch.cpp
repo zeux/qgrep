@@ -45,7 +45,7 @@ static int rankRecursive(const RankContext& c, size_t pathOffset, int lastMatch,
 
             if (distance > 1 && lastMatch >= 0)
             {
-                assert(lastMatch == path[pathOffset - 1].position);
+                assert(static_cast<unsigned int>(lastMatch) == path[pathOffset - 1].position);
 
                 charScore += path[pathOffset - 1].rightScore;
                 charScore += 10 + (distance - 2);
