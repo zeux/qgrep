@@ -136,31 +136,13 @@
     <ClCompile Include="..\extern\re2\re2\unicode_groups.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>
-    <ClCompile Include="..\extern\re2\util\hash.cc">
-      <Filter>extern\re2</Filter>
-    </ClCompile>
-    <ClCompile Include="..\extern\re2\util\logging.cc">
-      <Filter>extern\re2</Filter>
-    </ClCompile>
     <ClCompile Include="..\extern\re2\util\pcre.cc">
-      <Filter>extern\re2</Filter>
-    </ClCompile>
-    <ClCompile Include="..\extern\re2\util\random.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>
     <ClCompile Include="..\extern\re2\util\rune.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>
-    <ClCompile Include="..\extern\re2\util\stringprintf.cc">
-      <Filter>extern\re2</Filter>
-    </ClCompile>
     <ClCompile Include="..\extern\re2\util\strutil.cc">
-      <Filter>extern\re2</Filter>
-    </ClCompile>
-    <ClCompile Include="..\extern\re2\util\test.cc">
-      <Filter>extern\re2</Filter>
-    </ClCompile>
-    <ClCompile Include="..\extern\re2\util\threadwin.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>
   </ItemGroup>

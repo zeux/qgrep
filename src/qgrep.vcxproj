@@ -187,15 +187,9 @@
     <ClCompile Include="..\extern\re2\re2\tostring.cc" />
     <ClCompile Include="..\extern\re2\re2\unicode_casefold.cc" />
     <ClCompile Include="..\extern\re2\re2\unicode_groups.cc" />
-    <ClCompile Include="..\extern\re2\util\hash.cc" />
-    <ClCompile Include="..\extern\re2\util\logging.cc" />
     <ClCompile Include="..\extern\re2\util\pcre.cc" />
-    <ClCompile Include="..\extern\re2\util\random.cc" />
     <ClCompile Include="..\extern\re2\util\rune.cc" />
-    <ClCompile Include="..\extern\re2\util\stringprintf.cc" />
     <ClCompile Include="..\extern\re2\util\strutil.cc" />
-    <ClCompile Include="..\extern\re2\util\test.cc" />
-    <ClCompile Include="..\extern\re2\util\threadwin.cc" />
     <ClCompile Include="blockpool.cpp" />
     <ClCompile Include="build.cpp" />
     <ClCompile Include="compression.cpp" />
