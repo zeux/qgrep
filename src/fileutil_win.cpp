@@ -43,7 +43,8 @@ static bool traverseDirectoryImpl(const char* path, const char* relpath, const s
 
 		for (auto& data: contents)
 		{
-			if (traverseFileNeeded(data.cFileName))
+			if (!(data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
+				traverseFileNeeded(data.cFileName))
 			{
 				joinPaths(relbuf, relpath, data.cFileName);
 
