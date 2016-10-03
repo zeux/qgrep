@@ -67,6 +67,10 @@ static bool traverseDirectoryImpl(const char* path, const char* relpath, const s
 
 					callback(relbuf.c_str(), mtime, size);
 				}
+				else if (type == DT_LNK)
+				{
+					// Skip symbolic links to avoid handling cycles
+				}
 			}
 		}
 
