@@ -318,7 +318,7 @@ void processFilterCommand(Output* output, int argc, const char** argv, const cha
 void printHelp(Output* output, bool extended)
 {
 	output->print(
-"Qgrep (http://hg.zeuxcg.org/qgrep)\n"
+"Qgrep (http://github.com/zeux/qgrep)\n"
 "\n"
 "Basic commands:\n"
 "  qgrep init <project> <path>\n"
