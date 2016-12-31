@@ -1,6 +1,8 @@
 #include "common.hpp"
 #include "filestream.hpp"
 
+#include "fileutil.hpp"
+
 #include <stdio.h>
 
 #ifdef _WIN32
@@ -24,7 +26,7 @@ FileStream::~FileStream()
 bool FileStream::open(const char* path, const char* mode)
 {
     assert(!file);
-    file = fopen(path, mode);
+    file = openFile(path, mode);
     return file != nullptr;
 }
 

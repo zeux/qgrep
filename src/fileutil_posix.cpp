@@ -130,4 +130,8 @@ std::string getCurrentDirectory()
     return result;
 }
 
+FILE* openFile(const char* path, const char* mode)
+{
+	return fopen(path, mode);
+}
 #endif
