@@ -462,6 +462,7 @@ extern "C" DLLEXPORT void qgrepConsole(int argc, const char** argv)
 
 extern "C" DLLEXPORT const char* qgrepVim(const char* args)
 {
+	// make sure the DLL is not unloaded up until the process exit to speed up calls
 	pinModule();
 
 	size_t argsLength = strlen(args);
