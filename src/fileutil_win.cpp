@@ -34,7 +34,7 @@ static uint64_t combine(uint32_t hi, uint32_t lo)
 	return (static_cast<uint64_t>(hi) << 32) | lo;
 }
 
-static bool traverseDirectoryImpl(const wchar_t* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
+static bool traverseDirectoryRec(const wchar_t* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
 	std::wstring query = path + std::wstring(L"/*");
 
@@ -66,7 +66,7 @@ static bool traverseDirectoryImpl(const wchar_t* path, const char* relpath, cons
 				buf += '/';
 				buf += data.cFileName;
 
-				traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback);
+				traverseDirectoryRec(buf.c_str(), relbuf.c_str(), callback);
 			}
 			else
 			{
@@ -86,12 +86,12 @@ static bool traverseDirectoryImpl(const wchar_t* path, const char* relpath, cons
 
 bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback)
 {
-	return traverseDirectoryImpl(fromUtf8(path).c_str(), "", [&](const char* name, uint64_t, uint64_t) { callback(name); });
+	return traverseDirectoryRec(fromUtf8(path).c_str(), "", [&](const char* name, uint64_t, uint64_t) { callback(name); });
 }
 
 bool traverseDirectoryMeta(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
-	return traverseDirectoryImpl(fromUtf8(path).c_str(), "", callback);
+	return traverseDirectoryRec(fromUtf8(path).c_str(), "", callback);
 }
 
 bool renameFile(const char* oldpath, const char* newpath)
