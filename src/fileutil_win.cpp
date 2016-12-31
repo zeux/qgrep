@@ -84,12 +84,7 @@ static bool traverseDirectoryRec(const wchar_t* path, const char* relpath, const
 	return true;
 }
 
-bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback)
-{
-	return traverseDirectoryRec(fromUtf8(path).c_str(), "", [&](const char* name, uint64_t, uint64_t) { callback(name); });
-}
-
-bool traverseDirectoryMeta(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
+bool traverseDirectory(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
 	return traverseDirectoryRec(fromUtf8(path).c_str(), "", callback);
 }

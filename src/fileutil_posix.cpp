@@ -21,7 +21,7 @@ static int getFileType(const char* path)
 	return DT_UNKNOWN;
 }
 
-static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, bool needsStat)
+static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
 	DIR* dir = opendir(path);
 
@@ -43,14 +43,12 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 
 			if (type == DT_DIR)
 			{
-				traverseDirectoryRec(buf.c_str(), relbuf.c_str(), callback, needsStat);
+				traverseDirectoryRec(buf.c_str(), relbuf.c_str(), callback);
 			}
 			else if (type == DT_REG)
 			{
 				uint64_t mtime = 0, size = 0;
-
-				if (needsStat)
-					getFileAttributes(buf.c_str(), &mtime, &size);
+				getFileAttributes(buf.c_str(), &mtime, &size);
 
 				callback(relbuf.c_str(), mtime, size);
 			}
@@ -66,14 +64,9 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 	return true;
 }
 
-bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback)
+bool traverseDirectory(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
-	return traverseDirectoryRec(path, "", [&](const char* name, uint64_t, uint64_t) { callback(name); }, false);
-}
-
-bool traverseDirectoryMeta(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
-{
-	return traverseDirectoryRec(path, "", callback, true);
+	return traverseDirectoryRec(path, "", callback);
 }
 
 bool renameFile(const char* oldpath, const char* newpath)

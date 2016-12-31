@@ -63,7 +63,7 @@ static std::vector<std::string> getProjectsByPrefix(const char* prefix)
 
 		std::string pprefix = *prefix ? std::string(prefix) + "/" : "";
 
-		traverseDirectory(path.c_str(), [&](const char* path) {
+		traverseDirectory(path.c_str(), [&](const char* path, uint64_t, uint64_t) {
 			const char* dot = strrchr(path, '.');
 
 			if (strcmp(dot, ".cfg") == 0)
@@ -292,7 +292,7 @@ static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vecto
 	{
 		std::string buf;
 
-		bool result = traverseDirectoryMeta(folder.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) { 
+		bool result = traverseDirectory(folder.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) { 
 			if (isFileAcceptable(group, path))
 			{
 				joinPaths(buf, folder.c_str(), path);
