@@ -9,88 +9,101 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+const size_t kMaxPathLength = 32768;
+
+static std::wstring fromUtf8(const char* path)
+{
+	wchar_t buf[kMaxPathLength];
+	size_t result = MultiByteToWideChar(CP_UTF8, 0, path, strlen(path), buf, ARRAYSIZE(buf));
+	assert(result);
+
+	return std::wstring(buf, result);
+}
+
+std::string toUtf8(const wchar_t* path)
+{
+	char buf[kMaxPathLength];
+	size_t result = WideCharToMultiByte(CP_UTF8, 0, path, wcslen(path), buf, sizeof(buf), NULL, NULL);
+	assert(result);
+
+	return std::string(buf, result);
+}
+
 static uint64_t combine(uint32_t hi, uint32_t lo)
 {
 	return (static_cast<uint64_t>(hi) << 32) | lo;
 }
 
-static bool readDirectory(const char* path, std::vector<WIN32_FIND_DATAA>& result)
+static bool traverseDirectoryImpl(const wchar_t* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
-	std::string query = std::string(path) + "/*";
+	std::wstring query = path + std::wstring(L"/*");
 
-	WIN32_FIND_DATAA data;
-	HANDLE h = FindFirstFileA(query.c_str(), &data);
+	WIN32_FIND_DATAW data;
+	HANDLE h = FindFirstFileW(query.c_str(), &data);
 
-	if (h != INVALID_HANDLE_VALUE)
+	if (h == INVALID_HANDLE_VALUE)
+		return false;
+
+	std::wstring buf;
+	std::string relbuf;
+
+	do
 	{
-		do result.push_back(data);
-		while (FindNextFileA(h, &data));
+		char filename[MAX_PATH];
+		WideCharToMultiByte(CP_UTF8, 0, data.cFileName, -1, filename, sizeof(filename), 0, 0);
 
-		FindClose(h);
-	}
-
-	return h != INVALID_HANDLE_VALUE;
-}
-
-static bool traverseDirectoryImpl(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
-{
-	std::vector<WIN32_FIND_DATAA> contents;
-	contents.reserve(16);
-
-	if (readDirectory(path, contents))
-	{
-		std::string buf, relbuf;
-
-		for (auto& data: contents)
+		if (traverseFileNeeded(filename))
 		{
-			if (traverseFileNeeded(data.cFileName))
-			{
-				joinPaths(relbuf, relpath, data.cFileName);
+			joinPaths(relbuf, relpath, filename);
 
-				if (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
-				{
-					// Skip reparse points to avoid handling cycles
-				}
-				else if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-				{
-					joinPaths(buf, path, data.cFileName);
-					traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback);
-				}
-				else
-				{
-					uint64_t mtime = combine(data.ftLastWriteTime.dwHighDateTime, data.ftLastWriteTime.dwLowDateTime);
-					uint64_t size = combine(data.nFileSizeHigh, data.nFileSizeLow);
-					callback(relbuf.c_str(), mtime, size);
-				}
+			if (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+			{
+				// Skip reparse points to avoid handling cycles
+			}
+			else if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				buf = path;
+				buf += '/';
+				buf += data.cFileName;
+
+				traverseDirectoryImpl(buf.c_str(), relbuf.c_str(), callback);
+			}
+			else
+			{
+				uint64_t mtime = combine(data.ftLastWriteTime.dwHighDateTime, data.ftLastWriteTime.dwLowDateTime);
+				uint64_t size = combine(data.nFileSizeHigh, data.nFileSizeLow);
+
+				callback(relbuf.c_str(), mtime, size);
 			}
 		}
-
-		return true;
 	}
+	while (FindNextFileW(h, &data));
 
-	return false;
+	FindClose(h);
+
+	return true;
 }
 
 bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback)
 {
-	return traverseDirectoryImpl(path, "", [&](const char* name, uint64_t, uint64_t) { callback(name); });
+	return traverseDirectoryImpl(fromUtf8(path).c_str(), "", [&](const char* name, uint64_t, uint64_t) { callback(name); });
 }
 
 bool traverseDirectoryMeta(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
-	return traverseDirectoryImpl(path, "", callback);
+	return traverseDirectoryImpl(fromUtf8(path).c_str(), "", callback);
 }
 
 bool renameFile(const char* oldpath, const char* newpath)
 {
-	return !!MoveFileExA(oldpath, newpath, MOVEFILE_REPLACE_EXISTING);
+	return !!MoveFileExW(fromUtf8(oldpath).c_str(), fromUtf8(newpath).c_str(), MOVEFILE_REPLACE_EXISTING);
 }
 
 bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)
 {
 	WIN32_FILE_ATTRIBUTE_DATA data;
 
-	if (GetFileAttributesExA(path, GetFileExInfoStandard, &data))
+	if (GetFileAttributesExW(fromUtf8(path).c_str(), GetFileExInfoStandard, &data))
 	{
 		*mtime = combine(data.ftLastWriteTime.dwHighDateTime, data.ftLastWriteTime.dwLowDateTime);
 		*size = combine(data.nFileSizeHigh, data.nFileSizeLow);
@@ -102,23 +115,24 @@ bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)
 
 void createDirectory(const char* path)
 {
-    CreateDirectoryA(path, NULL);
+    CreateDirectoryW(fromUtf8(path).c_str(), NULL);
 }
 
 std::string getCurrentDirectory()
 {
-    DWORD length = GetCurrentDirectoryA(0, NULL);
-    if (length == 0) return "";
+	wchar_t buf[kMaxPathLength];
+	GetCurrentDirectoryW(ARRAYSIZE(buf), buf);
 
-    std::string result;
-	result.resize(length);
-    result.resize(GetCurrentDirectoryA(length, &result[0]));
-
-    return result;
+	return toUtf8(buf);
 }
 
 FILE* openFile(const char* path, const char* mode)
 {
-	return fopen(path, mode);
+	wchar_t wmode[8] = {};
+
+	assert(strlen(mode) < ARRAYSIZE(wmode));
+	std::copy(mode, mode + strlen(mode), wmode);
+
+	return _wfopen(fromUtf8(path).c_str(), wmode);
 }
 #endif
