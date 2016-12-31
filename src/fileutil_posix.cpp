@@ -11,21 +11,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-static bool readDirectory(const char* path, std::vector<dirent>& result)
-{
-	if (DIR* dir = opendir(path))
-	{
-		while (dirent* entry = readdir(dir))
-			result.push_back(*entry);
-
-		closedir(dir);
-
-		return true;
-	}
-
-	return false;
-}
-
 static int getFileType(const char* path)
 {
 	struct stat st;
@@ -38,46 +23,47 @@ static int getFileType(const char* path)
 
 static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, bool needsStat)
 {
-	std::vector<dirent> contents;
-	contents.reserve(16);
+	DIR* dir = opendir(path);
 
-	if (readDirectory(path, contents))
+	if (!dir)
+		return false;
+
+	std::string buf, relbuf;
+
+	while (dirent* entry = readdir(dir))
 	{
-		std::string buf, relbuf;
+		const dirent& data = *entry;
 
-		for (auto& data: contents)
+		if (traverseFileNeeded(data.d_name))
 		{
-			if (traverseFileNeeded(data.d_name))
+			joinPaths(relbuf, relpath, data.d_name);
+			joinPaths(buf, path, data.d_name);
+
+			int type = (data.d_type == DT_UNKNOWN) ? getFileType(buf.c_str()) : data.d_type;
+
+			if (type == DT_DIR)
 			{
-				joinPaths(relbuf, relpath, data.d_name);
-				joinPaths(buf, path, data.d_name);
+				traverseDirectoryRec(buf.c_str(), relbuf.c_str(), callback, needsStat);
+			}
+			else if (type == DT_REG)
+			{
+				uint64_t mtime = 0, size = 0;
 
-				int type = (data.d_type == DT_UNKNOWN) ? getFileType(buf.c_str()) : data.d_type;
+				if (needsStat)
+					getFileAttributes(buf.c_str(), &mtime, &size);
 
-				if (type == DT_DIR)
-				{
-					traverseDirectoryRec(buf.c_str(), relbuf.c_str(), callback, needsStat);
-				}
-				else if (type == DT_REG)
-				{
-					uint64_t mtime = 0, size = 0;
-
-					if (needsStat)
-						getFileAttributes(buf.c_str(), &mtime, &size);
-
-					callback(relbuf.c_str(), mtime, size);
-				}
-				else if (type == DT_LNK)
-				{
-					// Skip symbolic links to avoid handling cycles
-				}
+				callback(relbuf.c_str(), mtime, size);
+			}
+			else if (type == DT_LNK)
+			{
+				// Skip symbolic links to avoid handling cycles
 			}
 		}
-
-		return true;
 	}
 
-	return false;
+	closedir(dir);
+
+	return true;
 }
 
 bool traverseDirectory(const char* path, const std::function<void (const char* name)>& callback)
