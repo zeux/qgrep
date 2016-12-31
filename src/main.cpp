@@ -23,6 +23,11 @@
 #	include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#	define WIN32_LEAN_AND_MEAN
+#	include <Windows.h>
+#endif
+
 #include <mutex>
 #include <chrono>
 
@@ -39,6 +44,11 @@ public:
 		const char* term = getenv("TERM");
 
 		istty = istty && term && strcmp(term, "dumb") != 0;
+	#endif
+
+	#ifdef _WIN32
+		if (istty)
+			SetConsoleOutputCP(CP_UTF8);
 	#endif
 	}
 
@@ -429,9 +439,6 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 }
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
 static void pinModule()
 {
 	static HMODULE module;
