@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static bool traverseDirectoryRec(int parentfd, const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
+static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
 	int fd = open(path, O_DIRECTORY);
 	DIR* dir = fdopendir(fd);
