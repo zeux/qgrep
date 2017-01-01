@@ -431,8 +431,9 @@ private:
 
 			DataChunkHeader header = {};
 			header.fileCount = fileCount;
-			header.uncompressedSize = sdata->size;
+			header.fileTableSize = sdata->dataOffset;
 			header.compressedSize = cdata.second;
+			header.uncompressedSize = sdata->size;
 			header.indexSize = index.size;
 			header.indexHashIterations = index.iterations;
 

@@ -92,8 +92,13 @@ static bool isChunkCurrent(UpdateFileIterator& fileit, const DataChunkHeader& ch
 }
 
 static void processChunkData(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats,
-	const DataChunkHeader& chunk, const char* data, std::unique_ptr<char[]>& compressed, std::unique_ptr<char[]>& index)
+	const DataChunkHeader& chunk, char* buffer, std::unique_ptr<char[]>& compressed, std::unique_ptr<char[]>& index)
 {
+	const char* data = buffer;
+
+	// decompress the file table part of the chunk; this allows us to skip full chunk decompression if chunk is fully up-to-date
+	decompressPartial(buffer, chunk.uncompressedSize, compressed.get(), chunk.compressedSize, chunk.fileTableSize);
+
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
 	// if chunk is fully up-to-date, we can try adding it directly and skipping chunk recompression
@@ -107,6 +112,9 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 		stats.chunksPreserved++;
 		return;
 	}
+
+	// decompress the chunk completely. this decompresses the file table redundantly but the performance cost of that is negligible
+	decompress(buffer, chunk.uncompressedSize, compressed.get(), chunk.compressedSize);
 
 	// as a special case, first file in the chunk can be a part of an existing file
 	if (files[0].startLine > 0 && fileit.index > 0)
@@ -181,7 +189,6 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 
 		char* uncompressed = data.get() + chunk.compressedSize;
 
-		decompress(uncompressed, chunk.uncompressedSize, data.get(), chunk.compressedSize);
 		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data, index);
 	}
 
