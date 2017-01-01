@@ -6,24 +6,16 @@
 #include <string>
 #include <vector>
 
-#include <string.h>
 #include <dirent.h>
-#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-static int getFileType(const char* path)
+static bool traverseDirectoryRec(int parentfd, const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
-	struct stat st;
-
-	if (lstat(path, &st) == 0)
-		return IFTODT(st.st_mode);
-
-	return DT_UNKNOWN;
-}
-
-static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
-{
-	DIR* dir = opendir(path);
+	int fd = open(path, O_DIRECTORY);
+	DIR* dir = fdopendir(fd);
 
 	if (!dir)
 		return false;
@@ -39,7 +31,21 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 			joinPaths(relbuf, relpath, data.d_name);
 			joinPaths(buf, path, data.d_name);
 
-			int type = (data.d_type == DT_UNKNOWN) ? getFileType(buf.c_str()) : data.d_type;
+			struct stat st = {};
+			int type = data.d_type;
+
+			// we need to stat DT_UNKNOWN to be able to tell the type, and we need to stat files to get mtime/size
+			if (type == DT_UNKNOWN || type == DT_REG)
+			{
+			#ifdef _ATFILE_SOURCE
+				fstatat(fd, data.d_name, &st, 0);
+			#else
+				lstat(buf.c_str(), &st);
+			#endif
+
+				assert(type == DT_UNKNOWN || type == IFTODT(st.st_mode));
+				type = IFTODT(st.st_mode);
+			}
 
 			if (type == DT_DIR)
 			{
@@ -47,10 +53,7 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 			}
 			else if (type == DT_REG)
 			{
-				uint64_t mtime = 0, size = 0;
-				getFileAttributes(buf.c_str(), &mtime, &size);
-
-				callback(relbuf.c_str(), mtime, size);
+				callback(relbuf.c_str(), st.st_mtime, st.st_size);
 			}
 			else if (type == DT_LNK)
 			{
