@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <chrono>
 
 #include <string.h>
 
@@ -187,19 +188,21 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 	return true;
 }
 
-static void printStatistics(Output* output, const UpdateStatistics& stats, unsigned int totalChunks)
+static void printStatistics(Output* output, const UpdateStatistics& stats, unsigned int totalChunks, double time)
 {
 	if (stats.filesAdded) output->print("+%d ", stats.filesAdded);
 	if (stats.filesRemoved) output->print("-%d ", stats.filesRemoved);
 	if (stats.filesChanged) output->print("*%d ", stats.filesChanged);
 
-	output->print("%s; %d/%d chunks updated\n",
+	output->print("%s; %d/%d chunks updated in %.2f sec\n",
 		(stats.filesAdded || stats.filesRemoved || stats.filesChanged) ? "files" : "No changes",
-		totalChunks - stats.chunksPreserved, totalChunks);
+		totalChunks - stats.chunksPreserved, totalChunks, time);
 }
 
 void updateProject(Output* output, const char* path)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+
     output->print("Updating %s:\n", path);
 	output->print("Scanning project...\r");
 
@@ -238,7 +241,10 @@ void updateProject(Output* output, const char* path)
 	}
 
 	output->print("\n");
-	printStatistics(output, stats, totalChunks);
+
+	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start);
+
+	printStatistics(output, stats, totalChunks, time.count() / 1e3);
 	
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
