@@ -12,7 +12,9 @@ std::pair<std::unique_ptr<char[]>, size_t> compress(const void* data, size_t dat
 
 	std::unique_ptr<char[]> cdata(new char[csizeBound]);
 	
-	int csize = LZ4_compress_HC(static_cast<const char*>(data), cdata.get(), dataSize, csizeBound, level);
+	int csize = (level == 0)
+		? LZ4_compress_default(static_cast<const char*>(data), cdata.get(), dataSize, csizeBound)
+		: LZ4_compress_HC(static_cast<const char*>(data), cdata.get(), dataSize, csizeBound, level);
 	assert(csize >= 0 && csize <= csizeBound);
 
 	return std::make_pair(std::move(cdata), csize);
