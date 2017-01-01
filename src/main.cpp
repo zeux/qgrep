@@ -454,7 +454,7 @@ static void pinModule()
 #define DLLEXPORT
 #endif
 
-extern "C" DLLEXPORT void qgrepConsole(int argc, const char** argv)
+int main(int argc, const char** argv)
 {
 	StandardOutput output;
 	mainImpl(&output, argc, argv, 0, 0);

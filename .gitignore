@@ -3,4 +3,5 @@
 /qgrep
 
 # visual studio temporary files
-/src/*.suo
+/.vs/
+*.suo

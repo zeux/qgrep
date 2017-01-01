@@ -1,12 +1,23 @@
 version: "{branch}-{build}"
 
-install:
-  - git submodule update --init --recursive
-
-build:
-  project: src/qgrep.sln
-  verbosity: minimal
-
 platform:
   - Win32
   - x64
+
+install:
+  - git submodule update --init --recursive
+
+build_script:
+  - msbuild qgrep.vcxproj /v:minimal /p:Configuration=Release
+  - msbuild qgrep.vcxproj /v:minimal /p:Configuration=ReleaseDLL
+
+after_build:
+  - copy build\ReleaseDLL_%PLATFORM%\qgrep.dll vim\qgrep.dll
+  - copy build\Release_%PLATFORM%\qgrep.exe qgrep.exe
+  - 7z a qgrep.zip vim/
+  - 7z a qgrep.zip README.md
+  - 7z a qgrep.zip qgrep.exe
+
+artifacts:
+  - path: qgrep.zip
+    name: qgrep
