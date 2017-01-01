@@ -281,7 +281,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 	DataFileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
 	{
-		output_->error("Error reading data file %s: malformed header\n", dataPath.c_str());
+		output_->error("Error reading data file %s: file format is out of date, update the project to fix\n", dataPath.c_str());
 		return 0;
 	}
 

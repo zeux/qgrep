@@ -162,8 +162,8 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 	DataFileHeader header;
 	if (!read(in, header) || memcmp(header.magic, kDataFileHeaderMagic, strlen(kDataFileHeaderMagic)) != 0)
 	{
-		output->error("Error reading data file %s: malformed header\n", path);
-		return false;
+		output->error("Warning: data file %s has an out of date format, rebuilding\n", path);
+		return true;
 	}
 
 	DataChunkHeader chunk;
