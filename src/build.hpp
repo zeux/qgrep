@@ -10,7 +10,7 @@ class Builder
 public:
 	class BuilderImpl;
 
-	Builder(Output* output, BuilderImpl* impl, unsigned int fileCount);
+	Builder(Output* output, BuilderImpl* impl);
 	~Builder();
 
 	void appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize);
@@ -20,12 +20,8 @@ public:
 	unsigned int finish();
 
 private:
-    BuilderImpl* impl;
+	BuilderImpl* impl;
 	Output* output;
-	unsigned int fileCount;
-	uint64_t lastResultSize;
-
-	void printStatistics();
 };
 
 Builder* createBuilder(Output* output, const char* path, unsigned int fileCount = 0);

@@ -25,21 +25,28 @@
 
 #include <string.h>
 
+struct BuildStatistics
+{
+	size_t chunkCount;
+	size_t fileCount;
+	uint64_t fileSize;
+	uint64_t resultSize;
+};
+
+static void printStatistics(Output* output, const BuildStatistics& stats, unsigned int totalFileCount)
+{
+	output->print("\r[%3d%%] %d files, %d Mb in, %d Mb out\r",
+		totalFileCount == 0 ? 100 : stats.fileCount * 100 / totalFileCount,
+		stats.fileCount, (int)(stats.fileSize / 1024 / 1024), (int)(stats.resultSize / 1024 / 1024));
+}
+
 class Builder::BuilderImpl
 {
 public:
-	struct Statistics
-	{
-		size_t chunkCount;
-		size_t fileCount;
-		uint64_t fileSize;
-		uint64_t resultSize;
-	};
-
-	BuilderImpl()
+	BuilderImpl(Output* output, size_t fileCount)
 	: pendingSize(0), statistics(), chunkOrder(0)
 	, prepareChunkQueue(std::max(WorkQueue::getIdealWorkerCount(), 2u) - 1, kMaxQueuedChunkData)
-	, writeChunkThread(std::bind(writeChunkThreadFun, std::ref(outData), std::ref(statistics), std::ref(writeChunkQueue)))
+	, writeChunkThread(std::bind(writeChunkThreadFun, std::ref(outData), std::ref(statistics), std::ref(writeChunkQueue), output, fileCount))
 	{
 	}
 
@@ -177,7 +184,7 @@ public:
 		}
 	}
 
-	Statistics getStatistics() const
+	BuildStatistics getStatistics() const
 	{
 		return statistics;
 	}
@@ -263,7 +270,7 @@ private:
 	size_t pendingSize;
 	
 	FileStream outData;
-	Statistics statistics;
+	BuildStatistics statistics;
 
 	unsigned int chunkOrder;
 	WorkQueue prepareChunkQueue;
@@ -619,10 +626,12 @@ private:
 		writeChunkQueue.push(std::move(chunk));
 	}
 
-	static void writeChunkThreadFun(FileStream& outData, Statistics& statistics, BlockingQueue<ChunkFileData>& queue)
+	static void writeChunkThreadFun(FileStream& outData, BuildStatistics& stats, BlockingQueue<ChunkFileData>& queue, Output* output, unsigned int totalFileCount)
 	{
 		unsigned int order = 0;
 		std::map<unsigned int, ChunkFileData> chunks;
+
+		printStatistics(output, stats, totalFileCount);
 
 		while (true)
 		{
@@ -644,28 +653,27 @@ private:
 				outData.write(chunk.index.get(), header.indexSize);
 				outData.write(chunk.compressedData.get(), header.compressedSize);
 
-				statistics.chunkCount++;
-				statistics.fileCount += header.fileCount - chunk.firstFileIsSuffix;
-				statistics.fileSize += header.uncompressedSize;
-				statistics.resultSize += header.compressedSize;
+				stats.chunkCount++;
+				stats.fileCount += header.fileCount - chunk.firstFileIsSuffix;
+				stats.fileSize += header.uncompressedSize;
+				stats.resultSize += header.compressedSize;
 
 				chunks.erase(chunks.begin());
 				order++;
+
+				printStatistics(output, stats, totalFileCount);
 			}
 		}
 	}
 };
 
-Builder::Builder(Output* output, BuilderImpl* impl, unsigned int fileCount): impl(impl), output(output), fileCount(fileCount), lastResultSize(~0ull)
+Builder::Builder(Output* output, BuilderImpl* impl): impl(impl), output(output)
 {
-	printStatistics();
 }
 
 Builder::~Builder()
 {
 	impl->finish();
-
-	printStatistics();
 
 	delete impl;
 }
@@ -674,25 +682,16 @@ void Builder::appendFile(const char* path, uint64_t lastWriteTime, uint64_t file
 {
 	if (!impl->appendFile(path, lastWriteTime, fileSize))
 		output->error("Error reading file %s\n", path);
-
-	printStatistics();
 }
 
 void Builder::appendFilePart(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
 {
 	impl->appendFilePart(path, startLine, static_cast<const char*>(data), dataSize, lastWriteTime, fileSize);
-	printStatistics();
 }
 
 bool Builder::appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, bool firstFileIsSuffix)
 {
-	if (impl->appendChunk(header, compressedData, index, firstFileIsSuffix))
-	{
-		printStatistics();
-		return true;
-	}
-
-	return false;
+	return impl->appendChunk(header, compressedData, index, firstFileIsSuffix);
 }
 
 unsigned int Builder::finish()
@@ -702,22 +701,9 @@ unsigned int Builder::finish()
 	return impl->getStatistics().chunkCount;
 }
 
-void Builder::printStatistics()
-{
-	BuilderImpl::Statistics s = impl->getStatistics();
-
-	if (lastResultSize == s.resultSize) return;
-
-	lastResultSize = s.resultSize;
-	
-	int percent = fileCount == 0 ? 100 : s.fileCount * 100 / fileCount;
-
-	output->print("\r[%3d%%] %d files, %d Mb in, %d Mb out\r", percent, s.fileCount, (int)(s.fileSize / 1024 / 1024), (int)(s.resultSize / 1024 / 1024));
-}
-
 Builder* createBuilder(Output* output, const char* path, unsigned int fileCount)
 {
-	std::unique_ptr<Builder::BuilderImpl> impl(new Builder::BuilderImpl);
+	std::unique_ptr<Builder::BuilderImpl> impl(new Builder::BuilderImpl(output, fileCount));
 
 	if (!impl->start(path))
 	{
@@ -725,7 +711,7 @@ Builder* createBuilder(Output* output, const char* path, unsigned int fileCount)
 		return 0;
 	}
 
-	return new Builder(output, impl.release(), fileCount);
+	return new Builder(output, impl.release());
 }
 
 void buildProject(Output* output, const char* path)
