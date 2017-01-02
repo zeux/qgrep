@@ -15,5 +15,11 @@ const size_t kMaxBufferedOutput = 32 Mb;
 // Flush buffered output from the current chunk after reaching this threshold, if possible
 const size_t kBufferedOutputFlushThreshold = 32 Kb;
 
+// File list compression level, 0-9
+const int kFileListCompressionLevel = 1;
+
+// File data compression level, 0-9
+const int kFileDataCompressionLevel = 9;
+
 #undef Mb
 #undef Kb

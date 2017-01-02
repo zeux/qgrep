@@ -8,6 +8,7 @@
 #include "format.hpp"
 #include "compression.hpp"
 #include "filter.hpp"
+#include "constants.hpp"
 
 #include <memory>
 
@@ -99,7 +100,7 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 		}
 
 		std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> data = prepareFileData(files, count);
-		std::pair<std::unique_ptr<char[]>, size_t> compressed = compress(data.first.data(), data.first.size(), /* compressionLevel= */ 1);
+		std::pair<std::unique_ptr<char[]>, size_t> compressed = compress(data.first.data(), data.first.size(), kFileListCompressionLevel);
 
 		FileFileHeader header;
 		memcpy(header.magic, kFileFileHeaderMagic, sizeof(header.magic));

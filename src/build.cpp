@@ -427,7 +427,7 @@ private:
 		prepareChunkQueue.push([this, sdata, order, fileCount, firstFileIsSuffix] {
 			ChunkIndex index = prepareChunkIndex(sdata->data.get() + sdata->dataOffset, sdata->dataSize);
 
-			std::pair<std::unique_ptr<char[]>, size_t> cdata = compress(sdata->data.get(), sdata->size, /* compressionLevel= */ 9);
+			std::pair<std::unique_ptr<char[]>, size_t> cdata = compress(sdata->data.get(), sdata->size, kFileDataCompressionLevel);
 
 			DataChunkHeader header = {};
 			header.fileCount = fileCount;
