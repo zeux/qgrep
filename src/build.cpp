@@ -44,9 +44,9 @@ class Builder::BuilderImpl
 {
 public:
 	BuilderImpl(Output* output, size_t fileCount)
-	: pendingSize(0), statistics(), chunkOrder(0)
+	: pendingSize(0), chunkOrder(0)
 	, prepareChunkQueue(std::max(WorkQueue::getIdealWorkerCount(), 2u) - 1, kMaxQueuedChunkData)
-	, writeChunkThread(std::bind(writeChunkThreadFun, std::ref(outData), std::ref(statistics), std::ref(writeChunkQueue), output, fileCount))
+	, writeChunkThread(std::bind(writeChunkThreadFun, std::ref(outData), std::ref(writeChunkQueue), output, fileCount))
 	{
 	}
 
@@ -172,7 +172,7 @@ public:
 		}
 	}
 
-	void finish()
+	unsigned int finish()
 	{
 		if (writeChunkThread.joinable())
 		{
@@ -182,11 +182,8 @@ public:
 			writeChunkQueue.push(std::move(chunkDummy));
 			writeChunkThread.join();
 		}
-	}
 
-	BuildStatistics getStatistics() const
-	{
-		return statistics;
+		return chunkOrder;
 	}
 
 private:
@@ -270,7 +267,6 @@ private:
 	size_t pendingSize;
 	
 	FileStream outData;
-	BuildStatistics statistics;
 
 	unsigned int chunkOrder;
 	WorkQueue prepareChunkQueue;
@@ -626,10 +622,12 @@ private:
 		writeChunkQueue.push(std::move(chunk));
 	}
 
-	static void writeChunkThreadFun(FileStream& outData, BuildStatistics& stats, BlockingQueue<ChunkFileData>& queue, Output* output, unsigned int totalFileCount)
+	static void writeChunkThreadFun(FileStream& outData, BlockingQueue<ChunkFileData>& queue, Output* output, unsigned int totalFileCount)
 	{
 		unsigned int order = 0;
 		std::map<unsigned int, ChunkFileData> chunks;
+
+		BuildStatistics stats = {};
 
 		printStatistics(output, stats, totalFileCount);
 
@@ -696,9 +694,7 @@ bool Builder::appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>
 
 unsigned int Builder::finish()
 {
-	impl->finish();
-
-	return impl->getStatistics().chunkCount;
+	return impl->finish();
 }
 
 Builder* createBuilder(Output* output, const char* path, unsigned int fileCount)
