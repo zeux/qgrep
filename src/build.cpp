@@ -548,15 +548,19 @@ private:
 					res.insert(data[i]);
 
 			data.swap(res.data);
+			assert(size == res.size);
 		}
 
 		void insert(unsigned int key)
 		{
 			assert(key != 0);
 
-			if (size * 2 > data.size()) grow();
+			if (size >= data.size() / 2)
+				grow();
 
-			unsigned int h = bloomHash2(key) & (data.size() - 1);
+			unsigned int m = data.size() - 1;
+			unsigned int h = bloomHash2(key) & m;
+			unsigned int i = 0;
 
 			while (data[h] != key)
 			{
@@ -567,7 +571,8 @@ private:
 					break;
 				}
 
-				h = (h + 7) & (data.size() - 1);
+				i = i + 1;
+				h = (h + i) & m;
 			}
 		}
 	};
@@ -590,7 +595,8 @@ private:
 			if (a != '\n' && b != '\n' && c != '\n' && d != '\n')
 			{
 				unsigned int n = ngram(casefold(a), casefold(b), casefold(c), casefold(d));
-				if (n != 0) ngrams.insert(n);
+				if (n != 0)
+					ngrams.insert(n);
 			}
 		}
 
@@ -712,7 +718,7 @@ Builder* createBuilder(Output* output, const char* path, unsigned int fileCount)
 
 void buildProject(Output* output, const char* path)
 {
-    output->print("Building %s:\n", path);
+	output->print("Building %s:\n", path);
 	output->print("Scanning project...\r");
 
 	std::vector<FileInfo> files;

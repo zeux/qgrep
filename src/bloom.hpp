@@ -2,7 +2,7 @@
 
 inline unsigned int ngram(char a, char b, char c, char d)
 {
-    return static_cast<unsigned char>(a) * 256 * 256 * 256 + static_cast<unsigned char>(b) * 256 * 256 + static_cast<unsigned char>(c) * 256 + static_cast<unsigned char>(d);
+    return (static_cast<unsigned char>(a) << 24) + (static_cast<unsigned char>(b) << 16) + (static_cast<unsigned char>(c) << 8) + static_cast<unsigned char>(d);
 }
 
 // 6-shift variant from http://burtleburtle.net/bob/hash/integer.html
@@ -37,6 +37,7 @@ inline void bloomFilterUpdate(unsigned char* data, unsigned int size, unsigned i
     {
         hv += h2;
         unsigned int h = hv % (size * 8);
+
         data[h / 8] |= 1 << (h % 8);
     }
 }
