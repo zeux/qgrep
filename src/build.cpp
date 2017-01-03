@@ -21,7 +21,6 @@
 #include <string>
 #include <memory>
 #include <map>
-#include <unordered_set>
 
 #include <string.h>
 
@@ -535,13 +534,14 @@ private:
 		std::vector<unsigned int> data;
 		unsigned int size;
 
-		IntSet(size_t capacity = 16): data(capacity), size(0)
+		IntSet(size_t capacity = 0): data(capacity), size(0)
 		{
+			assert((capacity & (capacity - 1)) == 0);
 		}
 
 		void grow()
 		{
-			IntSet res(data.size() * 2);
+			IntSet res(std::max(data.size() * 2, size_t(16)));
 
 			for (size_t i = 0; i < data.size(); ++i)
 				if (data[i])
@@ -575,6 +575,14 @@ private:
 				h = (h + i) & m;
 			}
 		}
+
+		static size_t optimalCapacity(size_t count)
+		{
+			size_t capacity = 1;
+			while (count >= capacity / 2)
+				capacity *= 2;
+			return capacity;
+		}
 	};
 
 	ChunkIndex prepareChunkIndex(const char* data, size_t size)
@@ -584,8 +592,8 @@ private:
 
 		if (indexSize == 0) return ChunkIndex();
 
-		// collect ngram data
-		IntSet ngrams;
+		// collect ngram data; assume ~10% ngrams are unique
+		IntSet ngrams(IntSet::optimalCapacity(size / 10));
 
 		for (size_t i = 3; i < size; ++i)
 		{
