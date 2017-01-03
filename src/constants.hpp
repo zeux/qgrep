@@ -19,7 +19,7 @@ const size_t kBufferedOutputFlushThreshold = 32 Kb;
 const int kFileListCompressionLevel = 1;
 
 // File data compression level, 0-9
-const int kFileDataCompressionLevel = 9;
+const int kFileDataCompressionLevel = 5;
 
 #undef Mb
 #undef Kb
