@@ -55,7 +55,8 @@ public:
 	virtual void rawprint(const char* data, size_t size)
 	{
 	#ifdef _WIN32
-		if (istty) return printEscapeCodedStringToConsole(data, size);
+		if (istty)
+			return printEscapeCodedStringToConsole(data, size);
 	#endif
 
 		fwrite(data, 1, size, stdout);
@@ -69,7 +70,8 @@ public:
 		va_end(l);
 
 		// treat \r as a newline as a form of line buffering
-		if (strchr(message, '\r')) fflush(stdout);
+		if (istty && strchr(message, '\r'))
+			fflush(stdout);
 	}
 
 	virtual void error(const char* message, ...)
@@ -80,7 +82,7 @@ public:
 		va_end(l);
 	}
 
-	virtual bool supportsEscapeCodes()
+	virtual bool isTTY()
 	{
 		return istty;
 	}
@@ -282,7 +284,7 @@ void processSearchCommand(Output* output, int argc, const char** argv, unsigned 
 
 	unsigned int options, limit;
 	std::string include, exclude;
-	std::tie(options, limit, include, exclude) = getSearchOptions(argc, argv, 3, output->supportsEscapeCodes());
+	std::tie(options, limit, include, exclude) = getSearchOptions(argc, argv, 3, output->isTTY());
 
 	if (*query == 0)
 	{
@@ -317,7 +319,7 @@ void processFilterCommand(Output* output, int argc, const char** argv, const cha
 
 	unsigned int options, limit;
 	std::string include, exclude;
-	std::tie(options, limit, include, exclude) = getSearchOptions(argc, argv, 2, output->supportsEscapeCodes());
+	std::tie(options, limit, include, exclude) = getSearchOptions(argc, argv, 2, output->isTTY());
 
 	if (input)
 		filterBuffer(output, query, options, limit, input, inputSize);
