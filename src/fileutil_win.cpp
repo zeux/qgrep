@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -20,7 +21,7 @@ static std::wstring fromUtf8(const char* path)
 	return std::wstring(buf, result);
 }
 
-std::string toUtf8(const wchar_t* path)
+static std::string toUtf8(const wchar_t* path)
 {
 	char buf[kMaxPathLength];
 	size_t result = WideCharToMultiByte(CP_UTF8, 0, path, wcslen(path), buf, sizeof(buf), NULL, NULL);
@@ -121,13 +122,31 @@ std::string getCurrentDirectory()
 	return toUtf8(buf);
 }
 
+static bool isFullPath(const char* path)
+{
+	if (path[0] == '\\' && path[1] == '\\')
+		return true; // UNC path
+
+	if (((path[0] | 32) >= 'a' && (path[0] | 32) <= 'z') && path[1] == ':' && (path[2] == 0 || path[2] == '/' || path[2] == '\\'))
+		return true; // drive path
+
+	return false; // path relative to current directory
+}
+
 FILE* openFile(const char* path, const char* mode)
 {
-	wchar_t wmode[8] = {};
+	// we need to get a full path to the file for relative paths (normalizePath will always work, isFullPath is an optimization)
+	std::wstring wpath = fromUtf8(isFullPath(path) ? path : normalizePath(getCurrentDirectory().c_str(), path).c_str());
 
+	// this makes sure we can use long paths and, more importantly, allows us to open files with special names such as 'aux.c'
+	wpath.insert(0, L"\\\\?\\");
+	std::replace(wpath.begin(), wpath.end(), '/', '\\');
+
+	// convert file mode, assume short ASCII literal string
+	wchar_t wmode[8] = {};
 	assert(strlen(mode) < ARRAYSIZE(wmode));
 	std::copy(mode, mode + strlen(mode), wmode);
 
-	return _wfopen(fromUtf8(path).c_str(), wmode);
+	return _wfopen(wpath.c_str(), wmode);
 }
 #endif

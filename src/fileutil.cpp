@@ -125,13 +125,13 @@ static void appendPath(std::string& buf, const char* path)
     if (isUNCPath(path))
     {
         // UNC path; keep backslashes (all other backslashes are replaced with forward slashes)
-        buf = "\\\\";
+		buf.assign("\\\\");
         path += 2;
     }
     else if (isDrivePath(path))
     {
         // Windows drive path
-        buf = std::string(path, path + 2);
+		buf.assign(path, 2);
         path += 2;
     }
     else if (isSeparator(path[0]))
@@ -141,12 +141,13 @@ static void appendPath(std::string& buf, const char* path)
             // go to UNC or drive root
             size_t pos = buf.find('/');
 
-            if (pos != std::string::npos) buf.erase(buf.begin() + pos, buf.end());
+            if (pos != std::string::npos)
+				buf.erase(buf.begin() + pos, buf.end());
         }
         else
         {
             // go to FS root
-            buf = "/";
+			buf.assign("/");
         }
     }
 
@@ -156,7 +157,8 @@ static void appendPath(std::string& buf, const char* path)
 
 std::string normalizePath(const char* base, const char* path)
 {
-    std::string result;
+	std::string result;
+	result.reserve(strlen(base) + 1 + strlen(path));
 
     appendPath(result, base);
     appendPath(result, path);
