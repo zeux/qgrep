@@ -77,6 +77,11 @@ bool renameFile(const char* oldpath, const char* newpath)
 	return rename(oldpath, newpath) == 0;
 }
 
+bool removeFile(const char* path)
+{
+	return unlink(path) == 0;
+}
+
 bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)
 {
 	struct stat st;

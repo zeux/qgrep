@@ -11,7 +11,10 @@ bool traverseFileNeeded(const char* name);
 void createDirectory(const char* path);
 void createPath(const char* path);
 void createPathForFile(const char* path);
+
 bool renameFile(const char* oldpath, const char* newpath);
+bool removeFile(const char* path);
+
 std::string getCurrentDirectory();
 
 std::string replaceExtension(const char* path, const char* ext);

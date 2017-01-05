@@ -95,6 +95,11 @@ bool renameFile(const char* oldpath, const char* newpath)
 	return !!MoveFileExW(fromUtf8(oldpath).c_str(), fromUtf8(newpath).c_str(), MOVEFILE_REPLACE_EXISTING);
 }
 
+bool removeFile(const char* path)
+{
+	return !!DeleteFileW(fromUtf8(path).c_str());
+}
+
 bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size)
 {
 	WIN32_FILE_ATTRIBUTE_DATA data;
