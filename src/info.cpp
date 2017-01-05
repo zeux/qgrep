@@ -199,6 +199,8 @@ static bool processFile(Output* output, ProjectInfo& info, const char* path)
 
 	while (read(in, chunk))
 	{
+		in.skip(chunk.extraSize);
+
 		if (chunk.indexSize)
 		{
 			std::unique_ptr<char[]> index(new (std::nothrow) char[chunk.indexSize]);

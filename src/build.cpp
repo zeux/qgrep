@@ -61,7 +61,7 @@ public:
 		outData.open(path, "wb");
 		if (!outData) return false;
 
-		DataFileHeader header;
+		DataFileHeader header = {};
 		memcpy(header.magic, kDataFileHeaderMagic, sizeof(header.magic));
 
 		outData.write(&header, sizeof(header));
@@ -120,7 +120,7 @@ public:
 		}
 	}
 
-	bool appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, bool firstFileIsSuffix)
+	bool appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra, bool firstFileIsSuffix)
 	{
 		flushIfNeeded();
 
@@ -150,7 +150,7 @@ public:
 		assert(pendingSize == 0 && pendingFiles.empty());
 
 		unsigned int order = chunkOrder++;
-		writeChunk(order, header, std::move(compressedData), std::move(index), firstFileIsSuffix);
+		writeChunk(order, header, std::move(compressedData), std::move(index), std::move(extra), firstFileIsSuffix);
 
 		return true;
 	}
@@ -259,6 +259,7 @@ private:
 		DataChunkHeader header;
 		std::unique_ptr<char[]> compressedData;
 		std::unique_ptr<char[]> index;
+		std::unique_ptr<char[]> extra;
 		bool firstFileIsSuffix;
 	};
 
@@ -422,14 +423,18 @@ private:
 
 		size_t fileCount = chunk.files.size();
 		bool firstFileIsSuffix = !chunk.files.empty() && chunk.files[0].startLine != 0;
+		std::string lastFile = chunk.files.empty() ? "" : chunk.files.back().name;
 
 		// workaround for lack of generalized capture
 		std::shared_ptr<ChunkData> sdata(new ChunkData(std::move(data)));
 
-		prepareChunkQueue.push([this, sdata, order, fileCount, firstFileIsSuffix] {
+		prepareChunkQueue.push([this, sdata, order, fileCount, firstFileIsSuffix, lastFile] {
 			ChunkIndex index = prepareChunkIndex(sdata->data.get() + sdata->dataOffset, sdata->dataSize);
 
 			std::pair<std::unique_ptr<char[]>, size_t> cdata = compress(sdata->data.get(), sdata->size, kFileDataCompressionLevel);
+
+			std::unique_ptr<char[]> extra(new char[lastFile.size()]);
+			memcpy(extra.get(), lastFile.data(), lastFile.size());
 
 			DataChunkHeader header = {};
 			header.fileCount = fileCount;
@@ -438,8 +443,9 @@ private:
 			header.uncompressedSize = sdata->size;
 			header.indexSize = index.size;
 			header.indexHashIterations = index.iterations;
+			header.extraSize = lastFile.size();
 
-			writeChunk(order, header, std::move(cdata.first), std::move(index.data), firstFileIsSuffix);
+			writeChunk(order, header, std::move(cdata.first), std::move(index.data), std::move(extra), firstFileIsSuffix);
 		}, sdata->size);
 	}
 
@@ -628,10 +634,10 @@ private:
 		return result;
 	}
 
-	void writeChunk(unsigned int order, const DataChunkHeader& header, std::unique_ptr<char[]> compressedData, std::unique_ptr<char[]> index, bool firstFileIsSuffix)
+	void writeChunk(unsigned int order, const DataChunkHeader& header, std::unique_ptr<char[]> compressedData, std::unique_ptr<char[]> index, std::unique_ptr<char[]> extra, bool firstFileIsSuffix)
 	{
 		assert(compressedData);
-		ChunkFileData chunk = { order, header, std::move(compressedData), std::move(index), firstFileIsSuffix };
+		ChunkFileData chunk = { order, header, std::move(compressedData), std::move(index), std::move(extra), firstFileIsSuffix };
 
 		writeChunkQueue.push(std::move(chunk));
 	}
@@ -662,6 +668,7 @@ private:
 					return;
 
 				outData.write(&header, sizeof(header));
+				outData.write(chunk.extra.get(), header.extraSize);
 				outData.write(chunk.index.get(), header.indexSize);
 				outData.write(chunk.compressedData.get(), header.compressedSize);
 
@@ -701,9 +708,9 @@ void Builder::appendFilePart(const char* path, unsigned int startLine, const voi
 	impl->appendFilePart(path, startLine, static_cast<const char*>(data), dataSize, lastWriteTime, fileSize);
 }
 
-bool Builder::appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, bool firstFileIsSuffix)
+bool Builder::appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra, bool firstFileIsSuffix)
 {
-	return impl->appendChunk(header, compressedData, index, firstFileIsSuffix);
+	return impl->appendChunk(header, compressedData, index, extra, firstFileIsSuffix);
 }
 
 unsigned int Builder::finish()

@@ -23,7 +23,7 @@ struct FileFileEntry
 	uint32_t pathOffset;
 };
 
-const char kDataFileHeaderMagic[] = "QGD1";
+const char kDataFileHeaderMagic[] = "QGD2";
 
 struct DataFileHeader
 {
@@ -40,6 +40,8 @@ struct DataChunkHeader
 
 	uint32_t indexSize;
 	uint32_t indexHashIterations;
+
+	uint32_t extraSize;
 };
 
 struct DataChunkFileHeader

@@ -92,7 +92,7 @@ static bool isChunkCurrent(UpdateFileIterator& fileit, const DataChunkHeader& ch
 }
 
 static void processChunkData(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats,
-	const DataChunkHeader& chunk, char* buffer, std::unique_ptr<char[]>& compressed, std::unique_ptr<char[]>& index)
+	const DataChunkHeader& chunk, char* buffer, std::unique_ptr<char[]>& compressed, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra)
 {
 	const char* data = buffer;
 
@@ -106,7 +106,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 
 	bool firstFileIsSuffix = files[0].startLine > 0;
 
-	if (isChunkCurrent(fileit, chunk, files, data, firstFileIsSuffix) && builder->appendChunk(chunk, compressed, index, firstFileIsSuffix))
+	if (isChunkCurrent(fileit, chunk, files, data, firstFileIsSuffix) && builder->appendChunk(chunk, compressed, index, extra, firstFileIsSuffix))
 	{
 		fileit += chunk.fileCount - firstFileIsSuffix;
 		stats.chunksPreserved++;
@@ -178,10 +178,11 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 
 	while (read(in, chunk))
 	{
+		std::unique_ptr<char[]> extra(new (std::nothrow) char[chunk.extraSize]);
 		std::unique_ptr<char[]> index(new (std::nothrow) char[chunk.indexSize]);
 		std::unique_ptr<char[]> data(new (std::nothrow) char[chunk.compressedSize + chunk.uncompressedSize]);
 
-		if (!index || !data || !read(in, index.get(), chunk.indexSize) || !read(in, data.get(), chunk.compressedSize))
+		if (!extra || !index || !data || !read(in, extra.get(), chunk.extraSize) || !read(in, index.get(), chunk.indexSize) || !read(in, data.get(), chunk.compressedSize))
 		{
 			output->error("Error reading data file %s: malformed chunk\n", path);
 			return false;
@@ -189,7 +190,7 @@ static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fi
 
 		char* uncompressed = data.get() + chunk.compressedSize;
 
-		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data, index);
+		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data, index, extra);
 	}
 
 	return true;

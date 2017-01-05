@@ -262,6 +262,25 @@ private:
 	Regex* re;
 };
 
+template <typename T> static bool readVector(FileStream& in, std::vector<T>& data, size_t size)
+{
+	try
+	{
+		data.resize(size);
+	}
+	catch (const std::bad_alloc&)
+	{
+		return false;
+	}
+
+	if (size && !read(in, &data[0], size * sizeof(T)))
+	{
+		return false;
+	}
+
+	return true;
+}
+
 unsigned int searchProject(Output* output_, const char* file, const char* string, unsigned int options, unsigned int limit, const char* include, const char* exclude)
 {
 	SearchOutput output(output_, options, limit);
@@ -291,6 +310,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 		// Assume 50% compression ratio (it's usually much better)
 		BlockPool chunkPool(kChunkSize * 3 / 2);
 
+		std::vector<char> extra;
 		std::vector<unsigned char> index;
 		DataChunkHeader chunk;
 
@@ -298,23 +318,19 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 
 		while (!output.isLimitReached() && read(in, chunk))
 		{
+			if (!readVector(in, extra, chunk.extraSize))
+			{
+				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
+				return 0;
+			}
+
 			if (ngregex.empty() || chunk.indexSize == 0)
 			{
 				in.skip(chunk.indexSize);
 			}
 			else
 			{
-				try
-				{
-					index.resize(chunk.indexSize);
-				}
-				catch (const std::bad_alloc&)
-				{
-					output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
-					return 0;
-				}
-
-				if (chunk.indexSize && !read(in, &index[0], chunk.indexSize))
+				if (!readVector(in, index, chunk.indexSize))
 				{
 					output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 					return 0;
