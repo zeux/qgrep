@@ -2,12 +2,28 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 class Output;
+class Regex;
 
 std::string getProjectPath(const char* name);
 std::vector<std::string> getProjects();
 std::vector<std::string> getProjectPaths(const char* list);
+
+struct ProjectGroup
+{
+	ProjectGroup* parent;
+
+	std::vector<std::string> paths;
+	std::vector<std::string> files;
+	std::shared_ptr<Regex> include;
+	std::shared_ptr<Regex> exclude;
+
+	std::vector<std::unique_ptr<ProjectGroup>> groups;
+};
+
+std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file);
 
 struct FileInfo
 {

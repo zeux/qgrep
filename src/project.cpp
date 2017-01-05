@@ -108,18 +108,6 @@ std::vector<std::string> getProjectPaths(const char* name)
 	return paths;
 }
 
-struct ProjectGroup
-{
-	ProjectGroup* parent;
-
-	std::vector<std::string> paths;
-	std::vector<std::string> files;
-	std::shared_ptr<Regex> include;
-	std::shared_ptr<Regex> exclude;
-
-	std::vector<std::unique_ptr<ProjectGroup>> groups;
-};
-
 static std::string trim(const std::string& s)
 {
 	const char* pattern = " \t";
@@ -234,7 +222,7 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 	return buildGroup(move(result), include, exclude, regexCache);
 }
 
-static std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file)
+std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file)
 {
 	std::ifstream in(file);
 	if (!in)
