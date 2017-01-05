@@ -11,6 +11,7 @@
 #include "stringutil.hpp"
 #include "highlight.hpp"
 #include "filterutil.hpp"
+#include "watch.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -426,6 +427,13 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 		else if (argc > 1 && strcmp(argv[1], "filter") == 0)
 		{
 			processFilterCommand(output, argc, argv, input, inputSize);
+		}
+		else if (argc > 2 && strcmp(argv[1], "watch") == 0)
+		{
+			std::vector<std::string> paths = getProjectPaths(argv[2]);
+
+			for (size_t i = 0; i < paths.size(); ++i)
+				watchProject(output, paths[i].c_str());
 		}
 		else
 		{

@@ -362,6 +362,7 @@
     <ClCompile Include="src\search.cpp" />
     <ClCompile Include="src\stringutil.cpp" />
     <ClCompile Include="src\update.cpp" />
+    <ClCompile Include="src\watch.cpp" />
     <ClCompile Include="src\workqueue.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -415,6 +416,7 @@
     <ClInclude Include="src\stringutil.hpp" />
     <ClInclude Include="src\bloom.hpp" />
     <ClInclude Include="src\update.hpp" />
+    <ClInclude Include="src\watch.hpp" />
     <ClInclude Include="src\workqueue.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

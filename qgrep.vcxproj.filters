@@ -76,29 +76,78 @@
     <ClCompile Include="extern\re2\util\strutil.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>
-    <ClCompile Include="src\blockpool.cpp" />
-    <ClCompile Include="src\build.cpp" />
-    <ClCompile Include="src\compression.cpp" />
-    <ClCompile Include="src\encoding.cpp" />
-    <ClCompile Include="src\files.cpp" />
-    <ClCompile Include="src\filestream.cpp" />
-    <ClCompile Include="src\fileutil.cpp" />
-    <ClCompile Include="src\fileutil_win.cpp" />
-    <ClCompile Include="src\filter.cpp" />
-    <ClCompile Include="src\filterutil.cpp" />
-    <ClCompile Include="src\fuzzymatch.cpp" />
-    <ClCompile Include="src\highlight.cpp" />
-    <ClCompile Include="src\highlight_win.cpp" />
-    <ClCompile Include="src\info.cpp" />
-    <ClCompile Include="src\init.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\orderedoutput.cpp" />
-    <ClCompile Include="src\project.cpp" />
-    <ClCompile Include="src\regex.cpp" />
-    <ClCompile Include="src\search.cpp" />
-    <ClCompile Include="src\stringutil.cpp" />
-    <ClCompile Include="src\update.cpp" />
-    <ClCompile Include="src\workqueue.cpp" />
+    <ClCompile Include="src\blockpool.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\build.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\compression.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\encoding.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\files.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\filestream.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fileutil.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fileutil_win.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\filter.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\filterutil.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fuzzymatch.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\highlight.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\highlight_win.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\info.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\init.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\orderedoutput.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\project.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\regex.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\search.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\stringutil.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\update.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\workqueue.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\watch.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="extern\lz4\lib\lz4.h">
@@ -173,33 +222,90 @@
     <ClInclude Include="extern\re2\util\util.h">
       <Filter>extern\re2</Filter>
     </ClInclude>
-    <ClInclude Include="src\blockingqueue.hpp" />
-    <ClInclude Include="src\blockpool.hpp" />
-    <ClInclude Include="src\build.hpp" />
-    <ClInclude Include="src\casefold.hpp" />
-    <ClInclude Include="src\common.hpp" />
-    <ClInclude Include="src\compression.hpp" />
-    <ClInclude Include="src\constants.hpp" />
-    <ClInclude Include="src\encoding.hpp" />
-    <ClInclude Include="src\files.hpp" />
-    <ClInclude Include="src\filestream.hpp" />
-    <ClInclude Include="src\fileutil.hpp" />
-    <ClInclude Include="src\filter.hpp" />
-    <ClInclude Include="src\filterutil.hpp" />
-    <ClInclude Include="src\fuzzymatch.hpp" />
-    <ClInclude Include="src\highlight.hpp" />
-    <ClInclude Include="src\info.hpp" />
-    <ClInclude Include="src\init.hpp" />
-    <ClInclude Include="src\orderedoutput.hpp" />
-    <ClInclude Include="src\output.hpp" />
-    <ClInclude Include="src\project.hpp" />
-    <ClInclude Include="src\format.hpp" />
-    <ClInclude Include="src\regex.hpp" />
-    <ClInclude Include="src\search.hpp" />
-    <ClInclude Include="src\stringutil.hpp" />
-    <ClInclude Include="src\bloom.hpp" />
-    <ClInclude Include="src\update.hpp" />
-    <ClInclude Include="src\workqueue.hpp" />
+    <ClInclude Include="src\blockingqueue.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\blockpool.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bloom.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\build.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\casefold.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\compression.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\encoding.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\files.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\filestream.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\fileutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\filter.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\filterutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\format.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\fuzzymatch.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\highlight.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\info.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\init.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\orderedoutput.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\output.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\project.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\regex.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\search.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\stringutil.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\update.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\workqueue.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\watch.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
