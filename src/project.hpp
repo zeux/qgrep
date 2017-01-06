@@ -24,6 +24,7 @@ struct ProjectGroup
 };
 
 std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file);
+bool isFileAcceptable(ProjectGroup* group, const char* path);
 
 struct FileInfo
 {

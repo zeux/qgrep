@@ -248,7 +248,7 @@ std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file)
 	}
 }
 
-static bool isFileAcceptable(ProjectGroup* group, const char* path)
+bool isFileAcceptable(ProjectGroup* group, const char* path)
 {
 	size_t length = strlen(path);
 

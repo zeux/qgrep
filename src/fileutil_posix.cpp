@@ -121,4 +121,9 @@ FILE* openFile(const char* path, const char* mode)
 {
 	return fopen(path, mode);
 }
+
+bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback)
+{
+	return false;
+}
 #endif

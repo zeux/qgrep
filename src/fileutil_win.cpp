@@ -7,6 +7,8 @@
 #include <vector>
 #include <algorithm>
 
+#include <assert.h>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -21,13 +23,18 @@ static std::wstring fromUtf8(const char* path)
 	return std::wstring(buf, result);
 }
 
-static std::string toUtf8(const wchar_t* path)
+static std::string toUtf8(const wchar_t* path, size_t length)
 {
 	char buf[kMaxPathLength];
-	size_t result = WideCharToMultiByte(CP_UTF8, 0, path, wcslen(path), buf, sizeof(buf), NULL, NULL);
+	size_t result = WideCharToMultiByte(CP_UTF8, 0, path, length, buf, sizeof(buf), NULL, NULL);
 	assert(result);
 
 	return std::string(buf, result);
+}
+
+static std::string toUtf8(const wchar_t* path)
+{
+	return toUtf8(path, wcslen(path));
 }
 
 static uint64_t combine(uint32_t hi, uint32_t lo)
@@ -153,5 +160,45 @@ FILE* openFile(const char* path, const char* mode)
 	std::copy(mode, mode + strlen(mode), wmode);
 
 	return _wfopen(wpath.c_str(), wmode);
+}
+
+bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback)
+{
+	HANDLE h = CreateFileW(fromUtf8(path).c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if (h == INVALID_HANDLE_VALUE)
+		return false;
+
+	char buf[65536];
+	DWORD bufsize = 0;
+
+	unsigned int filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION;
+
+	while (ReadDirectoryChangesW(h, buf, sizeof(buf), true, filter, &bufsize, NULL, NULL))
+	{
+		size_t offset = 0;
+
+		for (;;)
+		{
+			assert(offset < bufsize);
+
+			FILE_NOTIFY_INFORMATION* file = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(buf + offset);
+
+			std::string fp = toUtf8(file->FileName, file->FileNameLength / sizeof(WCHAR));
+
+			std::replace(fp.begin(), fp.end(), '\\', '/');
+
+			callback(fp.c_str());
+
+			if (!file->NextEntryOffset)
+				break;
+
+			offset += file->NextEntryOffset;
+		}
+	}
+
+	CloseHandle(h);
+
+	return true;
 }
 #endif
