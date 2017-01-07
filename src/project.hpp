@@ -36,4 +36,4 @@ struct FileInfo
 	FileInfo(const std::string& path, uint64_t lastWriteTime, uint64_t fileSize): path(path), lastWriteTime(lastWriteTime), fileSize(fileSize) {}
 };
 
-bool getProjectFiles(Output* output, const char* path, std::vector<FileInfo>& files);
+std::vector<FileInfo> getProjectGroupFiles(Output* output, ProjectGroup* group);

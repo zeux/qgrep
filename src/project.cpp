@@ -264,7 +264,7 @@ bool isFileAcceptable(ProjectGroup* group, const char* path)
 	return true;
 }
 
-static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vector<FileInfo>& files)
+static void getProjectGroupFilesRec(Output* output, ProjectGroup* group, std::vector<FileInfo>& files)
 {
 	for (auto& path: group->files)
 	{
@@ -292,20 +292,17 @@ static void getProjectGroupFiles(Output* output, ProjectGroup* group, std::vecto
 	}
 
 	for (auto& child: group->groups)
-		getProjectGroupFiles(output, child.get(), files);
+		getProjectGroupFilesRec(output, child.get(), files);
 }
 
-bool getProjectFiles(Output* output, const char* path, std::vector<FileInfo>& files)
+std::vector<FileInfo> getProjectGroupFiles(Output* output, ProjectGroup* group)
 {
-	std::unique_ptr<ProjectGroup> group = parseProject(output, path);
-	if (!group) return false;
-
-	files.clear();
+	std::vector<FileInfo> files;
 	
-	getProjectGroupFiles(output, group.get(), files);
+	getProjectGroupFilesRec(output, group, files);
 
 	std::sort(files.begin(), files.end(), [](const FileInfo& l, const FileInfo& r) { return l.path < r.path; });
 	files.erase(std::unique(files.begin(), files.end(), [](const FileInfo& l, const FileInfo& r) { return l.path == r.path; }), files.end());
 
-	return true;
+	return files;
 }

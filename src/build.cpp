@@ -734,11 +734,14 @@ Builder* createBuilder(Output* output, const char* path, unsigned int fileCount)
 void buildProject(Output* output, const char* path)
 {
 	output->print("Building %s:\n", path);
+
+	std::unique_ptr<ProjectGroup> group = parseProject(output, path);
+	if (!group)
+		return;
+
 	output->print("Scanning project...\r");
 
-	std::vector<FileInfo> files;
-	if (!getProjectFiles(output, path, files))
-		return;
+	std::vector<FileInfo> files = getProjectGroupFiles(output, group.get());
 
 	output->print("Building file table...\r");
 

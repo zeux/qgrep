@@ -212,11 +212,14 @@ void updateProject(Output* output, const char* path)
 	auto start = std::chrono::high_resolution_clock::now();
 
     output->print("Updating %s:\n", path);
+
+	std::unique_ptr<ProjectGroup> group = parseProject(output, path);
+	if (!group)
+		return;
+
 	output->print("Scanning project...\r");
 
-	std::vector<FileInfo> files;
-	if (!getProjectFiles(output, path, files))
-		return;
+	std::vector<FileInfo> files = getProjectGroupFiles(output, group.get());
 
 	output->print("Building file table...\r");
 
