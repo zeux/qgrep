@@ -216,11 +216,12 @@ void updateProject(Output* output, const char* path)
 
 	std::vector<FileInfo> files;
 	if (!getProjectFiles(output, path, files))
-	{
 		return;
-	}
 
-	buildFiles(output, path, files);
+	output->print("Building file table...\r");
+
+	if (!buildFiles(output, path, files))
+		return;
 	
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";

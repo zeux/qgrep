@@ -42,10 +42,15 @@ static size_t getStringBufferSize(const std::vector<const char*>& strings)
 
 typedef std::pair<unsigned int, unsigned int> BufferOffsetLength;
 
-static std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> prepareFileData(const char** files, unsigned int count)
+static std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> prepareFileData(const std::vector<FileInfo>& files)
 {
-	std::vector<const char*> paths(files, files + count);
-	std::vector<const char*> names = getFileNames(files, count);
+	size_t count = files.size();
+
+	std::vector<const char*> paths(count);
+	for (size_t i = 0; i < count; ++i)
+		paths[i] = files[i].path.c_str();
+
+	std::vector<const char*> names = getFileNames(paths.data(), count);
 
 	size_t entrySize = sizeof(FileFileEntry) * count;
 	size_t nameSize = getStringBufferSize(names);
@@ -82,10 +87,8 @@ static std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLe
 	return std::make_pair(data, std::make_pair(BufferOffsetLength(entrySize, nameSize), BufferOffsetLength(entrySize + nameSize, pathSize)));
 }
 
-void buildFiles(Output* output, const char* path, const char** files, unsigned int count)
+bool buildFiles(Output* output, const char* path, const std::vector<FileInfo>& files)
 {
-	output->print("Building file table...\r");
-
 	std::string targetPath = replaceExtension(path, ".qgf");
 	std::string tempPath = targetPath + "_";
 
@@ -96,16 +99,16 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 		if (!out)
 		{
 			output->error("Error saving data file %s\n", tempPath.c_str());
-			return;
+			return false;
 		}
 
-		std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> data = prepareFileData(files, count);
+		std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLength>> data = prepareFileData(files);
 		std::pair<std::unique_ptr<char[]>, size_t> compressed = compress(data.first.data(), data.first.size(), kFileListCompressionLevel);
 
 		FileFileHeader header;
 		memcpy(header.magic, kFileFileHeaderMagic, sizeof(header.magic));
 
-		header.fileCount = count;
+		header.fileCount = files.size();
 		header.compressedSize = compressed.second;
 		header.uncompressedSize = data.first.size();
 
@@ -121,30 +124,10 @@ void buildFiles(Output* output, const char* path, const char** files, unsigned i
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
 		output->error("Error saving data file %s\n", targetPath.c_str());
-		return;
-	}
-}
-
-void buildFiles(Output* output, const char* path, const std::vector<FileInfo>& files)
-{
-	std::vector<const char*> filesc(files.size());
-	for (size_t i = 0; i < files.size(); ++i) filesc[i] = files[i].path.c_str();
-
-	buildFiles(output, path, filesc.empty() ? NULL : &filesc[0], filesc.size());
-}
-
-void buildFiles(Output* output, const char* path)
-{
-    output->print("Building file table for %s:\n", path);
-	output->print("Scanning project...\r");
-
-	std::vector<FileInfo> files;
-	if (!getProjectFiles(output, path, files))
-	{
-		return;
+		return false;
 	}
 
-	buildFiles(output, path, files);
+	return true;
 }
 
 template <typename ExtractOffset>
