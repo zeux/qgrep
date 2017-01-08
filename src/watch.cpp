@@ -12,7 +12,8 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include <algorithm>
+
+#include <string.h>
 
 struct WatchContext
 {
