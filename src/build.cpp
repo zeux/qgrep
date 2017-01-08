@@ -69,14 +69,14 @@ public:
 		return true;
 	}
 
-	void appendFilePart(const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
+	void appendFilePart(const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t timeStamp, uint64_t fileSize)
 	{
 		if (!pendingFiles.empty() && pendingFiles.back().name == path)
 		{
 			File& file = pendingFiles.back();
 
 			assert(file.startLine < startLine);
-			assert(file.timeStamp == lastWriteTime && file.fileSize == fileSize);
+			assert(file.timeStamp == timeStamp && file.fileSize == fileSize);
 			assert(file.contents.offset + file.contents.count == file.contents.storage->size());
 
 			file.contents.storage->insert(file.contents.storage->end(), data, data + dataSize);
@@ -90,7 +90,7 @@ public:
 
 			file.name = path;
 			file.startLine = startLine;
-			file.timeStamp = lastWriteTime;
+			file.timeStamp = timeStamp;
 			file.fileSize = fileSize;
 			file.contents = std::vector<char>(data, data + dataSize);
 
@@ -101,7 +101,7 @@ public:
 		flushIfNeeded();
 	}
 
-	bool appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize)
+	bool appendFile(const char* path, uint64_t timeStamp, uint64_t fileSize)
 	{
 		FileStream in(path, "rb");
 		if (!in) return false;
@@ -110,7 +110,7 @@ public:
 		{
 			std::vector<char> contents = convertToUTF8(readFile(in));
 
-			appendFilePart(path, 0, contents.empty() ? 0 : &contents[0], contents.size(), lastWriteTime, fileSize);
+			appendFilePart(path, 0, contents.empty() ? 0 : &contents[0], contents.size(), timeStamp, fileSize);
 
 			return true;
 		}
@@ -697,15 +697,15 @@ Builder::~Builder()
 	delete impl;
 }
 
-void Builder::appendFile(const char* path, uint64_t lastWriteTime, uint64_t fileSize)
+void Builder::appendFile(const char* path, uint64_t timeStamp, uint64_t fileSize)
 {
-	if (!impl->appendFile(path, lastWriteTime, fileSize))
+	if (!impl->appendFile(path, timeStamp, fileSize))
 		output->error("Error reading file %s\n", path);
 }
 
-void Builder::appendFilePart(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t lastWriteTime, uint64_t fileSize)
+void Builder::appendFilePart(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t timeStamp, uint64_t fileSize)
 {
-	impl->appendFilePart(path, startLine, static_cast<const char*>(data), dataSize, lastWriteTime, fileSize);
+	impl->appendFilePart(path, startLine, static_cast<const char*>(data), dataSize, timeStamp, fileSize);
 }
 
 bool Builder::appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra, bool firstFileIsSuffix)
@@ -757,7 +757,7 @@ void buildProject(Output* output, const char* path)
 
 		for (auto& f: files)
 		{
-			builder->appendFile(f.path.c_str(), f.lastWriteTime, f.fileSize);
+			builder->appendFile(f.path.c_str(), f.timeStamp, f.fileSize);
 		}
 	}
 

@@ -29,11 +29,8 @@ bool isFileAcceptable(ProjectGroup* group, const char* path);
 struct FileInfo
 {
 	std::string path;
-	uint64_t lastWriteTime;
+	uint64_t timeStamp;
 	uint64_t fileSize;
-
-	FileInfo() {}
-	FileInfo(const std::string& path, uint64_t lastWriteTime, uint64_t fileSize): path(path), lastWriteTime(lastWriteTime), fileSize(fileSize) {}
 };
 
 std::vector<FileInfo> getProjectGroupFiles(Output* output, ProjectGroup* group);

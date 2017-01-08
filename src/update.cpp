@@ -69,7 +69,7 @@ static int comparePath(const FileInfo& info, const DataChunkFileHeader& file, co
 static bool isFileCurrent(const FileInfo& info, const DataChunkFileHeader& file, const char* data)
 {
 	assert(comparePath(info, file, data) == 0);
-	return info.lastWriteTime == file.timeStamp && info.fileSize == file.fileSize;
+	return info.timeStamp == file.timeStamp && info.fileSize == file.fileSize;
 }
 
 static bool isChunkCurrent(UpdateFileIterator& fileit, const DataChunkHeader& chunk, const DataChunkFileHeader* files, const char* data, bool firstFileIsSuffix)
@@ -125,7 +125,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 
 		if (comparePath(*prev, f, data) == 0 && isFileCurrent(*prev, f, data))
 		{
-			builder->appendFilePart(prev->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, prev->lastWriteTime, prev->fileSize);
+			builder->appendFilePart(prev->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, prev->timeStamp, prev->fileSize);
 		}
 	}
 
@@ -136,7 +136,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 		// add all files before the file
 		while (fileit && comparePath(*fileit, f, data) < 0)
 		{
-			builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
+			builder->appendFile(fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
 			++fileit;
 			stats.filesAdded++;
 		}
@@ -146,10 +146,10 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 		{
 			// check if we can reuse the data from qgrep db
 			if (isFileCurrent(*fileit, f, data))
-				builder->appendFilePart(fileit->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, fileit->lastWriteTime, fileit->fileSize);
+				builder->appendFilePart(fileit->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, fileit->timeStamp, fileit->fileSize);
 			else
 			{
-				builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
+				builder->appendFile(fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
 				stats.filesChanged++;
 			}
 
@@ -244,7 +244,7 @@ void updateProject(Output* output, const char* path)
 		// update all unprocessed files
 		while (fileit)
 		{
-			builder->appendFile(fileit->path.c_str(), fileit->lastWriteTime, fileit->fileSize);
+			builder->appendFile(fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
 			++fileit;
 			stats.filesAdded++;
 		}

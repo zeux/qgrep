@@ -158,7 +158,7 @@ static bool getDataFileList(Output* output, const char* path, std::vector<FileIn
 		{
 			const DataChunkFileHeader& file = files[i];
 
-			FileInfo fi(std::string(uncompressed + file.nameOffset, file.nameLength), file.timeStamp, file.fileSize);
+			FileInfo fi = { std::string(uncompressed + file.nameOffset, file.nameLength), file.timeStamp, file.fileSize };
 
 			if (result.empty() || result.back().path != fi.path)
 				result.push_back(fi);
@@ -201,7 +201,7 @@ void watchProject(Output* output, const char* path)
 		{
 			if (files[i].path == packFiles[j].path)
 			{
-				if (files[i].fileSize != packFiles[j].fileSize || files[i].lastWriteTime != packFiles[j].lastWriteTime)
+				if (files[i].fileSize != packFiles[j].fileSize || files[i].timeStamp != packFiles[j].timeStamp)
 				{
 					changedFiles.push_back(files[i].path);
 					filesChanged++;

@@ -271,7 +271,7 @@ static void getProjectGroupFilesRec(Output* output, ProjectGroup* group, std::ve
 		uint64_t mtime, size;
 
 		if (getFileAttributes(path.c_str(), &mtime, &size))
-			files.push_back(FileInfo(path, mtime, size));
+			files.push_back({ path, mtime, size });
 		else
 			output->error("Error reading metadata for file %s\n", path.c_str());
 	}
@@ -284,7 +284,7 @@ static void getProjectGroupFilesRec(Output* output, ProjectGroup* group, std::ve
 			if (isFileAcceptable(group, path))
 			{
 				joinPaths(buf, folder.c_str(), path);
-				files.push_back(FileInfo(buf, mtime, size));
+				files.push_back({ buf, mtime, size });
 			}
 		});
 
