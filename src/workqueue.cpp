@@ -34,5 +34,5 @@ WorkQueue::~WorkQueue()
 
 void WorkQueue::push(std::function<void()> fun, size_t size)
 {
-	queue.push(fun, size);
+	queue.push(std::move(fun), size);
 }

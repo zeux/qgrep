@@ -431,7 +431,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 
 			size_t changeNext = scanChanges(changes, changeIt, extra.data(), extra.size());
 
-			queue.push([=, &regex, &output, &includeRe, &excludeRe]() {
+			queue.push([=, &regex, &output, &includeRe, &excludeRe, &changes]() {
 				char* compressed = data.get();
 				char* uncompressed = data.get() + chunk.compressedSize;
 
