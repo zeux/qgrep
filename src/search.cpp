@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <fstream>
 
 struct SearchOutput
 {
@@ -166,13 +167,44 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 	re->rangeFinalize(range);
 }
 
-static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe)
+static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf, const std::string& path, Regex* includeRe, Regex* excludeRe)
+{
+	if (includeRe && !includeRe->search(path.c_str(), path.size()))
+		return;
+
+	if (excludeRe && excludeRe->search(path.c_str(), path.size()))
+		return;
+
+	std::unique_ptr<FILE, int(*)(FILE*)> file(openFile(path.c_str(), "rb"), fclose);
+	if (!file)
+		return;
+
+	fseek(file.get(), 0, SEEK_END);
+	size_t length = ftell(file.get());
+	fseek(file.get(), 0, SEEK_SET);
+
+	std::unique_ptr<char[]> data(new (std::nothrow) char[length]);
+	if (!data)
+		return;
+
+	if (fread(data.get(), 1, length, file.get()) != length)
+		return;
+
+	if (ferror(file.get()) != 0)
+		return;
+
+	processFile(re, output, chunk, hlbuf, path.c_str(), path.size(), data.get(), length, 0);
+}
+
+static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe, const std::string* changes, size_t changeCount)
 {
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
 	OrderedOutput::Chunk* chunk = output->output.begin(chunkIndex);
 
 	HighlightBuffer hlbuf;
+
+	size_t changeIndex = 0;
 
 	for (size_t i = 0; i < fileCount; ++i)
 	{
@@ -182,13 +214,33 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 		const DataChunkFileHeader& f = files[i];
 
-		if (includeRe && !includeRe->search(data + f.nameOffset, f.nameLength))
-			continue;
+		while (changeIndex < changeCount && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) < 0)
+		{
+			processChangedFile(re, output, chunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
+			changeIndex++;
+		}
 
-		if (excludeRe && excludeRe->search(data + f.nameOffset, f.nameLength))
-			continue;
+		if (changeIndex < changeCount && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) == 0)
+		{
+			processChangedFile(re, output, chunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
+			changeIndex++;
+		}
+		else
+		{
+			if (includeRe && !includeRe->search(data + f.nameOffset, f.nameLength))
+				continue;
 
-		processFile(re, output, chunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
+			if (excludeRe && excludeRe->search(data + f.nameOffset, f.nameLength))
+				continue;
+
+			processFile(re, output, chunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
+		}
+	}
+
+	while (changeIndex < changeCount)
+	{
+		processChangedFile(re, output, chunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
+		changeIndex++;
 	}
 
 	output->output.end(chunk);
@@ -262,6 +314,29 @@ private:
 	Regex* re;
 };
 
+std::vector<std::string> readChanges(const char* path)
+{
+	std::string filePath = replaceExtension(path, ".qgc");
+
+	std::vector<std::string> result;
+	std::string line;
+
+	std::ifstream in(filePath.c_str(), std::ios::in | std::ios::binary);
+
+	while (std::getline(in, line))
+		result.push_back(line);
+
+	return result;
+}
+
+size_t scanChanges(const std::vector<std::string>& changes, size_t changeIt, const char* data, size_t size)
+{
+	while (changeIt < changes.size() && changes[changeIt].compare(0, changes[changeIt].size(), data, size) <= 0)
+		changeIt++;
+
+	return changeIt;
+}
+
 template <typename T> static bool readVector(FileStream& in, std::vector<T>& data, size_t size)
 {
 	try
@@ -288,6 +363,9 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 	std::unique_ptr<Regex> includeRe(include ? createRegex(include, RO_IGNORECASE) : 0);
 	std::unique_ptr<Regex> excludeRe(exclude ? createRegex(exclude, RO_IGNORECASE) : 0);
 	NgramRegex ngregex((options & SO_BRUTEFORCE) ? nullptr : regex.get());
+
+	std::vector<std::string> changes = readChanges(file);
+	size_t changeIt = 0;
 	
 	std::string dataPath = replaceExtension(file, ".qgd");
 	FileStream in(dataPath.c_str(), "rb");
@@ -351,15 +429,33 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				return 0;
 			}
 
+			size_t changeNext = scanChanges(changes, changeIt, extra.data(), extra.size());
+
 			queue.push([=, &regex, &output, &includeRe, &excludeRe]() {
 				char* compressed = data.get();
 				char* uncompressed = data.get() + chunk.compressedSize;
 
 				decompress(uncompressed, chunk.uncompressedSize, compressed, chunk.compressedSize);
-				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount, includeRe.get(), excludeRe.get());
+				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount, includeRe.get(), excludeRe.get(), changes.data() + changeIt, changeNext - changeIt);
 			}, chunk.compressedSize + chunk.uncompressedSize);
 
 			chunkIndex++;
+			changeIt = changeNext;
+		}
+
+		if (changeIt < changes.size())
+		{
+			OrderedOutput::Chunk* chunk = output.output.begin(chunkIndex);
+
+			HighlightBuffer hlbuf;
+
+			while (changeIt < changes.size())
+			{
+				processChangedFile(regex.get(), &output, chunk, hlbuf, changes[changeIt], includeRe.get(), excludeRe.get());
+				changeIt++;
+			}
+
+			output.output.end(chunk);
 		}
 	}
 
