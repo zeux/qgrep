@@ -321,7 +321,7 @@ std::vector<std::string> readChanges(const char* path)
 	std::vector<std::string> result;
 	std::string line;
 
-	std::ifstream in(filePath.c_str(), std::ios::in | std::ios::binary);
+	std::ifstream in(filePath.c_str(), std::ios::in);
 
 	while (std::getline(in, line))
 		result.push_back(line);
