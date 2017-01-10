@@ -402,7 +402,9 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				return 0;
 			}
 
-			if (ngregex.empty() || chunk.indexSize == 0)
+			size_t changeNext = scanChanges(changes, changeIt, extra.data(), extra.size());
+
+			if (ngregex.empty() || chunk.indexSize == 0 || changeNext != changeIt)
 			{
 				in.skip(chunk.indexSize);
 			}
@@ -428,8 +430,6 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				output_->error("Error reading data file %s: malformed chunk\n", dataPath.c_str());
 				return 0;
 			}
-
-			size_t changeNext = scanChanges(changes, changeIt, extra.data(), extra.size());
 
 			queue.push([=, &regex, &output, &includeRe, &excludeRe, &changes]() {
 				char* compressed = data.get();
