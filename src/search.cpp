@@ -26,9 +26,9 @@ struct SearchOutput
 	{
 	}
 
-	bool isLimitReached(OrderedOutput::Chunk* chunk = nullptr) const
+	bool isLimitReached(OrderedOutput::Chunk* outputChunk = nullptr) const
 	{
-		return (chunk && chunk->lines >= limit) || output.getLineCount() >= limit;
+		return (outputChunk && outputChunk->lines >= limit) || output.getLineCount() >= limit;
 	}
 
 	unsigned int options;
@@ -103,7 +103,7 @@ static void printHighlightMatch(std::string& result, Regex* re, HighlightBuffer&
 	highlight(result, line, lineLength, hlbuf.ranges.empty() ? nullptr : &hlbuf.ranges[0], hlbuf.ranges.size(), kHighlightMatch);
 }
 
-static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
+static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf,
 	const char* path, size_t pathLength, const char* line, size_t lineLength, unsigned int lineNumber,
 	const char* preparedRange, size_t matchOffset, size_t matchLength)
 {
@@ -118,22 +118,22 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	char linecolumn[256];
 	size_t linecolumnsize = printMatchLineColumn(lineNumber, matchOffset + 1, output->options, linecolumn);
 
-	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightPath;
-	chunk->result.append(path, pathLength);
-	chunk->result.append(linecolumn, linecolumnsize);
-	if (output->options & SO_HIGHLIGHT) chunk->result += kHighlightEnd;
+	if (output->options & SO_HIGHLIGHT) outputChunk->result += kHighlightPath;
+	outputChunk->result.append(path, pathLength);
+	outputChunk->result.append(linecolumn, linecolumnsize);
+	if (output->options & SO_HIGHLIGHT) outputChunk->result += kHighlightEnd;
 
 	if (output->options & SO_HIGHLIGHT_MATCHES)
-		printHighlightMatch(chunk->result, re, hlbuf, line, lineLength, preparedRange, matchOffset, matchLength);
+		printHighlightMatch(outputChunk->result, re, hlbuf, line, lineLength, preparedRange, matchOffset, matchLength);
 	else
-		chunk->result.append(line, lineLength);
+		outputChunk->result.append(line, lineLength);
 
-	chunk->result += '\n';
+	outputChunk->result += '\n';
 
-	output->output.write(chunk);
+	output->output.write(outputChunk);
 }
 
-static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf,
+static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf,
 	const char* path, size_t pathLength, const char* data, size_t size, unsigned int startLine)
 {
 	const char* range = re->rangePrepare(data, size);
@@ -154,10 +154,10 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 		// print match
 		const char* lbeg = findLineStart(begin, match.data);
 		const char* lend = findLineEnd(match.data + match.size, end);
-		processMatch(re, output, chunk, hlbuf, path, pathLength, (lbeg - range) + data, lend - lbeg, line, lbeg, match.data - lbeg, match.size);
+		processMatch(re, output, outputChunk, hlbuf, path, pathLength, (lbeg - range) + data, lend - lbeg, line, lbeg, match.data - lbeg, match.size);
 		
 		// early-out for big matches
-		if (output->isLimitReached(chunk)) break;
+		if (output->isLimitReached(outputChunk)) break;
 
 		// move to next line
 		if (lend == end) break;
@@ -167,7 +167,7 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* c
 	re->rangeFinalize(range);
 }
 
-static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* chunk, HighlightBuffer& hlbuf, const std::string& path, Regex* includeRe, Regex* excludeRe)
+static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf, const std::string& path, Regex* includeRe, Regex* excludeRe)
 {
 	if (includeRe && !includeRe->search(path.c_str(), path.size()))
 		return;
@@ -193,14 +193,14 @@ static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::C
 	if (ferror(file.get()) != 0)
 		return;
 
-	processFile(re, output, chunk, hlbuf, path.c_str(), path.size(), data.get(), length, 0);
+	processFile(re, output, outputChunk, hlbuf, path.c_str(), path.size(), data.get(), length, 0);
 }
 
 static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe, const std::string* changes, size_t changeCount)
 {
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
-	OrderedOutput::Chunk* chunk = output->output.begin(chunkIndex);
+	OrderedOutput::Chunk* outputChunk = output->output.begin(chunkIndex);
 
 	HighlightBuffer hlbuf;
 
@@ -209,20 +209,20 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 	for (size_t i = 0; i < fileCount; ++i)
 	{
 		// early-out for big matches
-		if (output->isLimitReached(chunk))
+		if (output->isLimitReached(outputChunk))
 			break;
 
 		const DataChunkFileHeader& f = files[i];
 
 		while (changeIndex < changeCount && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) < 0)
 		{
-			processChangedFile(re, output, chunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
+			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
 		}
 
 		if (changeIndex < changeCount && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) == 0)
 		{
-			processChangedFile(re, output, chunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
+			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
 		}
 		else
@@ -233,17 +233,17 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 			if (excludeRe && excludeRe->search(data + f.nameOffset, f.nameLength))
 				continue;
 
-			processFile(re, output, chunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
+			processFile(re, output, outputChunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
 		}
 	}
 
 	while (changeIndex < changeCount)
 	{
-		processChangedFile(re, output, chunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
+		processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 		changeIndex++;
 	}
 
-	output->output.end(chunk);
+	output->output.end(outputChunk);
 }
 
 unsigned int getRegexOptions(unsigned int options)
