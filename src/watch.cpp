@@ -23,6 +23,7 @@ struct WatchContext
 	std::vector<std::thread> watchingThreads;
 
 	std::set<std::string> changedFiles;
+	std::string changedFilesLast;
 	std::mutex changedFilesMutex;
 	std::condition_variable changedFilesChanged;
 };
@@ -33,18 +34,12 @@ static void fileChanged(WatchContext* context, ProjectGroup* group, const char* 
 	{
 		std::string npath = normalizePath(path, file);
 
-		context->output->print("Change %s\n", npath.c_str());
-
 		std::unique_lock<std::mutex> lock(context->changedFilesMutex);
 
 		context->changedFiles.insert(npath);
-		context->changedFilesChanged.notify_one();
-	}
-	else
-	{
-		std::string npath = normalizePath(path, file);
+		context->changedFilesLast = npath;
 
-		context->output->print("Ignore %s\n", npath.c_str());
+		context->changedFilesChanged.notify_one();
 	}
 }
 
@@ -54,6 +49,7 @@ static void updateThreadFunc(WatchContext* context, const char* path)
 	std::string tempPath = targetPath + "_";
 
 	std::vector<std::string> changedFiles;
+	std::string changedFilesLast;
 
 	for (;;)
 	{
@@ -63,9 +59,16 @@ static void updateThreadFunc(WatchContext* context, const char* path)
 			context->changedFilesChanged.wait(lock, [&] { return context->changedFiles.size() != changedFiles.size(); });
 
 			changedFiles.assign(context->changedFiles.begin(), context->changedFiles.end());
+			changedFilesLast = context->changedFilesLast;
 		}
 
-		context->output->print("Flush %d\n", int(changedFiles.size()));
+		if (changedFilesLast.size() > 40)
+		{
+			changedFilesLast.erase(0, changedFilesLast.size() - 37);
+			changedFilesLast.insert(0, "...");
+		}
+
+		context->output->print("%d files changed; last: %-40s\r", int(changedFiles.size()), changedFilesLast.c_str());
 
 		{
 			FileStream out(tempPath.c_str(), "wb");
@@ -223,6 +226,9 @@ void watchProject(Output* output, const char* path)
 		std::unique_lock<std::mutex> lock(context.changedFilesMutex);
 
 		context.changedFiles.insert(changedFiles.begin(), changedFiles.end());
+
+		if (!changedFiles.empty())
+			context.changedFilesLast = changedFiles.back();
 	}
 
 	if (changedFiles.size())
