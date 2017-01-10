@@ -174,6 +174,9 @@ bool watchDirectory(const char* path, const std::function<void (const char* name
 
 	while (ReadDirectoryChangesW(h, buf, sizeof(buf), true, filter, &bufsize, NULL, NULL))
 	{
+		if (bufsize == 0)
+			continue;
+
 		size_t offset = 0;
 
 		for (;;)
