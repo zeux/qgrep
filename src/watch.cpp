@@ -109,6 +109,19 @@ static void startWatchingRec(WatchContext* context, ProjectGroup* group)
 		startWatchingRec(context, child.get());
 }
 
+static void processChunk(std::vector<FileInfo>& result, const char* data, size_t fileCount)
+{
+	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
+
+	for (unsigned int i = 0; i < fileCount; ++i)
+	{
+		const DataChunkFileHeader& file = files[i];
+
+		if (file.startLine == 0)
+			result.push_back({ std::string(data + file.nameOffset, file.nameLength), file.timeStamp, file.fileSize });
+	}
+}
+
 static bool getDataFileList(Output* output, const char* path, std::vector<FileInfo>& result)
 {
 	FileStream in(path, "rb");
@@ -126,47 +139,58 @@ static bool getDataFileList(Output* output, const char* path, std::vector<FileIn
 	}
 
 	DataChunkHeader chunk;
-	std::vector<char> data;
 
 	while (read(in, chunk))
 	{
-		try
-		{
-			data.resize(chunk.compressedSize + chunk.uncompressedSize);
-		}
-		catch (const std::bad_alloc&)
-		{
-			output->error("Error reading data file %s: malformed chunk\n", path);
-			return false;
-		}
-
 		in.skip(chunk.extraSize);
 		in.skip(chunk.indexSize);
 
-		if (!read(in, data.data(), chunk.compressedSize))
+		std::unique_ptr<char[]> data(new (std::nothrow) char[chunk.compressedSize + chunk.uncompressedSize]);
+
+		if (!data || !read(in, data.get(), chunk.compressedSize))
 		{
 			output->error("Error reading data file %s: malformed chunk\n", path);
 			return false;
 		}
 
-		char* uncompressed = data.data() + chunk.compressedSize;
-
-		decompressPartial(uncompressed, chunk.uncompressedSize, data.data(), chunk.compressedSize, chunk.fileTableSize);
-
-		const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(uncompressed);
-
-		for (unsigned int i = 0; i < chunk.fileCount; ++i)
-		{
-			const DataChunkFileHeader& file = files[i];
-
-			FileInfo fi = { std::string(uncompressed + file.nameOffset, file.nameLength), file.timeStamp, file.fileSize };
-
-			if (result.empty() || result.back().path != fi.path)
-				result.push_back(fi);
-		}
+		char* uncompressed = data.get() + chunk.compressedSize;
+		decompressPartial(uncompressed, chunk.uncompressedSize, data.get(), chunk.compressedSize, chunk.fileTableSize);
+		processChunk(result, uncompressed, chunk.fileCount);
 	}
 
 	return true;
+}
+
+static std::vector<std::string> getChanges(const std::vector<FileInfo>& files, const std::vector<FileInfo>& packFiles)
+{
+	std::vector<std::string> result;
+
+	size_t fileIt = 0;
+
+	for (const FileInfo& pf: packFiles)
+	{
+		while (fileIt < files.size() && files[fileIt].path < pf.path)
+		{
+			result.push_back(files[fileIt].path);
+			fileIt++;
+		}
+
+		if (files[fileIt].path == pf.path)
+		{
+			if (files[fileIt].timeStamp != pf.timeStamp || files[fileIt].fileSize != pf.fileSize)
+				result.push_back(files[fileIt].path);
+
+			fileIt++;
+		}
+	}
+
+	while (fileIt < files.size())
+	{
+		result.push_back(files[fileIt].path);
+		fileIt++;
+	}
+
+	return result;
 }
 
 void watchProject(Output* output, const char* path)
@@ -191,57 +215,9 @@ void watchProject(Output* output, const char* path)
 	if (!getDataFileList(output, replaceExtension(path, ".qgd").c_str(), packFiles))
 		return;
 
-	std::vector<std::string> changedFiles;
-	unsigned int filesAdded = 0;
-	unsigned int filesRemoved = 0;
-	unsigned int filesChanged = 0;
-
-	for (size_t i = 0, j = 0; i < files.size() || j < packFiles.size(); )
-	{
-		if (i < files.size() && j < packFiles.size())
-		{
-			if (files[i].path == packFiles[j].path)
-			{
-				if (files[i].fileSize != packFiles[j].fileSize || files[i].timeStamp != packFiles[j].timeStamp)
-				{
-					changedFiles.push_back(files[i].path);
-					filesChanged++;
-				}
-
-				i++;
-				j++;
-			}
-			else
-			{
-				if (files[i].path < packFiles[j].path)
-				{
-					changedFiles.push_back(files[i].path);
-					filesAdded++;
-					i++;
-				}
-				else
-				{
-					// TODO: handle removed files
-					filesRemoved++;
-					j++;
-				}
-			}
-		}
-		else if (i < files.size())
-		{
-			changedFiles.push_back(files[i].path);
-			filesAdded++;
-			i++;
-		}
-		else if (j < packFiles.size())
-		{
-			// TODO: handle removed files
-			filesRemoved++;
-			j++;
-		}
-	}
-
 	removeFile(replaceExtension(path, ".qgc").c_str());
+
+	std::vector<std::string> changedFiles = getChanges(files, packFiles);
 
 	{
 		std::unique_lock<std::mutex> lock(context.changedFilesMutex);
@@ -249,11 +225,10 @@ void watchProject(Output* output, const char* path)
 		context.changedFiles.insert(changedFiles.begin(), changedFiles.end());
 	}
 
-	if (filesAdded) output->print("+%d ", filesAdded);
-	if (filesRemoved) output->print("-%d ", filesRemoved);
-	if (filesChanged) output->print("*%d ", filesChanged);
-	output->print("%s; listening for further changes\n",
-		(filesAdded || filesRemoved || filesChanged) ? "files" : "No changes");
+	if (changedFiles.size())
+		output->print("%d files changed; listening for further changes\n", int(changedFiles.size()));
+	else
+		output->print("Listening for changes\n");
 
 	std::thread([&] { updateThreadFunc(&context, path); }).swap(context.updateThread);
 
