@@ -739,6 +739,8 @@ void buildProject(Output* output, const char* path)
 	if (!group)
 		return;
 
+	removeFile(replaceExtension(path, ".qgc").c_str());
+
 	output->print("Scanning project...\r");
 
 	std::vector<FileInfo> files = getProjectGroupFiles(output, group.get());
