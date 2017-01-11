@@ -196,7 +196,7 @@ static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::C
 	processFile(re, output, outputChunk, hlbuf, path.c_str(), path.size(), data.get(), length, 0);
 }
 
-static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe, const std::string* changes, size_t changeCount)
+static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe, const std::string* changes, size_t changeBegin, size_t changeEnd)
 {
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
@@ -204,7 +204,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 	HighlightBuffer hlbuf;
 
-	size_t changeIndex = 0;
+	size_t changeIndex = changeBegin;
 
 	for (size_t i = 0; i < fileCount; ++i)
 	{
@@ -214,16 +214,22 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 		const DataChunkFileHeader& f = files[i];
 
-		while (changeIndex < changeCount && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) < 0)
+		while (changeIndex < changeEnd && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) < 0)
 		{
 			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
 		}
 
-		if (changeIndex < changeCount && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) == 0)
+		if (changeIndex < changeEnd && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) == 0)
 		{
 			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
+		}
+		else if (f.startLine > 0 && changeIndex > 0 && changes[changeIndex-1].compare(0, changes[changeIndex-1].size(), data + f.nameOffset, f.nameLength) == 0)
+		{
+			// This is a suffix of a file that started in the last chunk. This means if it was present in the change lists it has to be right before
+			// our change range (due to how scanChanges works), and this means we should have processed the changed file in the previous chunk - so
+			// here we should just skip it.
 		}
 		else
 		{
@@ -237,7 +243,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 		}
 	}
 
-	while (changeIndex < changeCount)
+	while (changeIndex < changeEnd)
 	{
 		processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 		changeIndex++;
@@ -436,7 +442,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				char* uncompressed = data.get() + chunk.compressedSize;
 
 				decompress(uncompressed, chunk.uncompressedSize, compressed, chunk.compressedSize);
-				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount, includeRe.get(), excludeRe.get(), changes.data() + changeIt, changeNext - changeIt);
+				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount, includeRe.get(), excludeRe.get(), changes.data(), changeIt, changeNext);
 			}, chunk.compressedSize + chunk.uncompressedSize);
 
 			chunkIndex++;
