@@ -133,7 +133,7 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	output->output.write(outputChunk);
 }
 
-static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf,
+static void processFileData(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf,
 	const char* path, size_t pathLength, const char* data, size_t size, unsigned int startLine)
 {
 	const char* range = re->rangePrepare(data, size);
@@ -167,12 +167,20 @@ static void processFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* o
 	re->rangeFinalize(range);
 }
 
+static bool ignorePath(const char* path, size_t size, Regex* includeRe, Regex* excludeRe)
+{
+	if (includeRe && !includeRe->search(path, size))
+		return true;
+
+	if (excludeRe && excludeRe->search(path, size))
+		return true;
+
+	return false;
+}
+
 static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf, const std::string& path, Regex* includeRe, Regex* excludeRe)
 {
-	if (includeRe && !includeRe->search(path.c_str(), path.size()))
-		return;
-
-	if (excludeRe && excludeRe->search(path.c_str(), path.size()))
+	if (ignorePath(path.c_str(), path.size(), includeRe, excludeRe))
 		return;
 
 	std::unique_ptr<FILE, int(*)(FILE*)> file(openFile(path.c_str(), "rb"), fclose);
@@ -193,7 +201,16 @@ static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::C
 	if (ferror(file.get()) != 0)
 		return;
 
-	processFile(re, output, outputChunk, hlbuf, path.c_str(), path.size(), data.get(), length, 0);
+	processFileData(re, output, outputChunk, hlbuf, path.c_str(), path.size(), data.get(), length, 0);
+}
+
+static void processChunkFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf,
+	const char* path, size_t pathLength, const char* data, size_t size, unsigned int startLine, Regex* includeRe, Regex* excludeRe)
+{
+	if (ignorePath(path, pathLength, includeRe, excludeRe))
+		return;
+
+	processFileData(re, output, outputChunk, hlbuf, path, pathLength, data, size, startLine);
 }
 
 static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe, const std::string* changes, size_t changeBegin, size_t changeEnd)
@@ -214,18 +231,18 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 		const DataChunkFileHeader& f = files[i];
 
-		while (changeIndex < changeEnd && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) < 0)
+		while (changeIndex < changeEnd && changes[changeIndex].compare(0, std::string::npos, data + f.nameOffset, f.nameLength) < 0)
 		{
 			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
 		}
 
-		if (changeIndex < changeEnd && changes[changeIndex].compare(0, changes[changeIndex].size(), data + f.nameOffset, f.nameLength) == 0)
+		if (changeIndex < changeEnd && changes[changeIndex].compare(0, std::string::npos, data + f.nameOffset, f.nameLength) == 0)
 		{
 			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
 		}
-		else if (f.startLine > 0 && changeIndex > 0 && changes[changeIndex-1].compare(0, changes[changeIndex-1].size(), data + f.nameOffset, f.nameLength) == 0)
+		else if (f.startLine > 0 && changeIndex > 0 && changes[changeIndex-1].compare(0, std::string::npos, data + f.nameOffset, f.nameLength) == 0)
 		{
 			// This is a suffix of a file that started in the last chunk. This means if it was present in the change lists it has to be right before
 			// our change range (due to how scanChanges works), and this means we should have processed the changed file in the previous chunk - so
@@ -233,13 +250,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 		}
 		else
 		{
-			if (includeRe && !includeRe->search(data + f.nameOffset, f.nameLength))
-				continue;
-
-			if (excludeRe && excludeRe->search(data + f.nameOffset, f.nameLength))
-				continue;
-
-			processFile(re, output, outputChunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine);
+			processChunkFile(re, output, outputChunk, hlbuf, data + f.nameOffset, f.nameLength, data + f.dataOffset, f.dataSize, f.startLine, includeRe, excludeRe);
 		}
 	}
 
@@ -337,7 +348,7 @@ std::vector<std::string> readChanges(const char* path)
 
 size_t scanChanges(const std::vector<std::string>& changes, size_t changeIt, const char* data, size_t size)
 {
-	while (changeIt < changes.size() && changes[changeIt].compare(0, changes[changeIt].size(), data, size) <= 0)
+	while (changeIt < changes.size() && changes[changeIt].compare(0, std::string::npos, data, size) <= 0)
 		changeIt++;
 
 	return changeIt;
