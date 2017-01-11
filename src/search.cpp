@@ -167,6 +167,11 @@ static void processFileData(Regex* re, SearchOutput* output, OrderedOutput::Chun
 	re->rangeFinalize(range);
 }
 
+static int comparePath(const std::string& path, const char* data, size_t size)
+{
+	return path.compare(0, std::string::npos, data, size);
+}
+
 static bool ignorePath(const char* path, size_t size, Regex* includeRe, Regex* excludeRe)
 {
 	if (includeRe && !includeRe->search(path, size))
@@ -231,18 +236,18 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 		const DataChunkFileHeader& f = files[i];
 
-		while (changeIndex < changeEnd && changes[changeIndex].compare(0, std::string::npos, data + f.nameOffset, f.nameLength) < 0)
+		while (changeIndex < changeEnd && comparePath(changes[changeIndex], data + f.nameOffset, f.nameLength) < 0)
 		{
 			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
 		}
 
-		if (changeIndex < changeEnd && changes[changeIndex].compare(0, std::string::npos, data + f.nameOffset, f.nameLength) == 0)
+		if (changeIndex < changeEnd && comparePath(changes[changeIndex], data + f.nameOffset, f.nameLength) == 0)
 		{
 			processChangedFile(re, output, outputChunk, hlbuf, changes[changeIndex], includeRe, excludeRe);
 			changeIndex++;
 		}
-		else if (f.startLine > 0 && changeIndex > 0 && changes[changeIndex-1].compare(0, std::string::npos, data + f.nameOffset, f.nameLength) == 0)
+		else if (f.startLine > 0 && changeIndex > 0 && comparePath(changes[changeIndex-1], data + f.nameOffset, f.nameLength) == 0)
 		{
 			// This is a suffix of a file that started in the last chunk. This means if it was present in the change lists it has to be right before
 			// our change range (due to how scanChanges works), and this means we should have processed the changed file in the previous chunk - so
@@ -348,7 +353,7 @@ std::vector<std::string> readChanges(const char* path)
 
 size_t scanChanges(const std::vector<std::string>& changes, size_t changeIt, const char* data, size_t size)
 {
-	while (changeIt < changes.size() && changes[changeIt].compare(0, std::string::npos, data, size) <= 0)
+	while (changeIt < changes.size() && comparePath(changes[changeIt], data, size) <= 0)
 		changeIt++;
 
 	return changeIt;
