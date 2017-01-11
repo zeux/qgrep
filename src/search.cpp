@@ -218,8 +218,12 @@ static void processChunkFile(Regex* re, SearchOutput* output, OrderedOutput::Chu
 	processFileData(re, output, outputChunk, hlbuf, path, pathLength, data, size, startLine);
 }
 
-static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const char* data, size_t fileCount, Regex* includeRe, Regex* excludeRe, const std::string* changes, size_t changeBegin, size_t changeEnd)
+static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkIndex, const DataChunkHeader& chunk, char* buffer, Regex* includeRe, Regex* excludeRe, const std::string* changes, size_t changeBegin, size_t changeEnd)
 {
+	char* data = buffer + chunk.compressedSize;
+
+	decompress(data, chunk.uncompressedSize, buffer, chunk.compressedSize);
+
 	const DataChunkFileHeader* files = reinterpret_cast<const DataChunkFileHeader*>(data);
 
 	OrderedOutput::Chunk* outputChunk = output->output.begin(chunkIndex);
@@ -228,7 +232,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 
 	size_t changeIndex = changeBegin;
 
-	for (size_t i = 0; i < fileCount; ++i)
+	for (size_t i = 0; i < chunk.fileCount; ++i)
 	{
 		// early-out for big matches
 		if (output->isLimitReached(outputChunk))
@@ -454,11 +458,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 			}
 
 			queue.push([=, &regex, &output, &includeRe, &excludeRe, &changes]() {
-				char* compressed = data.get();
-				char* uncompressed = data.get() + chunk.compressedSize;
-
-				decompress(uncompressed, chunk.uncompressedSize, compressed, chunk.compressedSize);
-				processChunk(regex.get(), &output, chunkIndex, uncompressed, chunk.fileCount, includeRe.get(), excludeRe.get(), changes.data(), changeIt, changeNext);
+				processChunk(regex.get(), &output, chunkIndex, chunk, data.get(), includeRe.get(), excludeRe.get(), changes.data(), changeIt, changeNext);
 			}, chunk.compressedSize + chunk.uncompressedSize);
 
 			chunkIndex++;
