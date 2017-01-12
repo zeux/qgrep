@@ -26,6 +26,14 @@ struct WatchContext
 	std::string changedFilesLast;
 	std::mutex changedFilesMutex;
 	std::condition_variable changedFilesChanged;
+
+	~WatchContext()
+	{
+		for (auto& t: watchingThreads)
+			t.join();
+
+		updateThread.join();
+	}
 };
 
 static void fileChanged(WatchContext* context, ProjectGroup* group, const char* path, const char* file)
@@ -237,9 +245,4 @@ void watchProject(Output* output, const char* path)
 		output->print("Listening for changes\n");
 
 	std::thread([&] { updateThreadFunc(&context, path); }).swap(context.updateThread);
-
-	for (auto& t: context.watchingThreads)
-		t.join();
-
-	context.updateThread.join();
 }
