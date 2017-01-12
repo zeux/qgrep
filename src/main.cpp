@@ -13,6 +13,8 @@
 #include "filterutil.hpp"
 #include "watch.hpp"
 
+#include <thread>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -432,8 +434,13 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 		{
 			std::vector<std::string> paths = getProjectPaths(argv[2]);
 
+			std::vector<std::thread> threads;
+
 			for (size_t i = 0; i < paths.size(); ++i)
-				watchProject(output, paths[i].c_str());
+				threads.emplace_back([=] { watchProject(output, paths[i].c_str()); });
+
+			for (auto& t: threads)
+				t.join();
 		}
 		else
 		{
