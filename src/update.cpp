@@ -91,7 +91,7 @@ static bool isChunkCurrent(UpdateFileIterator& fileit, const DataChunkHeader& ch
 	return true;
 }
 
-static void processChunkData(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats,
+static void processChunkData(Output* output, BuildContext* builder, UpdateFileIterator& fileit, UpdateStatistics& stats,
 	const DataChunkHeader& chunk, char* buffer, std::unique_ptr<char[]>& compressed, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra)
 {
 	const char* data = buffer;
@@ -106,7 +106,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 
 	bool firstFileIsSuffix = files[0].startLine > 0;
 
-	if (isChunkCurrent(fileit, chunk, files, data, firstFileIsSuffix) && builder->appendChunk(chunk, compressed, index, extra, firstFileIsSuffix))
+	if (isChunkCurrent(fileit, chunk, files, data, firstFileIsSuffix) && buildAppendChunk(builder, chunk, compressed, index, extra, firstFileIsSuffix))
 	{
 		fileit += chunk.fileCount - firstFileIsSuffix;
 		stats.chunksPreserved++;
@@ -125,7 +125,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 
 		if (comparePath(*prev, f, data) == 0 && isFileCurrent(*prev, f, data))
 		{
-			builder->appendFilePart(prev->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, prev->timeStamp, prev->fileSize);
+			buildAppendFilePart(builder, prev->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, prev->timeStamp, prev->fileSize);
 		}
 	}
 
@@ -136,7 +136,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 		// add all files before the file
 		while (fileit && comparePath(*fileit, f, data) < 0)
 		{
-			builder->appendFile(fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
+			buildAppendFile(builder, fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
 			++fileit;
 			stats.filesAdded++;
 		}
@@ -146,10 +146,10 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 		{
 			// check if we can reuse the data from qgrep db
 			if (isFileCurrent(*fileit, f, data))
-				builder->appendFilePart(fileit->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, fileit->timeStamp, fileit->fileSize);
+				buildAppendFilePart(builder, fileit->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, fileit->timeStamp, fileit->fileSize);
 			else
 			{
-				builder->appendFile(fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
+				buildAppendFile(builder, fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
 				stats.filesChanged++;
 			}
 
@@ -162,7 +162,7 @@ static void processChunkData(Output* output, Builder* builder, UpdateFileIterato
 	}
 }
 
-static bool processFile(Output* output, Builder* builder, UpdateFileIterator& fileit, UpdateStatistics& stats, const char* path)
+static bool processFile(Output* output, BuildContext* builder, UpdateFileIterator& fileit, UpdateStatistics& stats, const char* path)
 {
 	FileStream in(path, "rb");
 	if (!in) return true;
@@ -235,23 +235,27 @@ void updateProject(Output* output, const char* path)
 	unsigned int totalChunks = 0;
 
 	{
-		std::unique_ptr<Builder> builder(createBuilder(output, tempPath.c_str(), files.size()));
+		BuildContext* builder = buildStart(output, tempPath.c_str(), files.size());
 		if (!builder) return;
 
 		UpdateFileIterator fileit = {files, 0};
 
 		// update contents using existing database (if any)
-		if (!processFile(output, builder.get(), fileit, stats, targetPath.c_str())) return;
+		if (!processFile(output, builder, fileit, stats, targetPath.c_str()))
+		{
+			buildFinish(builder);
+			return;
+		}
 
 		// update all unprocessed files
 		while (fileit)
 		{
-			builder->appendFile(fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
+			buildAppendFile(builder, fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
 			++fileit;
 			stats.filesAdded++;
 		}
 
-		totalChunks = builder->finish();
+		totalChunks = buildFinish(builder);
 	}
 
 	output->print("\n");

@@ -5,25 +5,14 @@
 class Output;
 struct DataChunkHeader;
 
-class Builder
-{
-public:
-	class BuilderImpl;
+struct BuildContext;
 
-	Builder(Output* output, BuilderImpl* impl);
-	~Builder();
+BuildContext* buildStart(Output* output, const char* path, unsigned int fileCount = 0);
 
-	void appendFile(const char* path, uint64_t timeStamp, uint64_t fileSize);
-	void appendFilePart(const char* path, unsigned int startLine, const void* data, size_t dataSize, uint64_t timeStamp, uint64_t fileSize);
-	bool appendChunk(const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra, bool firstFileIsSuffix);
+void buildAppendFilePart(BuildContext* context, const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t timeStamp, uint64_t fileSize);
+bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp, uint64_t fileSize);
+bool buildAppendChunk(BuildContext* context, const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra, bool firstFileIsSuffix);
 
-	unsigned int finish();
-
-private:
-	BuilderImpl* impl;
-	Output* output;
-};
-
-Builder* createBuilder(Output* output, const char* path, unsigned int fileCount = 0);
+unsigned int buildFinish(BuildContext* context);
 
 void buildProject(Output* output, const char* path);
