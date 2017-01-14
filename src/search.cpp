@@ -254,7 +254,7 @@ static void processChunk(Regex* re, SearchOutput* output, unsigned int chunkInde
 		else if (f.startLine > 0 && changeIndex > 0 && comparePath(changes[changeIndex-1], data + f.nameOffset, f.nameLength) == 0)
 		{
 			// This is a suffix of a file that started in the last chunk. This means if it was present in the change lists it has to be right before
-			// our change range (due to how scanChanges works), and this means we should have processed the changed file in the previous chunk - so
+			// our change range (due to how getNextChange works), and this means we should have processed the changed file in the previous chunk - so
 			// here we should just skip it.
 		}
 		else
@@ -355,7 +355,7 @@ std::vector<std::string> readChanges(const char* path)
 	return result;
 }
 
-size_t scanChanges(const std::vector<std::string>& changes, size_t changeIt, const char* data, size_t size)
+size_t getNextChange(const std::vector<std::string>& changes, size_t changeIt, const char* data, size_t size)
 {
 	while (changeIt < changes.size() && comparePath(changes[changeIt], data, size) <= 0)
 		changeIt++;
@@ -428,7 +428,7 @@ unsigned int searchProject(Output* output_, const char* file, const char* string
 				return 0;
 			}
 
-			size_t changeNext = scanChanges(changes, changeIt, extra.data(), extra.size());
+			size_t changeNext = getNextChange(changes, changeIt, extra.data(), extra.size());
 
 			if (ngregex.empty() || chunk.indexSize == 0 || changeNext != changeIt)
 			{
