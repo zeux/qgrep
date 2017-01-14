@@ -51,56 +51,6 @@ static void fileChanged(WatchContext* context, ProjectGroup* group, const char* 
 	}
 }
 
-static void updateThreadFunc(WatchContext* context, const char* path)
-{
-	std::string targetPath = replaceExtension(path, ".qgc");
-	std::string tempPath = targetPath + "_";
-
-	std::vector<std::string> changedFiles;
-	std::string changedFilesLast;
-
-	for (;;)
-	{
-		{
-			std::unique_lock<std::mutex> lock(context->changedFilesMutex);
-
-			context->changedFilesChanged.wait(lock, [&] { return context->changedFiles.size() != changedFiles.size(); });
-
-			changedFiles.assign(context->changedFiles.begin(), context->changedFiles.end());
-			changedFilesLast = context->changedFilesLast;
-		}
-
-		if (changedFilesLast.size() > 40)
-		{
-			changedFilesLast.erase(0, changedFilesLast.size() - 37);
-			changedFilesLast.insert(0, "...");
-		}
-
-		context->output->print("%d files changed; last: %-40s\r", int(changedFiles.size()), changedFilesLast.c_str());
-
-		{
-			FileStream out(tempPath.c_str(), "wb");
-			if (!out)
-			{
-				context->output->error("Error saving changes to %s\n", tempPath.c_str());
-				continue;
-			}
-
-			for (auto& f : changedFiles)
-			{
-				out.write(f.data(), f.size());
-				out.write("\n", 1);
-			}
-		}
-
-		if (!renameFile(tempPath.c_str(), targetPath.c_str()))
-		{
-			context->output->error("Error saving changes to %s\n", targetPath.c_str());
-			continue;
-		}
-	}
-}
-
 static void startWatchingRec(WatchContext* context, ProjectGroup* group)
 {
 	for (auto& path : group->paths)
@@ -204,6 +154,41 @@ static std::vector<std::string> getChanges(const std::vector<FileInfo>& files, c
 	return result;
 }
 
+static bool writeChanges(const char* path, const std::vector<std::string>& files)
+{
+	std::string targetPath = replaceExtension(path, ".qgc");
+
+	if (files.empty())
+		return removeFile(targetPath.c_str());
+
+	std::string tempPath = targetPath + "_";
+
+	{
+		FileStream out(tempPath.c_str(), "wb");
+		if (!out)
+			return false;
+
+		for (auto& f: files)
+		{
+			out.write(f.data(), f.size());
+			out.write("\n", 1);
+		}
+	}
+
+	return renameFile(tempPath.c_str(), targetPath.c_str());
+}
+
+static void printStatistics(Output* output, size_t fileCount, std::string last)
+{
+	if (last.size() > 40)
+	{
+		last.erase(0, last.size() - 37);
+		last.insert(0, "...");
+	}
+
+	output->print("%d files changed; last: %-40s\r", int(fileCount), last.c_str());
+}
+
 void watchProject(Output* output, const char* path)
 {
 	WatchContext context = { output };
@@ -244,5 +229,28 @@ void watchProject(Output* output, const char* path)
 	else
 		output->print("Listening for changes\n");
 
-	std::thread([&] { updateThreadFunc(&context, path); }).swap(context.updateThread);
+	// initial sync; TODO: fold into the loop below
+	writeChanges(path, changedFiles);
+
+	std::string changedFilesLast;
+
+	for (;;)
+	{
+		{
+			std::unique_lock<std::mutex> lock(context.changedFilesMutex);
+
+			context.changedFilesChanged.wait(lock, [&] { return context.changedFiles.size() != changedFiles.size(); });
+
+			changedFiles.assign(context.changedFiles.begin(), context.changedFiles.end());
+			changedFilesLast = context.changedFilesLast;
+		}
+
+		printStatistics(output, changedFiles.size(), changedFilesLast);
+
+		if (!writeChanges(path, changedFiles))
+		{
+			output->error("Error saving changes to %s\n", replaceExtension(path, ".qgc").c_str());
+			continue;
+		}
+	}
 }
