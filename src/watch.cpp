@@ -181,10 +181,7 @@ static bool writeChanges(const char* path, const std::vector<std::string>& files
 static void printStatistics(Output* output, size_t fileCount, std::string last)
 {
 	if (last.size() > 40)
-	{
-		last.erase(0, last.size() - 37);
-		last.insert(0, "...");
-	}
+		last.replace(0, last.size() - 37, "...");
 
 	output->print("%d files changed; last: %-40s\r", int(fileCount), last.c_str());
 }
