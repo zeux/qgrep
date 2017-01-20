@@ -7,11 +7,14 @@
 #include "output.hpp"
 #include "format.hpp"
 #include "compression.hpp"
+#include "constants.hpp"
+#include "update.hpp"
 
 #include <set>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
 
 #include <string.h>
 
@@ -226,28 +229,51 @@ void watchProject(Output* output, const char* path)
 	else
 		output->print("Listening for changes\n");
 
-	// initial sync; TODO: fold into the loop below
+	// initial sync
 	writeChanges(path, changedFiles);
 
 	std::string changedFilesLast;
 
 	for (;;)
 	{
+		bool updateNeeded = changedFiles.size() > size_t(kWatchUpdateThresholdFiles);
+		bool updateNow = false;
+
 		{
 			std::unique_lock<std::mutex> lock(context.changedFilesMutex);
 
-			context.changedFilesChanged.wait(lock, [&] { return context.changedFiles.size() != changedFiles.size(); });
+			if (updateNeeded)
+			{
+				if (context.changedFilesChanged.wait_for(lock, std::chrono::seconds(kWatchUpdateTimeout)) == std::cv_status::timeout)
+				{
+					updateNow = true;
+
+					context.changedFiles.clear();
+				}
+			}
+			else
+			{
+				context.changedFilesChanged.wait(lock, [&] { return context.changedFiles.size() != changedFiles.size(); });
+			}
 
 			changedFiles.assign(context.changedFiles.begin(), context.changedFiles.end());
 			changedFilesLast = context.changedFilesLast;
 		}
 
-		printStatistics(output, changedFiles.size(), changedFilesLast);
-
-		if (!writeChanges(path, changedFiles))
+		if (updateNow)
 		{
-			output->error("Error saving changes to %s\n", replaceExtension(path, ".qgc").c_str());
-			continue;
+			// this removes the current changes file and updates the pack
+			updateProject(output, path);
+		}
+		else
+		{
+			printStatistics(output, changedFiles.size(), changedFilesLast);
+
+			if (!writeChanges(path, changedFiles))
+			{
+				output->error("Error saving changes to %s\n", replaceExtension(path, ".qgc").c_str());
+				continue;
+			}
 		}
 	}
 }

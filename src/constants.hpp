@@ -21,5 +21,11 @@ const int kFileListCompressionLevel = 1;
 // File data compression level, 0-9
 const int kFileDataCompressionLevel = 5;
 
+// Wait for many seconds before launching an update to minimize the chance of concurrent work
+const int kWatchUpdateTimeout = 60;
+
+// When we're above a certain threshold of changed files, automatically update
+const int kWatchUpdateThresholdFiles = 100;
+
 #undef Mb
 #undef Kb
