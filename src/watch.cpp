@@ -238,6 +238,7 @@ void watchProject(Output* output, const char* path)
 	{
 		bool updateNeeded = changedFiles.size() > size_t(kWatchUpdateThresholdFiles);
 		bool updateNow = false;
+		bool writeNow = false;
 
 		{
 			std::unique_lock<std::mutex> lock(context.changedFilesMutex);
@@ -246,26 +247,37 @@ void watchProject(Output* output, const char* path)
 			{
 				if (context.changedFilesChanged.wait_for(lock, std::chrono::seconds(kWatchUpdateTimeout)) == std::cv_status::timeout)
 				{
+					// we've reached steady state, update
 					updateNow = true;
-
-					context.changedFiles.clear();
 				}
 			}
 			else
 			{
-				context.changedFilesChanged.wait(lock, [&] { return context.changedFiles.size() != changedFiles.size(); });
+				context.changedFilesChanged.wait(lock);
 			}
 
-			changedFiles.assign(context.changedFiles.begin(), context.changedFiles.end());
-			changedFilesLast = context.changedFilesLast;
+			if (context.changedFiles.size() != changedFiles.size())
+			{
+				changedFiles.assign(context.changedFiles.begin(), context.changedFiles.end());
+				changedFilesLast = context.changedFilesLast;
+
+				writeNow = true;
+			}
 		}
 
 		if (updateNow)
 		{
+			{
+				std::unique_lock<std::mutex> lock(context.changedFilesMutex);
+
+				context.changedFiles.clear();
+				context.changedFilesLast.clear();
+			}
+
 			// this removes the current changes file and updates the pack
 			updateProject(output, path);
 		}
-		else
+		else if (writeNow)
 		{
 			printStatistics(output, changedFiles.size(), changedFilesLast);
 
