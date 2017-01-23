@@ -207,7 +207,7 @@ static void printStatistics(Output* output, const UpdateStatistics& stats, unsig
 		totalChunks - stats.chunksPreserved, totalChunks, time);
 }
 
-void updateProject(Output* output, const char* path)
+bool updateProject(Output* output, const char* path)
 {
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -215,7 +215,7 @@ void updateProject(Output* output, const char* path)
 
 	std::unique_ptr<ProjectGroup> group = parseProject(output, path);
 	if (!group)
-		return;
+		return false;
 
 	removeFile(replaceExtension(path, ".qgc").c_str());
 
@@ -226,7 +226,7 @@ void updateProject(Output* output, const char* path)
 	output->print("Building file table...\r");
 
 	if (!buildFiles(output, path, files))
-		return;
+		return false;
 	
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";
@@ -236,7 +236,8 @@ void updateProject(Output* output, const char* path)
 
 	{
 		BuildContext* builder = buildStart(output, tempPath.c_str(), files.size());
-		if (!builder) return;
+		if (!builder)
+			return false;
 
 		UpdateFileIterator fileit = {files, 0};
 
@@ -244,7 +245,7 @@ void updateProject(Output* output, const char* path)
 		if (!processFile(output, builder, fileit, stats, targetPath.c_str()))
 		{
 			buildFinish(builder);
-			return;
+			return false;
 		}
 
 		// update all unprocessed files
@@ -267,6 +268,8 @@ void updateProject(Output* output, const char* path)
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
 		output->error("Error saving data file %s\n", targetPath.c_str());
-		return;
+		return false;
 	}
+
+	return true;
 }

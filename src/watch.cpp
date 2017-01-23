@@ -289,9 +289,22 @@ void watchProject(Output* output, const char* path)
 			}
 
 			// this removes the current changes file and updates the pack
-			updateProject(output, path);
+			if (updateProject(output, path))
+			{
+				updateNeeded = false;
+			}
+			else
+			{
+				// update failed; restore the change list pre-update and try again
+				{
+					std::unique_lock<std::mutex> lock(context.changedFilesMutex);
 
-			updateNeeded = false;
+					context.changedFiles.insert(changedFiles.begin(), changedFiles.end());
+				}
+
+				// update may have removed the change list so we'll need to restore that as well
+				writeNeeded = true;
+			}
 		}
 		else if (writeNow)
 		{

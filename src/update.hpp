@@ -2,4 +2,4 @@
 
 class Output;
 
-void updateProject(Output* output, const char* path);
+bool updateProject(Output* output, const char* path);
