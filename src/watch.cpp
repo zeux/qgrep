@@ -309,6 +309,9 @@ void watchProject(Output* output, const char* path)
 			else
 			{
 				output->error("Error saving changes to %s\n", replaceExtension(path, ".qgc").c_str());
+
+				// reset write deadline to try again a bit later
+				writeDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(kWatchWriteDeadline);
 			}
 		}
 	}
