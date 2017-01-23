@@ -186,7 +186,10 @@ static void printStatistics(Output* output, size_t fileCount, std::string last)
 	if (last.size() > 40)
 		last.replace(0, last.size() - 37, "...");
 
-	output->print("%d files changed; last: %-40s\r", int(fileCount), last.c_str());
+	if (last.empty())
+		output->print("%d files changed\r", int(fileCount));
+	else
+		output->print("%d files changed; last: %-40s\r", int(fileCount), last.c_str());
 }
 
 void watchProject(Output* output, const char* path)
@@ -224,17 +227,11 @@ void watchProject(Output* output, const char* path)
 			context.changedFilesLast = changedFiles.back();
 	}
 
-	if (changedFiles.size())
-		output->print("%d files changed; listening for further changes\n", int(changedFiles.size()));
-	else
-		output->print("Listening for changes\n");
-
-	// initial sync
-	writeChanges(path, changedFiles);
+	output->print("Listening for changes\n");
 
 	std::string changedFilesLast;
 	
-	bool writeNeeded = false;
+	bool writeNeeded = true; // write initial state
 	auto writeDeadline = std::chrono::steady_clock::now();
 
 	for (;;)
