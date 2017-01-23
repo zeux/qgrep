@@ -231,12 +231,12 @@ void watchProject(Output* output, const char* path)
 
 	std::string changedFilesLast;
 	
+	bool updateNeeded = false;
 	bool writeNeeded = true; // write initial state
 	auto writeDeadline = std::chrono::steady_clock::now();
 
 	for (;;)
 	{
-		bool updateNeeded = changedFiles.size() > size_t(kWatchUpdateThresholdFiles);
 		bool updateNow = false;
 		bool writeNow = false;
 
@@ -273,6 +273,11 @@ void watchProject(Output* output, const char* path)
 				{
 					writeNeeded = true;
 					writeDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(kWatchWriteDeadline);
+				}
+
+				if (changedFiles.size() > size_t(kWatchUpdateThresholdFiles))
+				{
+					updateNeeded = true;
 				}
 			}
 		}
