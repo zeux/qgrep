@@ -21,6 +21,9 @@ const int kFileListCompressionLevel = 1;
 // File data compression level, 0-9
 const int kFileDataCompressionLevel = 5;
 
+// Wait for several seconds before writing changes to amortize writes when many changes are done at once
+const int kWatchWriteDeadline = 1;
+
 // Wait for many seconds before launching an update to minimize the chance of concurrent work
 const int kWatchUpdateTimeout = 60;
 

@@ -233,6 +233,9 @@ void watchProject(Output* output, const char* path)
 	writeChanges(path, changedFiles);
 
 	std::string changedFilesLast;
+	
+	bool writeNeeded = false;
+	auto writeDeadline = std::chrono::steady_clock::now();
 
 	for (;;)
 	{
@@ -243,7 +246,15 @@ void watchProject(Output* output, const char* path)
 		{
 			std::unique_lock<std::mutex> lock(context.changedFilesMutex);
 
-			if (updateNeeded)
+			if (writeNeeded)
+			{
+				if (context.changedFilesChanged.wait_until(lock, writeDeadline) == std::cv_status::timeout)
+				{
+					// we've reached the deadline, write
+					writeNow = true;
+				}
+			}
+			else if (updateNeeded)
 			{
 				if (context.changedFilesChanged.wait_for(lock, std::chrono::seconds(kWatchUpdateTimeout)) == std::cv_status::timeout)
 				{
@@ -261,12 +272,18 @@ void watchProject(Output* output, const char* path)
 				changedFiles.assign(context.changedFiles.begin(), context.changedFiles.end());
 				changedFilesLast = context.changedFilesLast;
 
-				writeNow = true;
+				if (!writeNeeded)
+				{
+					writeNeeded = true;
+					writeDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(kWatchWriteDeadline);
+				}
 			}
 		}
 
 		if (updateNow)
 		{
+			assert(updateNeeded);
+
 			{
 				std::unique_lock<std::mutex> lock(context.changedFilesMutex);
 
@@ -276,15 +293,22 @@ void watchProject(Output* output, const char* path)
 
 			// this removes the current changes file and updates the pack
 			updateProject(output, path);
+
+			updateNeeded = false;
 		}
 		else if (writeNow)
 		{
+			assert(writeNeeded);
+
 			printStatistics(output, changedFiles.size(), changedFilesLast);
 
-			if (!writeChanges(path, changedFiles))
+			if (writeChanges(path, changedFiles))
+			{
+				writeNeeded = false;
+			}
+			else
 			{
 				output->error("Error saving changes to %s\n", replaceExtension(path, ".qgc").c_str());
-				continue;
 			}
 		}
 	}
