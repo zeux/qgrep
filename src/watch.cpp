@@ -35,7 +35,8 @@ struct WatchContext
 		for (auto& t: watchingThreads)
 			t.join();
 
-		updateThread.join();
+		if (updateThread.joinable())
+			updateThread.join();
 	}
 };
 
