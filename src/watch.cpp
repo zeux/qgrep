@@ -160,10 +160,6 @@ static std::vector<std::string> getChanges(const std::vector<FileInfo>& files, c
 static bool writeChanges(const char* path, const std::vector<std::string>& files)
 {
 	std::string targetPath = replaceExtension(path, ".qgc");
-
-	if (files.empty())
-		return removeFile(targetPath.c_str());
-
 	std::string tempPath = targetPath + "_";
 
 	{
