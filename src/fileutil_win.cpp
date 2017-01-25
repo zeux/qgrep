@@ -185,7 +185,7 @@ bool watchDirectory(const char* path, const std::function<void (const char* name
 
 			FILE_NOTIFY_INFORMATION* file = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(buf + offset);
 
-			if (file->Action == FILE_ACTION_ADDED || file->Action == FILE_ACTION_MODIFIED || file->Action == FILE_ACTION_RENAMED_NEW_NAME)
+			if (file->Action == FILE_ACTION_ADDED || file->Action == FILE_ACTION_MODIFIED || file->Action == FILE_ACTION_REMOVED || file->Action == FILE_ACTION_RENAMED_NEW_NAME)
 			{
 				std::string fp = toUtf8(file->FileName, file->FileNameLength / sizeof(WCHAR));
 
