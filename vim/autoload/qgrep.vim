@@ -481,6 +481,10 @@ function! qgrep#replaceGrep(...)
     let &grepprg = path . ' search ' . join(args, ' ')
 endfunction
 
+function! qgrep#change(file)
+	call qgrep#execute(['change', '*', a:file])
+endfunction
+
 if has('autocmd')
 	augroup QgrepAug
 		autocmd!
