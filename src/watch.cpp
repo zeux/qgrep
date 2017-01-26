@@ -26,7 +26,6 @@ struct WatchContext
 	std::vector<std::thread> watchingThreads;
 
 	std::set<std::string> changedFiles;
-	std::string changedFilesLast;
 	std::mutex changedFilesMutex;
 	std::condition_variable changedFilesChanged;
 
@@ -49,8 +48,6 @@ static void fileChanged(WatchContext* context, ProjectGroup* group, const char* 
 		std::unique_lock<std::mutex> lock(context->changedFilesMutex);
 
 		context->changedFiles.insert(npath);
-		context->changedFilesLast = npath;
-
 		context->changedFilesChanged.notify_one();
 	}
 }
@@ -178,15 +175,12 @@ static bool writeChanges(const char* path, const std::vector<std::string>& files
 	return renameFile(tempPath.c_str(), targetPath.c_str());
 }
 
-static void printStatistics(Output* output, size_t fileCount, std::string last)
+static void printStatistics(Output* output, const char* path, size_t fileCount)
 {
-	if (last.size() > 40)
-		last.replace(0, last.size() - 37, "...");
+	const char* slash = strrchr(path, '/');
+	const char* project = slash ? slash + 1 : path;
 
-	if (last.empty())
-		output->print("%d files changed\r", int(fileCount));
-	else
-		output->print("%d files changed; last: %-40s\r", int(fileCount), last.c_str());
+	output->print("%s: %d files changed\r", project, int(fileCount));
 }
 
 void watchProject(Output* output, const char* path)
@@ -219,15 +213,10 @@ void watchProject(Output* output, const char* path)
 		std::unique_lock<std::mutex> lock(context.changedFilesMutex);
 
 		context.changedFiles.insert(changedFiles.begin(), changedFiles.end());
-
-		if (!changedFiles.empty())
-			context.changedFilesLast = changedFiles.back();
 	}
 
 	output->print("Listening for changes\n");
 
-	std::string changedFilesLast;
-	
 	bool updateNeeded = changedFiles.size() > size_t(kWatchUpdateThresholdFiles);
 	bool writeNeeded = true; // write initial state
 	auto writeDeadline = std::chrono::steady_clock::now();
@@ -264,7 +253,6 @@ void watchProject(Output* output, const char* path)
 			if (context.changedFiles.size() != changedFiles.size())
 			{
 				changedFiles.assign(context.changedFiles.begin(), context.changedFiles.end());
-				changedFilesLast = context.changedFilesLast;
 
 				if (!writeNeeded)
 				{
@@ -287,7 +275,6 @@ void watchProject(Output* output, const char* path)
 				std::unique_lock<std::mutex> lock(context.changedFilesMutex);
 
 				context.changedFiles.clear();
-				context.changedFilesLast.clear();
 			}
 
 			// this removes the current changes file and updates the pack
@@ -312,7 +299,7 @@ void watchProject(Output* output, const char* path)
 		{
 			assert(writeNeeded);
 
-			printStatistics(output, changedFiles.size(), changedFilesLast);
+			printStatistics(output, path, changedFiles.size());
 
 			if (writeChanges(path, changedFiles))
 			{
