@@ -443,6 +443,15 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 			for (auto& t: threads)
 				t.join();
 		}
+		else if (argc > 2 && strcmp(argv[1], "change") == 0)
+		{
+			std::vector<std::string> paths = getProjectPaths(argv[2]);
+
+			std::vector<std::string> changes(argv + 3, argv + argc);
+
+			for (size_t i = 0; i < paths.size(); ++i)
+				appendChanges(output, paths[i].c_str(), changes);
+		}
 		else
 		{
 			bool extended = argc > 1 && strcmp(argv[1], "help") == 0;
