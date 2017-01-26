@@ -15,10 +15,10 @@
 #include "casefold.hpp"
 #include "highlight.hpp"
 #include "compression.hpp"
+#include "changes.hpp"
 
 #include <algorithm>
 #include <memory>
-#include <fstream>
 
 struct SearchOutput
 {
@@ -339,21 +339,6 @@ private:
 	std::vector<NgramString> atoms;
 	Regex* re;
 };
-
-std::vector<std::string> readChanges(const char* path)
-{
-	std::string filePath = replaceExtension(path, ".qgc");
-
-	std::vector<std::string> result;
-	std::string line;
-
-	std::ifstream in(filePath.c_str(), std::ios::in);
-
-	while (std::getline(in, line))
-		result.push_back(line);
-
-	return result;
-}
 
 size_t getNextChange(const std::vector<std::string>& changes, size_t changeIt, const char* data, size_t size)
 {

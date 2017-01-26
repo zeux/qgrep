@@ -12,6 +12,7 @@
 #include "highlight.hpp"
 #include "filterutil.hpp"
 #include "watch.hpp"
+#include "changes.hpp"
 
 #include <thread>
 

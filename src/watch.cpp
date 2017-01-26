@@ -9,6 +9,7 @@
 #include "compression.hpp"
 #include "constants.hpp"
 #include "update.hpp"
+#include "changes.hpp"
 
 #include <set>
 #include <thread>
@@ -153,26 +154,6 @@ static std::vector<std::string> getChanges(const std::vector<FileInfo>& files, c
 	}
 
 	return result;
-}
-
-static bool writeChanges(const char* path, const std::vector<std::string>& files)
-{
-	std::string targetPath = replaceExtension(path, ".qgc");
-	std::string tempPath = targetPath + "_";
-
-	{
-		FileStream out(tempPath.c_str(), "wb");
-		if (!out)
-			return false;
-
-		for (auto& f: files)
-		{
-			out.write(f.data(), f.size());
-			out.write("\n", 1);
-		}
-	}
-
-	return renameFile(tempPath.c_str(), targetPath.c_str());
 }
 
 static void printStatistics(Output* output, const char* path, size_t fileCount)
