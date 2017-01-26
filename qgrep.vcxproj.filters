@@ -148,6 +148,9 @@
     <ClCompile Include="src\watch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\changes.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="extern\lz4\lib\lz4.h">
@@ -304,6 +307,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\watch.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\changes.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

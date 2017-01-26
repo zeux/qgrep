@@ -17,7 +17,7 @@ SOURCES+=extern/re2/re2/bitstate.cc extern/re2/re2/compile.cc extern/re2/re2/dfa
 SOURCES+=extern/re2/util/pcre.cc extern/re2/util/rune.cc extern/re2/util/strutil.cc
 SOURCES+=extern/lz4/lib/lz4.c extern/lz4/lib/lz4hc.c
 
-SOURCES+=src/blockpool.cpp src/build.cpp src/compression.cpp src/encoding.cpp src/files.cpp src/filestream.cpp src/fileutil.cpp src/fileutil_posix.cpp src/fileutil_win.cpp src/filter.cpp src/filterutil.cpp src/fuzzymatch.cpp src/highlight.cpp src/info.cpp src/init.cpp src/main.cpp src/orderedoutput.cpp src/project.cpp src/regex.cpp src/search.cpp src/stringutil.cpp src/update.cpp src/watch.cpp src/workqueue.cpp
+SOURCES+=src/blockpool.cpp src/build.cpp src/changes.cpp src/compression.cpp src/encoding.cpp src/files.cpp src/filestream.cpp src/fileutil.cpp src/fileutil_posix.cpp src/fileutil_win.cpp src/filter.cpp src/filterutil.cpp src/fuzzymatch.cpp src/highlight.cpp src/info.cpp src/init.cpp src/main.cpp src/orderedoutput.cpp src/project.cpp src/regex.cpp src/search.cpp src/stringutil.cpp src/update.cpp src/watch.cpp src/workqueue.cpp
 
 OBJECTS=$(SOURCES:%=$(BUILD)/%.o)
 EXECUTABLE=qgrep
