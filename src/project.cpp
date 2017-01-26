@@ -50,6 +50,21 @@ std::string getProjectPath(const char* name)
 	}
 }
 
+std::string getProjectName(const char* path)
+{
+	std::string home = getHomePath();
+
+	if (strncmp(path, home.c_str(), home.length()) == 0 && path[home.length()] == '/')
+	{
+		const char* dot = strrchr(path, '.');
+
+		if (dot && strcmp(dot, ".cfg") == 0)
+			return std::string(path + home.length() + 1, dot);
+	}
+
+	return path;
+}
+
 static std::vector<std::string> getProjectsByPrefix(const char* prefix)
 {
 	std::vector<std::string> result;

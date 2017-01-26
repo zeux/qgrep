@@ -177,10 +177,7 @@ static bool writeChanges(const char* path, const std::vector<std::string>& files
 
 static void printStatistics(Output* output, const char* path, size_t fileCount)
 {
-	const char* slash = strrchr(path, '/');
-	const char* project = slash ? slash + 1 : path;
-
-	output->print("%s: %d files changed\r", project, int(fileCount));
+	output->print("%s: %d files changed\r", getProjectName(path).c_str(), int(fileCount));
 }
 
 void watchProject(Output* output, const char* path)

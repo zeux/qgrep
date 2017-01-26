@@ -8,6 +8,8 @@ class Output;
 class Regex;
 
 std::string getProjectPath(const char* name);
+std::string getProjectName(const char* path);
+
 std::vector<std::string> getProjects();
 std::vector<std::string> getProjectPaths(const char* list);
 
