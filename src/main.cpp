@@ -35,6 +35,8 @@
 #include <mutex>
 #include <chrono>
 
+const char* kVersion = "1.1";
+
 namespace re2 { bool RunningOnValgrind() { return false; } }
 
 class StandardOutput: public Output
@@ -334,13 +336,13 @@ void processFilterCommand(Output* output, int argc, const char** argv, const cha
 void printHelp(Output* output, bool extended)
 {
 	output->print(
-"Qgrep (http://github.com/zeux/qgrep)\n"
+"qgrep %s (http://github.com/zeux/qgrep)\n"
 "\n"
 "Basic commands:\n"
 "  qgrep init <project> <path>\n"
 "  qgrep update <project-list>\n"
 "  qgrep search <project-list> <search-options> <query>\n"
-"  qgrep help\n");
+"  qgrep help\n", kVersion);
 
     if (extended)
         output->print(
@@ -451,6 +453,10 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 
 			for (size_t i = 0; i < paths.size(); ++i)
 				appendChanges(output, paths[i].c_str(), changes);
+		}
+		else if (argc > 1 && strcmp(argv[1], "version") == 0)
+		{
+			output->print("%s\n", kVersion);
 		}
 		else
 		{
