@@ -217,7 +217,7 @@ License
 
 qgrep is distributed under the BSD license:
 
-Copyright (c) 2011-2014, Arseny Kapoulkine
+Copyright (c) 2011-2017, Arseny Kapoulkine
    
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
