@@ -183,6 +183,25 @@ static bool ignorePath(const char* path, size_t size, Regex* includeRe, Regex* e
 	return false;
 }
 
+static size_t normalizeEOL(char* data, size_t size)
+{
+	// replace \r\n with \n, replace stray \r with \n
+	size_t result = 0;
+
+	for (size_t i = 0; i < size; ++i)
+	{
+		if (data[i] == '\r')
+		{
+			data[result++] = '\n';
+			if (i + 1 < size && data[i + 1] == '\n') i++;
+		}
+		else
+			data[result++] = data[i];
+	}
+
+	return result;
+}
+
 static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf, const std::string& path, Regex* includeRe, Regex* excludeRe)
 {
 	if (ignorePath(path.c_str(), path.size(), includeRe, excludeRe))
@@ -206,7 +225,9 @@ static void processChangedFile(Regex* re, SearchOutput* output, OrderedOutput::C
 	if (ferror(file.get()) != 0)
 		return;
 
-	processFileData(re, output, outputChunk, hlbuf, path.c_str(), path.size(), data.get(), length, 0);
+	size_t nlength = normalizeEOL(data.get(), length);
+
+	processFileData(re, output, outputChunk, hlbuf, path.c_str(), path.size(), data.get(), nlength, 0);
 }
 
 static void processChunkFile(Regex* re, SearchOutput* output, OrderedOutput::Chunk* outputChunk, HighlightBuffer& hlbuf,
