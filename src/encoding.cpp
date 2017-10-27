@@ -126,18 +126,8 @@ template <bool swap> struct UTF32Decoder
 		{
 			uint32_t lead = swap ? endianSwap(*data) : *data;
 
-			// U+0000..U+FFFF
-			if (lead < 0x10000)
-			{
-				result = pred(result, lead);
-				data += 1;
-			}
-			// U+10000..U+10FFFF
-			else
-			{
-				result = pred(result, lead);
-				data += 1;
-			}
+			result = pred(result, lead);
+			data += 1;
 		}
 
 		return result;
