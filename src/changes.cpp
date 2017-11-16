@@ -3,6 +3,7 @@
 
 #include "fileutil.hpp"
 #include "filestream.hpp"
+#include "output.hpp"
 #include "project.hpp"
 
 #include <algorithm>
@@ -82,6 +83,7 @@ void appendChanges(Output* output, const char* path, const std::vector<std::stri
 		std::sort(changes.begin(), changes.end());
 		changes.erase(std::unique(changes.begin(), changes.end()), changes.end());
 
-		writeChanges(path, changes);
+		if (!writeChanges(path, changes))
+			output->error("Error writing changes for project %s\n", path);
 	}
 }
