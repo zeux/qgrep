@@ -200,6 +200,36 @@ select a search style using the following options
             D:\MyGame\Source/render/lightmanager.cpp
             D:\MyGame\Source/network/lobby/manager.cpp
 
+Keeping projects up-to-date
+---------------------------
+
+While you can use `qgrep update` to keep projects up to date, this is not very
+convenient.  If you forget to do that the searches will return stale data, and
+you'd have to update after every significant change.
+
+Because of this, qgrep provides functionality that lets you notify it about any
+changes (you can set it to run after your editor saves the file):
+
+	qgrep change <project-list> <file-list>
+
+This will update the list of changed files for each project to include the files
+that are part of that project - you can specify * as a shorthand for all
+projects.
+
+Additionally, you can run qgrep in watch mode where it will automatically listen
+to any filesystem changes and update the changed files:
+
+	qgrep watch <project-list>
+
+Internally qgrep keeps a list of changed files for each project, and `change`
+simply appends the specified files to the list. Because of this, if you only use
+`change` and never `update`, over time the search performance will deteriorate;
+`watch`, however, will automatically update the project when the list grows
+large enough to maintain query performance.
+
+Note that currently `change`/`watch` do not track new files, only changes to
+existing files.
+
 Feedback
 --------
 

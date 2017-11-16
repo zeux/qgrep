@@ -342,6 +342,7 @@ void printHelp(Output* output, bool extended)
 "  qgrep init <project> <path>\n"
 "  qgrep update <project-list>\n"
 "  qgrep search <project-list> <search-options> <query>\n"
+"  qgrep watch <project-list>\n"
 "  qgrep help\n", kVersion);
 
     if (extended)
@@ -349,6 +350,7 @@ void printHelp(Output* output, bool extended)
 "\n"
 "Advanced commands:\n"
 "  qgrep build <project-list>\n"
+"  qgrep change <project-list> <file-list>\n"
 "  qgrep files <project-list>\n"
 "  qgrep files <project-list> <search-options> <query>\n"
 "  qgrep filter <search-options> <query>\n"
