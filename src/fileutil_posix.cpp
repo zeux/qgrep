@@ -12,6 +12,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifdef __linux__
+#include <sys/inotify.h>
+#endif
+
 static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
 	int fd = open(path, O_DIRECTORY);
@@ -122,8 +126,90 @@ FILE* openFile(const char* path, const char* mode)
 	return fopen(path, mode);
 }
 
+#ifdef __linux__
+static void addWatchRec(int fd, const char* path, const char* relpath, std::vector<std::string>& paths)
+{
+	DIR* dir = opendir(path);
+
+	if (!dir)
+		return;
+
+    int wd = inotify_add_watch(fd, path, IN_CLOSE_WRITE | IN_MOVED_TO);
+
+    if (wd >= 0)
+    {
+		if (paths.size() <= size_t(wd))
+			paths.resize(wd + 1);
+
+		paths[wd] = relpath;
+    }
+
+	std::string buf, relbuf;
+
+	while (dirent* entry = readdir(dir))
+	{
+		const dirent& data = *entry;
+
+		if (traverseFileNeeded(data.d_name) && data.d_type == DT_DIR)
+		{
+			joinPaths(relbuf, relpath, data.d_name);
+			joinPaths(buf, path, data.d_name);
+
+			addWatchRec(fd, buf.c_str(), relbuf.c_str(), paths);
+		}
+    }
+
+    closedir(dir);
+}
+
+static bool watchDirectoryInotify(const char* path, const std::function<void (const char* name)>& callback)
+{
+    int fd = inotify_init();
+    if (fd < 0)
+		return false;
+
+	std::vector<std::string> paths;
+    addWatchRec(fd, path, "", paths);
+
+	std::string relbuf;
+
+    for (;;)
+    {
+        alignas(inotify_event) char buf[4096];
+        ssize_t bufsize = read(fd, buf, sizeof(buf));
+
+        if (bufsize <= 0)
+            break;
+
+        size_t offset = 0;
+        inotify_event* e = reinterpret_cast<inotify_event*>(buf);
+
+        while (offset + sizeof(inotify_event) + e->len <= size_t(bufsize))
+        {
+            if (traverseFileNeeded(e->name) && (e->mask & IN_ISDIR) == 0 && size_t(e->wd) < paths.size())
+            {
+				joinPaths(relbuf, paths[e->wd].c_str(), e->name);
+
+				callback(relbuf.c_str());
+            }
+
+            offset += sizeof(inotify_event) + e->len;
+            e = reinterpret_cast<inotify_event*>(buf + offset);
+        }
+    }
+
+    close(fd);
+
+	return true;
+}
+#endif
+
 bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback)
 {
+#if defined(__linux__)
+	return watchDirectoryInotify(path, callback);
+#else
 	return false;
+#endif
 }
 #endif
