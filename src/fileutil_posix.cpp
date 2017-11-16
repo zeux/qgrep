@@ -43,7 +43,7 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 				lstat(buf.c_str(), &st);
 			#endif
 
-				assert(type == DT_UNKNOWN || type == IFTODT(st.st_mode));
+				assert(type == DT_UNKNOWN || type == int(IFTODT(st.st_mode)));
 				type = IFTODT(st.st_mode);
 			}
 
