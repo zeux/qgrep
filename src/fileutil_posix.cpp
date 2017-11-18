@@ -16,6 +16,10 @@
 #include <sys/inotify.h>
 #endif
 
+#ifdef __APPLE__
+#include <CoreServices/CoreServices.h>
+#endif
+
 static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
 {
 	int fd = open(path, O_DIRECTORY);
@@ -204,10 +208,76 @@ static bool watchDirectoryInotify(const char* path, const std::function<void (co
 }
 #endif
 
+#ifdef __APPLE__
+struct WatchContext
+{
+	std::string rootPath;
+
+	std::function<void (const char* name)> callback;
+};
+
+static void watchCallback(ConstFSEventStreamRef streamRef, void* callbackContext, size_t numEvents, void* eventPaths, const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[])
+{
+	WatchContext* context = static_cast<WatchContext*>(callbackContext);
+
+    for (size_t i = 0; i < numEvents; ++i)
+    {
+        const char* path = static_cast<char**>(eventPaths)[i];
+        unsigned int flag = eventFlags[i];
+
+        if (flag & kFSEventStreamEventFlagItemIsFile)
+        {
+            if (flag & (kFSEventStreamEventFlagItemModified | kFSEventStreamEventFlagItemRenamed))
+            {
+				if (strncmp(path, context->rootPath.c_str(), context->rootPath.size()) == 0)
+				{
+					const char* relativePath = path + context->rootPath.size();
+
+					context->callback(relativePath);
+				}
+            }
+        }
+    }
+}
+
+static bool watchDirectoryFSEvent(const char* path, const std::function<void (const char* name)>& callback)
+{
+    CFStringRef cpath = CFStringCreateWithCString(nullptr, path, kCFStringEncodingUTF8);
+    CFArrayRef cpaths = CFArrayCreate(nullptr, reinterpret_cast<const void**>(&cpath), 1, nullptr);
+
+	std::string rootPath = path;
+	if (rootPath.back() != '/')
+		rootPath += '/';
+
+	WatchContext context = { rootPath, callback };
+	FSEventStreamContext callbackContext = {};
+	callbackContext.info = &context;
+
+    FSEventStreamRef stream = FSEventStreamCreate(nullptr, watchCallback, &callbackContext, cpaths, kFSEventStreamEventIdSinceNow, 0.1, kFSEventStreamCreateFlagFileEvents);
+
+    FSEventStreamScheduleWithRunLoop(stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+    FSEventStreamStart(stream);
+
+    CFRunLoopRun();
+
+	FSEventStreamStop(stream);
+	FSEventStreamInvalidate(stream);
+
+    FSEventStreamRelease(stream);
+    CFRelease(cpaths);
+    CFRelease(cpath);
+
+	return true;
+}
+
+#endif
+
 bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback)
 {
 #if defined(__linux__)
 	return watchDirectoryInotify(path, callback);
+#elif defined(__APPLE__)
+	return watchDirectoryFSEvent(path, callback);
 #else
 	return false;
 #endif
