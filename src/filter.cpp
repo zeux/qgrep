@@ -159,7 +159,7 @@ static unsigned int filterVisualAssist(const FilterEntries& entries, const Filte
 {
     std::vector<VisualAssistFragment> fragments;
 
-    for (auto& s: split(string, isspace))
+    for (auto& s: split(string, [](char ch) { return isspace(ch); }))
     {
 		fragments.emplace_back();
         VisualAssistFragment& f = fragments.back();
