@@ -132,6 +132,7 @@ static std::vector<std::string> getChanges(const std::vector<FileInfo>& files, c
 
 	for (const FileInfo& pf: packFiles)
 	{
+		// files that aren't in the pack were added
 		while (fileIt < files.size() && files[fileIt].path < pf.path)
 		{
 			result.push_back(files[fileIt].path);
@@ -140,13 +141,20 @@ static std::vector<std::string> getChanges(const std::vector<FileInfo>& files, c
 
 		if (files[fileIt].path == pf.path)
 		{
+			// files that were in the pack might have changed
 			if (files[fileIt].timeStamp != pf.timeStamp || files[fileIt].fileSize != pf.fileSize)
 				result.push_back(files[fileIt].path);
 
 			fileIt++;
 		}
+		else
+		{
+			// files that were in the pack were removed
+			result.push_back(pf.path);
+		}
 	}
 
+	// files that aren't in the pack were added
 	while (fileIt < files.size())
 	{
 		result.push_back(files[fileIt].path);
