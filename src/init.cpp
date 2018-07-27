@@ -11,14 +11,18 @@ static const char* kDefaultLanguages[] =
 	"C/C++", "cpp|cxx|cc|c|hpp|hxx|hh|h|inl",
 	"D", "d",
 	"F#, OCaml, Haskell", "fs|fsi|fsx|ml|mli|hs",
+	"Go", "go",
 	"HTML", "htm|html",
 	"Java, C#, VB.NET", "java|cs|vb",
 	"Lua, Squirrel", "lua|nut",
+	"Markdown, reStructuredText", "md|rst",
 	"Nim", "nim",
 	"Objective C/C++", "m|mm",
 	"Perl, Python, Ruby", "pl|py|pm|rb",
 	"PHP, JavaScript, ActionScript", "php|js|as",
+	"Rust", "rs",
 	"Shaders", "hlsl|glsl|cg|fx|cgfx",
+	"XML, JSON, CSV", "xml|json|csv",
 };
 
 static bool fileExists(const char* path)
