@@ -9,12 +9,15 @@
 static const char* kDefaultLanguages[] =
 {
 	"C/C++", "cpp|cxx|cc|c|hpp|hxx|hh|h|inl",
-	"Objective C/C++", "m|mm",
+	"D", "d",
+	"F#, OCaml, Haskell", "fs|fsi|fsx|ml|mli|hs",
+	"HTML", "htm|html",
 	"Java, C#, VB.NET", "java|cs|vb",
+	"Lua, Squirrel", "lua|nut",
+	"Nim", "nim",
+	"Objective C/C++", "m|mm",
 	"Perl, Python, Ruby", "pl|py|pm|rb",
 	"PHP, JavaScript, ActionScript", "php|js|as",
-	"F#, OCaml, Haskell", "fs|fsi|fsx|ml|mli|hs",
-	"Lua, Squirrel", "lua|nut",
 	"Shaders", "hlsl|glsl|cg|fx|cgfx",
 };
 
@@ -51,6 +54,8 @@ void initProject(Output* output, const char* name, const char* file, const char*
 	{
 		out << "# " << kDefaultLanguages[i] << std::endl;
 		out << "include \\.(" << kDefaultLanguages[i + 1] << ")$" << std::endl;
+		out << "# exclude something/$" << std::endl;
+		out << std::endl;
 	}
 
 	output->print("Project file %s created, run `qgrep update %s` to build\n", file, name);
