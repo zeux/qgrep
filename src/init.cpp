@@ -60,7 +60,7 @@ void initProject(Output* output, const char* name, const char* file, const char*
 	{
 		out << "# " << kDefaultLanguages[i] << std::endl;
 		out << "include \\.(" << kDefaultLanguages[i + 1] << ")$" << std::endl;
-		out << "# exclude something/$" << std::endl;
+		out << "# exclude ^some folder/" << std::endl;
 		out << std::endl;
 	}
 
