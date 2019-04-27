@@ -11,7 +11,7 @@ function! qgrep#buffers#parseInput(state, input)
 endfunction
 
 function! qgrep#buffers#getResults(state, pattern)
-	let ids = filter(range(1, bufnr('$')), 'empty(getbufvar(v:val, "&bt")) && getbufvar(v:val, "&bl") && len(bufname(v:val))')
+    let ids = filter(range(1, bufnr('$')), 'empty(getbufvar(v:val, "&bt")) && getbufvar(v:val, "&bl") && len(bufname(v:val))')
     let buffers = map(ids, 'fnamemodify(bufname(v:val), ":.")')
     return qgrep#filter(a:state, a:pattern, buffers)
 endfunction
