@@ -235,7 +235,7 @@ function! s:initOptions(state)
     setlocal noswapfile
     setlocal winfixheight
     setlocal nowrap
-    
+
     if has('conceal')
         setlocal concealcursor=n
         setlocal conceallevel=2
@@ -257,22 +257,22 @@ function! s:initKeys(state, stateexpr)
         endfor
     endif
 
-	" normal keys
-	for ch in range(32, 126)
-		execute printf(charcmd, printf('<char-%d>', ch), a:stateexpr, escape(nr2char(ch), '"|\'))
-	endfor
+    " normal keys
+    for ch in range(32, 126)
+        execute printf(charcmd, printf('<char-%d>', ch), a:stateexpr, escape(nr2char(ch), '"|\'))
+    endfor
 
     " keypad numeric keys
-	for ch in range(0, 9)
-		execute printf(charcmd, printf('<k%d>', ch), a:stateexpr, ch)
-	endfo
+    for ch in range(0, 9)
+        execute printf(charcmd, printf('<k%d>', ch), a:stateexpr, ch)
+    endfo
 
     " keypad non-numeric keys
     let kprange = { 'Plus': '+', 'Minus': '-', 'Divide': '/', 'Multiply': '*', 'Point': '.' }
 
-	for [key, ch] in items(kprange)
-		execute printf(charcmd, printf('<k%s>', key), a:stateexpr, ch)
-	endfor
+    for [key, ch] in items(kprange)
+        execute printf(charcmd, printf('<k%s>', key), a:stateexpr, ch)
+    endfor
 
     " Ctrl-R + register
     " note: we can't use chords and have to resort to getchar() because timeoutlen is 0 (it's 0 to disable user mappings i.e. <Leader>letter)
@@ -291,10 +291,10 @@ function! s:initKeys(state, stateexpr)
 endfunction
 
 function! s:iscmdwin()
-	let v:errmsg = ""
-	silent! noautocmd wincmd p
-	silent! noautocmd wincmd p
-	return v:errmsg =~ '^E11:'
+    let v:errmsg = ""
+    silent! noautocmd wincmd p
+    silent! noautocmd wincmd p
+    return v:errmsg =~ '^E11:'
 endfunction
 
 function! s:mergeConfig(target, source)
@@ -326,10 +326,10 @@ function! s:open(args)
     call s:mergeConfig(state.config, has_key(g:qgrep, mode) ? g:qgrep[mode] : {})
 
     " save commands to current window state
-	let state.winrestore = [winrestcmd(), &lines, winnr('$')]
+    let state.winrestore = [winrestcmd(), &lines, winnr('$')]
 
     " create Qgrep window
-	silent! keepalt botright 1new Qgrep
+    silent! keepalt botright 1new Qgrep
 
     " initialize buffer
     call s:initOptions(state)
@@ -482,13 +482,13 @@ function! qgrep#replaceGrep(...)
 endfunction
 
 function! qgrep#change(file)
-	call qgrep#execute(['change', '*', a:file])
+    call qgrep#execute(['change', '*', a:file])
 endfunction
 
 if has('autocmd')
-	augroup QgrepAug
-		autocmd!
-		autocmd BufLeave Qgrep call s:close()
+    augroup QgrepAug
+        autocmd!
+        autocmd BufLeave Qgrep call s:close()
         autocmd CursorHold Qgrep if s:state.config.lazyupdate | call s:update(s:state) | endif
-	augroup END
+    augroup END
 endif

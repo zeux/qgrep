@@ -1,5 +1,5 @@
 if ( exists('g:loaded_qgrep') && g:loaded_qgrep ) || v:version < 700 || &cp
-	finish
+    finish
 endif
 
 let g:loaded_qgrep = 1
