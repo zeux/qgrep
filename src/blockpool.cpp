@@ -24,7 +24,7 @@ BlockPool::~BlockPool()
 std::shared_ptr<char> BlockPool::allocate(size_t size)
 {
 	if (size > blockSize)
-		return std::shared_ptr<char>(new char[size]);
+		return std::shared_ptr<char>(new char[size], std::default_delete<char[]>());
 
 	std::lock_guard<std::mutex> lock(mutex);
 
