@@ -11,6 +11,8 @@ jobs:
     runs-on: ${{matrix.os}}-latest
     steps:
     - uses: actions/checkout@v1
+      with:
+        submodules: true
     - name: make
       run: make -j2
     - name: prepare upload
@@ -33,8 +35,8 @@ jobs:
         arch: [Win32, x64]
     steps:
     - uses: actions/checkout@v1
-    - name: cmake configure
-      run: cmake . -DBUILD_DEMO=ON -DBUILD_TOOLS=ON -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -A ${{matrix.arch}}
+      with:
+        submodules: true
     - name: msbuild
       shell: bash # necessary for fail-fast
       run: |
