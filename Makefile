@@ -5,8 +5,8 @@ CXXFLAGS=-std=c++11
 LDFLAGS=-lpthread -lstdc++
 
 ifeq ($(shell uname),Darwin)
-CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -arch i386 -arch x86_64 -stdlib=libc++
-LDFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -arch i386 -arch x86_64 -stdlib=libc++
+CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -stdlib=libc++
+LDFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -stdlib=libc++
 LDFLAGS+=-framework CoreFoundation -framework CoreServices
 else
 LDFLAGS+=-pie -Wl,--dynamic-list=src/qgrep.dynlist
