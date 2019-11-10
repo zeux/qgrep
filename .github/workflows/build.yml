@@ -41,12 +41,12 @@ jobs:
       shell: cmd
       run: |
         set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin
-        msbuild qgrep.vcxproj /v:minimal /p:Configuration=Release
+        msbuild qgrep.vcxproj /v:minimal /p:Configuration=Release /p:Platform=${{matrix.arch}}
     - name: msbuild dll
       shell: cmd
       run: |
         set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin
-        msbuild qgrep.vcxproj /v:minimal /p:Configuration=ReleaseDLL
+        msbuild qgrep.vcxproj /v:minimal /p:Configuration=ReleaseDLL /p:Platform=${{matrix.arch}}
     - name: prepare upload
       shell: bash
       run: |
@@ -57,5 +57,5 @@ jobs:
         cp build/Release_${{matrix.arch}}/qgrep.exe upload/
     - uses: actions/upload-artifact@v1
       with:
-        name: qgrep-windows-${{matrix.arc}}
+        name: qgrep-windows-${{matrix.arch}}
         path: upload
