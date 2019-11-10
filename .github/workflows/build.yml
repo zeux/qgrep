@@ -1,0 +1,54 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  unix:
+    strategy:
+      matrix:
+        os: [ubuntu, macos]
+    name: ${{matrix.os}}
+    runs-on: ${{matrix.os}}-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: make
+      run: make -j2
+    - name: prepare upload
+      run: |
+        strip qgrep
+        mkdir upload
+        cp -R vim upload/
+        cp qgrep upload/vim/
+        cp README.md upload/
+        cp qgrep upload/
+    - uses: actions/upload-artifact@v1
+      with:
+        name: qgrep-${{matrix.os}}
+        path: upload
+
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [Win32, x64]
+    steps:
+    - uses: actions/checkout@v1
+    - name: cmake configure
+      run: cmake . -DBUILD_DEMO=ON -DBUILD_TOOLS=ON -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -A ${{matrix.arch}}
+    - name: msbuild
+      shell: bash # necessary for fail-fast
+      run: |
+        msbuild qgrep.vcxproj /v:minimal /p:Configuration=Release
+        msbuild qgrep.vcxproj /v:minimal /p:Configuration=ReleaseDLL
+    - name: prepare upload
+      shell: bash
+      run: |
+        mkdir upload
+        cp -R vim upload/
+        cp build/ReleaseDLL_${{matrix.arch}}/qgrep.dll upload/vim/
+        cp README.md upload/
+        cp build/Release_${{matrix.arch}}/qgrep.exe upload/
+    - uses: actions/upload-artifact@v1
+      with:
+        name: qgrep-windows-${{matrix.arc}}
+        path: upload
