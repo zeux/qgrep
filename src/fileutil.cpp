@@ -48,7 +48,7 @@ std::string replaceExtension(const char* path, const char* ext)
 
 bool traverseFileNeeded(const char* name)
 {
-    if (strcmp(name, "CVS") == 0) return false;
+	if (strcmp(name, "CVS") == 0) return false;
 
 	if (name[0] == '.')
 	{
