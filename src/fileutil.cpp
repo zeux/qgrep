@@ -48,13 +48,15 @@ std::string replaceExtension(const char* path, const char* ext)
 
 bool traverseFileNeeded(const char* name)
 {
+    if (strcmp(name, "CVS") == 0) return false;
+
 	if (name[0] == '.')
 	{
 		// pseudo-folders
 		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) return false;
-	
+
 		// VCS folders
-		if (strcmp(name, ".svn") == 0 || strcmp(name, ".hg") == 0 || strcmp(name, ".git") == 0) return false;
+		if (strcmp(name, ".bzr") == 0 || strcmp(name, ".git") == 0 || strcmp(name, ".hg") == 0 || strcmp(name, ".svn") == 0) return false;
 	}
 
 	return true;
