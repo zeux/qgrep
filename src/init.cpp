@@ -9,13 +9,24 @@
 static const char* kDefaultLanguages[] =
 {
 	"C/C++", "cpp|cxx|cc|c|hpp|hxx|hh|h|inl",
-	"Objective C/C++", "m|mm",
-	"Java, C#, VB.NET", "java|cs|vb",
-	"Perl, Python, Ruby", "pl|py|pm|rb",
-	"PHP, JavaScript, ActionScript", "php|js|as",
+	"C#, VB.NET", "cs|vb",
+	"D", "d",
+	"Delphi, Pascal", "dpr|pas|pp|inc|dfm|lfm|lpi|lpr|dpk|dproj|spp",
 	"F#, OCaml, Haskell", "fs|fsi|fsx|ml|mli|hs",
+	"Go", "go",
+	"HTML, CSS", "htm|html|css|sass|scss",
+	"Java, JavaScript, Kotlin, TypeScript", "java|js|kt|kts|ts|tsx",
+	"Julia", "jl",
 	"Lua, Squirrel", "lua|nut",
+	"Markdown, reStructuredText, simple text", "md|rst|txt",
+	"Nim", "nim",
+	"Objective C/C++", "m|mm",
+	"Perl, Python, Ruby", "pl|py|pm|rb",
+	"PHP, ActionScript", "php|as",
+	"Rust", "rs",
 	"Shaders", "hlsl|glsl|cg|fx|cgfx",
+	"XML, JSON, CSV", "xml|json|csv",
+	"Zig", "zig"
 };
 
 static bool fileExists(const char* path)
@@ -52,6 +63,9 @@ void initProject(Output* output, const char* name, const char* file, const char*
 		out << "# " << kDefaultLanguages[i] << std::endl;
 		out << "include \\.(" << kDefaultLanguages[i + 1] << ")$" << std::endl;
 	}
+
+	out << "# exclude ^some folder/" << std::endl;
+	out << std::endl;
 
 	output->print("Project file %s created, run `qgrep update %s` to build\n", file, name);
 }
