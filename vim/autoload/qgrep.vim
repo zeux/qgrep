@@ -314,8 +314,12 @@ function! s:open(args)
 
     " get state from history or from sensible defaults
     let mode = empty(a:args) ? g:qgrep.mode : a:args[0]
-    let state = has_key(s:history, mode) ? copy(s:history[mode]) : {'cursor': 0, 'input': '', 'line': 0, 'results': [], 'mode': mode, 'config': {}}
+    let state = (has_key(s:history, mode)) && (len(a:args) <= 1) ? copy(s:history[mode]) : {'cursor': 0, 'input': '', 'line': 0, 'results': [], 'mode': mode, 'config': {}}
     let s:state = state
+
+    if len(a:args) > 1
+        let state.input = a:args[1]
+    endif
 
     " make sure that any existing input triggers the 'selected' state
     let state.cursor = len(state.input) ? -1 : 0
