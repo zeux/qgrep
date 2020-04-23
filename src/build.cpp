@@ -636,23 +636,42 @@ bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp
 	}
 }
 
+static size_t getOptimalChunkSize(size_t pendingSize)
+{
+	// This function returns a size in [0.75x .. 1.5x] range (or 0)
+	const size_t kChunkMaxSize = kChunkSize * 3 / 2;
+	const size_t kChunkMinSize = kChunkMaxSize / 2;
+
+	// Never store chunks smaller than 0.75x
+	if (pendingSize < kChunkMinSize)
+		return 0;
+
+	// If we have at least 2 chunks worth of data, it's safe to store a full chunk
+	if (pendingSize >= kChunkSize * 2)
+		return kChunkSize;
+
+	// If we have less than 1.5x chunks, we need to store the entire set in one go
+	if (pendingSize < kChunkMaxSize)
+		return pendingSize;
+
+	// Otherwise we should split the chunk in half; the reason why it's important to not just
+	// return kChunkSize here is that if we have, say, 1.6x chunks to store, splitting into 1x and 0.6x
+	// leaves us with a chunk that's smaller than 0.75x
+	// Splitting in half makes sure that both halves are at least kChunkMinSize
+	return pendingSize / 2;
+}
+
 bool buildAppendChunk(BuildContext* context, const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra, bool firstFileIsSuffix)
 {
 	// In order to maintain file order, we need to flush pending files before writing the chunk.
 	// To balance the cost of chunk recompression with chunk sizes, we flush all files but instead of
-	// using a fixed chunk size, we try to flush the sizes between Min and Max as appropriate.
-	const size_t kChunkMaxSize = kChunkSize * 3 / 2;
-	const size_t kChunkMinSize = kChunkMaxSize / 2;
-
+	// using a fixed chunk size, we use a balanced chunk size computed in getOptimalChunkSize
 	while (!context->pendingFiles.empty())
 	{
-		// Never leave chunks that are too small
-		if (context->pendingSize < kChunkMinSize)
-			return false;
+		size_t chunkSize = getOptimalChunkSize(context->pendingSize);
 
-		// If the pending size is between min and max, we need to flush it entirely
-		// Failure to do so will split the chunk into two pieces and one of them will be too small (under min)
-		size_t chunkSize = (context->pendingSize <= kChunkMaxSize) ? context->pendingSize : kChunkSize;
+		if (chunkSize == 0)
+			return false;
 
 		flushChunk(context, chunkSize);
 	}
