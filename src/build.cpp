@@ -436,7 +436,7 @@ static ChunkIndex prepareChunkIndex(const char* data, size_t size)
 	return result;
 }
 
-static void flushChunk(BuildContext* context, const Chunk& chunk)
+static void storeChunk(BuildContext* context, const Chunk& chunk)
 {
 	if (chunk.files.empty()) return;
 
@@ -504,23 +504,7 @@ static void flushChunk(BuildContext* context, size_t size)
 	context->pendingSize -= chunk.totalSize;
 
 	// store resulting chunk
-	flushChunk(context, chunk);
-}
-
-static void flushIfNeeded(BuildContext* context)
-{
-	while (context->pendingSize >= kChunkSize * 2)
-	{
-		flushChunk(context, kChunkSize);
-	}
-}
-
-static void flush(BuildContext* context)
-{
-	while (context->pendingSize > 0)
-	{
-		flushChunk(context, kChunkSize);
-	}
+	storeChunk(context, chunk);
 }
 
 static void writeChunkThreadFun(BuildContext* context)
@@ -618,7 +602,14 @@ void buildAppendFilePart(BuildContext* context, const char* path, unsigned int s
 		context->pendingSize += dataSize;
 	}
 
-	flushIfNeeded(context);
+	// We try to maintain a small pending set; this makes sure we have at most 2 chunk sizes worth of data
+	// It's possible in theory to flush chunks earlier (when we reach kChunkSize), but this means that if we
+	// see an already compressed chunk (buildAppendChunk), we may not be able to rebalance chunk sizes and will
+	// be forced to recompress.
+	while (context->pendingSize >= kChunkSize * 2)
+	{
+		flushChunk(context, kChunkSize);
+	}
 }
 
 bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp, uint64_t fileSize)
@@ -647,31 +638,23 @@ bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp
 
 bool buildAppendChunk(BuildContext* context, const DataChunkHeader& header, std::unique_ptr<char[]>& compressedData, std::unique_ptr<char[]>& index, std::unique_ptr<char[]>& extra, bool firstFileIsSuffix)
 {
-	flushIfNeeded(context);
-
-	// Because of the logic in flushIfNeeded, we should now have kChunkSize * m pending data, where m is in [0..2)
-	// Moreover, usually m is in [1..2), since flushIfNeeded leaves kChunkSize worth of data. We can try to either
-	// flush the entire pending set as one chunk, or do it in two chunks. Let's pick m=1.5 as a split decision point,
-	// with m=0.75 (1.5/2) as a point when we refuse to append the chunk.
+	// In order to maintain file order, we need to flush pending files before writing the chunk.
+	// To balance the cost of chunk recompression with chunk sizes, we flush all files but instead of
+	// using a fixed chunk size, we try to flush the sizes between Min and Max as appropriate.
 	const size_t kChunkMaxSize = kChunkSize * 3 / 2;
 	const size_t kChunkMinSize = kChunkMaxSize / 2;
 
-	if (context->pendingSize > 0)
+	while (!context->pendingFiles.empty())
 	{
-		// Assumptions above are invalid for some reason, bail out
-		if (context->pendingSize > kChunkSize * 2)
-			return false;
-
 		// Never leave chunks that are too small
 		if (context->pendingSize < kChunkMinSize)
 			return false;
 
-		// Never make chunks that are too big
-		if (context->pendingSize > kChunkMaxSize)
-			flushChunk(context, context->pendingSize / 2);
+		// If the pending size is between min and max, we need to flush it entirely
+		// Failure to do so will split the chunk into two pieces and one of them will be too small (under min)
+		size_t chunkSize = (context->pendingSize <= kChunkMaxSize) ? context->pendingSize : kChunkSize;
 
-		assert(context->pendingSize < kChunkMaxSize);
-		flushChunk(context, context->pendingSize);
+		flushChunk(context, chunkSize);
 	}
 
 	// We should be good to go now
@@ -687,7 +670,11 @@ unsigned int buildFinish(BuildContext* context)
 {
 	if (context->writeChunkThread.joinable())
 	{
-		flush(context);
+		// Write all remaining files (usually just flushes a single chunk)
+		while (!context->pendingFiles.empty())
+		{
+			flushChunk(context, kChunkSize);
+		}
 
 		ChunkFileData chunkDummy = { context->chunkOrder };
 		context->writeChunkQueue.push(std::move(chunkDummy));
