@@ -1,3 +1,4 @@
+// This file is part of qgrep and is distributed under the MIT license, see LICENSE.md
 #include "common.hpp"
 #include "fileutil.hpp"
 
