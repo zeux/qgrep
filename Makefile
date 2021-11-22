@@ -8,6 +8,10 @@ ifeq ($(shell uname -p),x86_64)
 CCFLAGS+=-msse2 -DUSE_SSE2
 endif
 
+ifeq ($(shell uname -p),arm)
+CCFLAGS+=-DUSE_NEON
+endif
+
 ifeq ($(shell uname),Darwin)
 CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -stdlib=libc++
 LDFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -stdlib=libc++
