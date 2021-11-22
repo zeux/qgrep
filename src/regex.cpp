@@ -13,13 +13,13 @@
 
 #include <string.h>
 
-#ifdef USE_SSE2
-#include <emmintrin.h>
+#if defined(USE_SSE2) || defined(USE_NEON)
+#include "charsimd.hpp"
+#endif
 
-#   ifdef _MSC_VER
-#       include <intrin.h>
-#       pragma intrinsic(_BitScanForward)
-#   endif
+#ifdef _MSC_VER
+#   include <intrin.h>
+#   pragma intrinsic(_BitScanForward)
 #endif
 
 static bool transformRegexCasefold(const char* pattern, std::string& res, bool literal)
@@ -55,7 +55,7 @@ public:
 	virtual size_t match(const char* data, size_t size) = 0;
 };
 
-#ifdef USE_SSE2
+#if defined(USE_SSE2) || defined(USE_NEON)
 inline int countTrailingZeros(int value)
 {
 #ifdef _MSC_VER
@@ -76,15 +76,15 @@ public:
 
 	virtual size_t match(const char* data, size_t size)
 	{
-		__m128i pattern = _mm_set1_epi8(first);
+		simd16 pattern = simd_dup(first);
 
 		size_t offset = 0;
 
 		while (offset + 16 <= size)
 		{
-			__m128i val = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + offset));
-			__m128i maskv = _mm_cmpeq_epi8(val, pattern);
-			int mask = _mm_movemask_epi8(maskv);
+			simd16 val = simd_load(data + offset);
+			simd16 maskv = simd_cmpeq(val, pattern);
+			int mask = simd_movemask(maskv);
 
 			if (mask == 0)
 				;
@@ -130,16 +130,16 @@ public:
 
 	virtual size_t match(const char* data, size_t size)
 	{
-		__m128i firstLetter = _mm_loadu_si128(reinterpret_cast<const __m128i*>(this->firstLetter));
-		__m128i patternData = _mm_loadu_si128(reinterpret_cast<const __m128i*>(this->patternData));
-		__m128i patternMask = _mm_loadu_si128(reinterpret_cast<const __m128i*>(this->patternMask));
+		simd16 firstLetter = simd_load(this->firstLetter);
+		simd16 patternData = simd_load(this->patternData);
+		simd16 patternMask = simd_load(this->patternMask);
 
 		size_t offset = firstLetterPos;
 
 		while (offset + 32 <= size)
 		{
-			__m128i value = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + offset));
-			unsigned int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(value, firstLetter));
+			simd16 value = simd_load(data + offset);
+			unsigned int mask = simd_movemask(simd_cmpeq(value, firstLetter));
 
 			// advance offset regardless of match results to reduce number of live values
 			offset += 16;
@@ -152,10 +152,10 @@ public:
 				mask &= ~(1 << pos);
 
 				// check if we have a match
-				__m128i patternMatch = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + dataOffset));
-				__m128i matchMask = _mm_or_si128(patternMask, _mm_cmpeq_epi8(patternMatch, patternData));
+				simd16 patternMatch = simd_load(data + dataOffset);
+				simd16 matchMask = simd_or(patternMask, simd_cmpeq(patternMatch, patternData));
 
-				if (_mm_movemask_epi8(matchMask) == 0xffff)
+				if (simd_movemask(matchMask) == 0xffff)
 				{
 					size_t matchOffset = dataOffset + firstLetterOffset - firstLetterPos;
 
