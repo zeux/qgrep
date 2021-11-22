@@ -257,7 +257,7 @@ public:
 
 		std::string prefix = getPrefix(re.get(), 128);
 
-	#ifdef USE_SSE2
+	#if defined(USE_SSE2) || defined(USE_NEON)
 		if (prefix.length() == 1)
 			matcher.reset(new LiteralMatcher1(prefix.c_str()));
 		else if (prefix.length() > 1)
