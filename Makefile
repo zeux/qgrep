@@ -1,8 +1,12 @@
 BUILD=build/make-$(CXX)
 
-CCFLAGS=-c -g -Wall -Werror -fPIC -O3 -msse2 -DUSE_SSE2 -mtune=native -Iextern/lz4/lib -Iextern/re2
+CCFLAGS=-c -g -Wall -Werror -fPIC -O3 -mtune=native -Iextern/lz4/lib -Iextern/re2
 CXXFLAGS=-std=c++11
 LDFLAGS=-lpthread -lstdc++
+
+ifeq ($(shell uname -p),x86_64)
+CCFLAGS+=-msse2 -DUSE_SSE2
+endif
 
 ifeq ($(shell uname),Darwin)
 CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -stdlib=libc++
