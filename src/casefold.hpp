@@ -1,12 +1,8 @@
 // This file is part of qgrep and is distributed under the MIT license, see LICENSE.md
 #pragma once
 
-#ifdef USE_SSE2
-#include <emmintrin.h>
-#endif
-
-#ifdef USE_NEON
-#include <arm_neon.h>
+#if defined(USE_SSE2) || defined(USE_NEON)
+#include "charsimd.hpp"
 #endif
 
 const unsigned char kCaseFoldASCII[] =
@@ -34,7 +30,7 @@ inline char casefold(char ch)
 	return kCaseFoldASCII[static_cast<unsigned char>(ch)];
 }
 
-#if defined(USE_SSE2)
+#if defined(USE_SSE2) || defined(USE_NEON)
 inline void casefoldRange(char* dest, const char* begin, const char* end)
 {
 	if (end - begin < 64)
@@ -46,49 +42,18 @@ inline void casefoldRange(char* dest, const char* begin, const char* end)
 	else
 	{
 		// Shift 'A'..'Z' range ([65..90]) to [102..127] to use one signed comparison insn
-		__m128i shiftAmount = _mm_set1_epi8(127 - 'Z');
-		__m128i lowerBound = _mm_set1_epi8(127 - ('Z' - 'A') - 1);
-		__m128i upperBit = _mm_set1_epi8(0x20);
+		simd16 shiftAmount = simd_dup(127 - 'Z');
+		simd16 lowerBound = simd_dup(127 - ('Z' - 'A') - 1);
+		simd16 upperBit = simd_dup(0x20);
 
 		const char* i = begin;
 
 		for (; i + 16 < end; i += 16)
 		{
-			__m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(i));
-			__m128i upperMask = _mm_cmpgt_epi8(_mm_add_epi8(v, shiftAmount), lowerBound);
-			__m128i cfv = _mm_or_si128(v, _mm_and_si128(upperMask, upperBit));
-			_mm_storeu_si128(reinterpret_cast<__m128i*>(dest), cfv);
-			dest += 16;
-		}
-
-		for (; i != end; ++i)
-			*dest++ = casefold(*i);
-	}
-}
-#elif defined(USE_NEON)
-inline void casefoldRange(char* dest, const char* begin, const char* end)
-{
-	if (end - begin < 64)
-	{
-		// short string, don't bother optimizing
-		for (const char* i = begin; i != end; ++i)
-			*dest++ = casefold(*i);
-	}
-	else
-	{
-		// Shift 'A'..'Z' range ([65..90]) to [102..127] to use one signed comparison insn
-		int8x16_t shiftAmount = vdupq_n_s8(127 - 'Z');
-		int8x16_t lowerBound = vdupq_n_s8(127 - ('Z' - 'A') - 1);
-		int8x16_t upperBit = vdupq_n_s8(0x20);
-
-		const char* i = begin;
-
-		for (; i + 16 < end; i += 16)
-		{
-			int8x16_t v = vld1q_s8(reinterpret_cast<const int8_t*>(i));
-			int8x16_t upperMask = vcgtq_s8(vaddq_s8(v, shiftAmount), lowerBound);
-			int8x16_t cfv = vorrq_s8(v, vandq_s8(upperMask, upperBit));
-			vst1q_s8(reinterpret_cast<int8_t*>(dest), cfv);
+			simd16 v = simd_load(i);
+			simd16 upperMask = simd_cmpgt(simd_add(v, shiftAmount), lowerBound);
+			simd16 cfv = simd_or(v, simd_and(upperMask, upperBit));
+			simd_store(dest, cfv);
 			dest += 16;
 		}
 
