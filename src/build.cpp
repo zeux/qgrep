@@ -491,9 +491,12 @@ static void flushChunk(BuildContext* context, size_t size)
 		}
 		else
 		{
-			// last file does not fit completely, store some part of it and put the remaining lines back into pending list
+			// last file may not fit completely, store some part of it and put the remaining lines back into pending list
 			appendChunkFilePrefix(chunk, file, remainingSize);
-			context->pendingFiles.emplace_front(file);
+
+			// we might have fully appended the file if it was one huge line, but usually there's a remainder to be processed later
+			if (file.contents.size())
+				context->pendingFiles.emplace_front(file);
 
 			// it's impossible to add any more files to this chunk without making it larger than requested
 			break;
