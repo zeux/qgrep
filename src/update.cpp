@@ -118,6 +118,8 @@ static void processChunkData(Output* output, BuildContext* builder, UpdateFileIt
 	decompress(buffer, chunk.uncompressedSize, compressed.get(), chunk.compressedSize);
 
 	// as a special case, first file in the chunk can be a part of an existing file
+	bool skipFirstFile = false;
+
 	if (files[0].startLine > 0 && fileit.index > 0)
 	{
 		// in this case, if the file is current then we only added the part before this in the previous chunk processing, so just add the next part
@@ -127,10 +129,11 @@ static void processChunkData(Output* output, BuildContext* builder, UpdateFileIt
 		if (comparePath(*prev, f, data) == 0 && isFileCurrent(*prev, f, data))
 		{
 			buildAppendFilePart(builder, prev->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, prev->timeStamp, prev->fileSize);
+			skipFirstFile = true;
 		}
 	}
 
-	for (size_t i = 0; i < chunk.fileCount; ++i)
+	for (size_t i = skipFirstFile; i < chunk.fileCount; ++i)
 	{
 		const DataChunkFileHeader& f = files[i];
 
@@ -147,7 +150,9 @@ static void processChunkData(Output* output, BuildContext* builder, UpdateFileIt
 		{
 			// check if we can reuse the data from qgrep db
 			if (isFileCurrent(*fileit, f, data))
+			{
 				buildAppendFilePart(builder, fileit->path.c_str(), f.startLine, data + f.dataOffset, f.dataSize, fileit->timeStamp, fileit->fileSize);
+			}
 			else
 			{
 				buildAppendFile(builder, fileit->path.c_str(), fileit->timeStamp, fileit->fileSize);
