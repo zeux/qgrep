@@ -3,4 +3,4 @@
 
 class Output;
 
-void watchProject(Output* output, const char* path);
+void watchProject(Output* output, const char* path, bool interactive);
