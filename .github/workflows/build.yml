@@ -40,12 +40,12 @@ jobs:
     - name: msbuild exe
       shell: cmd
       run: |
-        set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin
+        set PATH=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin
         msbuild qgrep.vcxproj /v:minimal /p:Configuration=Release /p:Platform=${{matrix.arch}}
     - name: msbuild dll
       shell: cmd
       run: |
-        set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin
+        set PATH=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin
         msbuild qgrep.vcxproj /v:minimal /p:Configuration=ReleaseDLL /p:Platform=${{matrix.arch}}
     - name: prepare upload
       shell: bash
