@@ -344,7 +344,7 @@ void printHelp(Output* output, bool extended)
 "  qgrep update <project-list>\n"
 "  qgrep search <project-list> <search-options> <query>\n"
 "  qgrep watch <project-list>\n"
-"  qgrep intercative <project-list>\n"
+"  qgrep interactive <project-list>\n"
 "  qgrep help\n", kVersion);
 
     if (extended)
@@ -446,7 +446,7 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 			std::vector<std::thread> threads;
 
 			for (size_t i = 0; i < paths.size(); ++i)
-				threads.emplace_back([=] { watchProject(output, paths[i].c_str(), false); });
+				threads.emplace_back([=] { watchProject(output, paths[i].c_str(), /* interactive= */ false); });
 
 			for (auto& t: threads)
 				t.join();
@@ -466,14 +466,14 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 			std::vector<std::thread> threads;
 
 			for (size_t i = 0; i < paths.size(); ++i)
-				threads.emplace_back([=] { watchProject(output, paths[i].c_str(), true); });
+				threads.emplace_back([=] { watchProject(output, paths[i].c_str(), /* interactive= */ true); });
 
 			std::vector<const char*> intArgv(argv, argv + argc);
 			std::string intInput;
 			intArgv.push_back(""); // Used later to place the input
 
 			char buf[1024];
-			while (fgets(buf, 1024, stdin))
+			while (fgets(buf, sizeof(buf), stdin))
 			{
 				if (strncmp(buf, "search ", 7) == 0)
 				{
