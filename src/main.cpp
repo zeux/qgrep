@@ -344,6 +344,7 @@ void printHelp(Output* output, bool extended)
 "  qgrep update <project-list>\n"
 "  qgrep search <project-list> <search-options> <query>\n"
 "  qgrep watch <project-list>\n"
+"  qgrep interactive <project-list>\n"
 "  qgrep help\n", kVersion);
 
     if (extended)
@@ -382,7 +383,9 @@ void printHelp(Output* output, bool extended)
 "\n"
 "<search-options> can include additional options for files/filter commands:\n"
 "  fp - search in file paths (default)  fn - search in file names\n"
-"  ff - fuzzy search with ranking       fs - search for space-delimited words\n");
+"  ff - fuzzy search with ranking       fs - search for space-delimited words\n"
+"\n"
+"in interactive mode, you can input 'search' and 'files' commands without a project list.\n");
 }
 
 void mainImpl(Output* output, int argc, const char** argv, const char* input, size_t inputSize)
@@ -443,7 +446,7 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 			std::vector<std::thread> threads;
 
 			for (size_t i = 0; i < paths.size(); ++i)
-				threads.emplace_back([=] { watchProject(output, paths[i].c_str()); });
+				threads.emplace_back([=] { watchProject(output, paths[i].c_str(), /* interactive= */ false); });
 
 			for (auto& t: threads)
 				t.join();
@@ -456,6 +459,40 @@ void mainImpl(Output* output, int argc, const char** argv, const char* input, si
 
 			for (size_t i = 0; i < paths.size(); ++i)
 				appendChanges(output, paths[i].c_str(), changes);
+		}
+		else if (argc > 2 && strcmp(argv[1], "interactive") == 0)
+		{
+			std::vector<std::string> paths = getProjectPaths(argv[2]);
+			std::vector<std::thread> threads;
+
+			for (size_t i = 0; i < paths.size(); ++i)
+				threads.emplace_back([=] { watchProject(output, paths[i].c_str(), /* interactive= */ true); });
+
+			std::vector<const char*> intArgv(argv, argv + argc);
+			std::string intInput;
+			intArgv.push_back(""); // Used later to place the input
+
+			char buf[1024];
+			while (fgets(buf, sizeof(buf), stdin))
+			{
+				if (strncmp(buf, "search ", 7) == 0)
+				{
+					intArgv[1] = "search";
+					intInput = std::string(buf + 7, buf + strlen(buf) - 1);
+					intArgv.back() = intInput.c_str();
+					processSearchCommand(output, intArgv.size(), &intArgv[0], searchProject);
+				}
+				else if (strncmp(buf, "files ", 6) == 0)
+				{
+					intArgv[1] = "files";
+					intInput = std::string(buf + 6, buf + strlen(buf) - 1);
+					intArgv.back() = intInput.c_str();
+					processSearchCommand(output, intArgv.size(), &intArgv[0], searchFiles);
+				}
+			}
+
+			for (auto& t : threads)
+				t.join();
 		}
 		else if (argc > 1 && strcmp(argv[1], "version") == 0)
 		{

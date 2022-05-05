@@ -170,11 +170,12 @@ static void printStatistics(Output* output, const char* path, size_t fileCount)
 	output->print("%s: %d files changed\r", getProjectName(path).c_str(), int(fileCount));
 }
 
-void watchProject(Output* output, const char* path)
+void watchProject(Output* output, const char* path, bool interactive)
 {
 	WatchContext context = { output };
+	const char* lineEnd = interactive ? "\n" : "\r";
 
-    output->print("Watching %s:\n", path);
+	output->print("Watching %s:\n", path);
 
 	std::unique_ptr<ProjectGroup> group = parseProject(output, path);
 	if (!group)
@@ -182,11 +183,11 @@ void watchProject(Output* output, const char* path)
 
 	startWatchingRec(&context, group.get());
 
-	output->print("Scanning project...\r");
+	output->print("Scanning project...%s", lineEnd);
 
 	std::vector<FileInfo> files = getProjectGroupFiles(output, group.get());
 
-	output->print("Reading data pack...\r");
+	output->print("Reading data pack...%s", lineEnd);
 
 	std::vector<FileInfo> packFiles;
 	if (!getDataFileList(output, replaceExtension(path, ".qgd").c_str(), packFiles))
@@ -286,7 +287,8 @@ void watchProject(Output* output, const char* path)
 		{
 			assert(writeNeeded);
 
-			printStatistics(output, path, changedFiles.size());
+			if (!interactive)
+				printStatistics(output, path, changedFiles.size());
 
 			if (writeChanges(path, changedFiles))
 			{
