@@ -36,7 +36,7 @@
 #include <mutex>
 #include <chrono>
 
-const char* kVersion = "1.2";
+const char* kVersion = "1.3";
 
 namespace re2 { bool RunningOnValgrind() { return false; } }
 
