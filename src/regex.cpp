@@ -30,6 +30,8 @@ static bool transformRegexCasefold(const char* pattern, std::string& res, bool l
 	// properly, so bail out if we have them
 	for (const char* p = pattern; *p; ++p)
 	{
+		// casefold() doesn't handle non-ASCII characters
+		if (static_cast<unsigned char>(*p) > 0x7f) return false;
 		if (*p == '\\' && !literal)
 		{
 			if (p[1] == 0) return false;
