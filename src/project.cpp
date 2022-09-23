@@ -33,7 +33,7 @@ static bool isSlash(char ch)
 
 static bool isFilePath(const char* name)
 {
-	return isSlash(name[0]) || (name[0] == '.' && isSlash(name[1])) || (isalpha(name[0]) && name[1] == ':' && isSlash(name[3]));
+	return isSlash(name[0]) || (name[0] == '.' && isSlash(name[1])) || (isalpha(name[0]) && name[1] == ':' && isSlash(name[2]));
 }
 
 std::string getProjectPath(const char* name)
