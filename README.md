@@ -150,7 +150,7 @@ These are the available search options:
     V - Visual Studio style formatting: slashes are replaced with backslashes
         and line number is printed in parentheses
     C - include column number in output
-    CE - include match starting and ending column numbers in output
+    CE - include starting and ending column numbers in output
     Lnumber - limit output to <number> lines
 
 For example, this command uses case-insensitive regex search with Visual Studio
