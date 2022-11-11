@@ -237,7 +237,7 @@ static std::string formatInteger(unsigned long long value, bool pad0 = false)
 	if (value < 1000)
 	{
 		char buf[32];
-		sprintf(buf, pad0 ? "%03lld" : "%lld", value);
+		snprintf(buf, sizeof(buf), pad0 ? "%03lld" : "%lld", value);
 		return buf;
 	}
 	else
@@ -253,7 +253,7 @@ static std::string lastChunkSize(unsigned long long sizeExceptLast, unsigned lon
 	else
 	{
 		char buf[256];
-		sprintf(buf, "; last chunk %s bytes", formatInteger(size).c_str());
+		snprintf(buf, sizeof(buf), "; last chunk %s bytes", formatInteger(size).c_str());
 		return buf;
 	}
 }
