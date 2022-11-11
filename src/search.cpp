@@ -65,9 +65,12 @@ static char* printNumber(char* dest, unsigned int value)
 	return printString(dest, end);
 }
 
-static size_t printMatchLineColumn(unsigned int line, unsigned int column, unsigned int options, char (&buf)[256])
+static size_t printMatchLineColumn(unsigned int line, size_t matchOffset, size_t matchLength, unsigned int options, char (&buf)[256])
 {
 	char* pos = buf;
+
+	size_t matchStartColumn = matchOffset + 1;
+	size_t matchEndColumn = matchStartColumn + matchLength;
 
 	const char* sepbeg = (options & SO_VISUALSTUDIO) ? "(" : ":";
 	const char* sepmid = (options & SO_VISUALSTUDIO) ? "," : ":";
@@ -85,7 +88,16 @@ static size_t printMatchLineColumn(unsigned int line, unsigned int column, unsig
 		pos = printString(pos, sepmid);
 
 		if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightNumber);
-		pos = printNumber(pos, column);
+		pos = printNumber(pos, matchStartColumn);
+
+		if (options & SO_COLUMNNUMBEREND)
+		{
+			if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightSeparator);
+			pos = printString(pos, sepmid);
+
+			if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightNumber);
+			pos = printNumber(pos, matchEndColumn);
+		}
 	}
 
 	if (options & SO_HIGHLIGHT) pos = printString(pos, kHighlightSeparator);
@@ -117,7 +129,7 @@ static void processMatch(Regex* re, SearchOutput* output, OrderedOutput::Chunk* 
 	}
 
 	char linecolumn[256];
-	size_t linecolumnsize = printMatchLineColumn(lineNumber, matchOffset + 1, output->options, linecolumn);
+	size_t linecolumnsize = printMatchLineColumn(lineNumber, matchOffset, matchLength, output->options, linecolumn);
 
 	if (output->options & SO_HIGHLIGHT) outputChunk->result += kHighlightPath;
 	outputChunk->result.append(path, pathLength);

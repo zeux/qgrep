@@ -213,6 +213,11 @@ void parseSearchOptions(const char* opts, unsigned int& options, unsigned int& l
 
 		case 'C':
 			options |= SO_COLUMNNUMBER;
+			if (s[1] == 'E')
+			{
+				options |= SO_COLUMNNUMBEREND;
+				s++;
+			}
 			break;
 
 		case 'H':
@@ -371,7 +376,8 @@ void printHelp(Output* output, bool extended)
 
     if (extended)
         output->print(
-"  C - output match column number       L<num> - limit output to <num> lines\n"
+"  C - output match column number       CE - output match starting and ending column numbers\n"
+"  L<num> - limit output to <num> lines\n"
 "\n"
 "<search-options> can include flags for restricting searches to certain files:\n"
 "  fi<re> - only search in files with paths matching regex <re>\n"

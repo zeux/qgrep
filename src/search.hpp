@@ -16,11 +16,12 @@ enum SearchOptions
 
 	SO_VISUALSTUDIO = 1 << 7,
 	SO_COLUMNNUMBER = 1 << 8,
+	SO_COLUMNNUMBEREND = 1 << 9,
 
-	SO_HIGHLIGHT = 1 << 9,
-	SO_HIGHLIGHT_MATCHES = 1 << 10,
+	SO_HIGHLIGHT = 1 << 10,
+	SO_HIGHLIGHT_MATCHES = 1 << 11,
 
-	SO_SUMMARY = 1 << 11
+	SO_SUMMARY = 1 << 12
 };
 
 unsigned int getRegexOptions(unsigned int options);
