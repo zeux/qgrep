@@ -47,13 +47,20 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 			if (type == DT_UNKNOWN || type == DT_REG)
 			{
 			#ifdef _ATFILE_SOURCE
-				fstatat(fd, data.d_name, &st, 0);
+				int rc = fstatat(fd, data.d_name, &st, 0);
 			#else
-				lstat(buf.c_str(), &st);
+				int rc = lstat(buf.c_str(), &st);
 			#endif
 
-				assert(type == DT_UNKNOWN || type == int(IFTODT(st.st_mode)));
-				type = IFTODT(st.st_mode);
+				if (rc == 0)
+				{
+					assert(type == DT_UNKNOWN || type == int(IFTODT(st.st_mode)));
+					type = IFTODT(st.st_mode);
+				}
+				else
+				{
+					type = DT_UNKNOWN; // skip file entry
+				}
 			}
 
 			if (type == DT_DIR)
