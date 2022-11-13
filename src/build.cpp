@@ -141,6 +141,10 @@ static void printStatistics(Output* output, const BuildStatistics& stats, unsign
 
 static size_t normalizeEOL(char* data, size_t size)
 {
+	// fast path: no \r in the file
+	if (memchr(data, '\r', size) == nullptr)
+		return size;
+
 	// replace \r\n with \n, replace stray \r with \n
 	size_t result = 0;
 
