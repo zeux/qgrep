@@ -16,6 +16,7 @@
 #include "workqueue.hpp"
 #include "blockingqueue.hpp"
 
+#include <algorithm>
 #include <vector>
 #include <list>
 #include <numeric>
@@ -344,23 +345,37 @@ static unsigned int getIndexHashIterations(unsigned int indexSize, unsigned int 
 
 struct IntSet
 {
-	std::vector<unsigned int> data;
-	unsigned int size;
+	unsigned int* data;
+	size_t capacity;
+	size_t size;
 
-	IntSet(size_t capacity = 0): data(capacity), size(0)
+	IntSet(size_t capacity = 0): data(new unsigned int[capacity]), capacity(capacity), size(0)
 	{
 		assert((capacity & (capacity - 1)) == 0);
+
+		memset(data, 0, capacity * sizeof(unsigned int));
 	}
+
+	~IntSet()
+	{
+		delete[] data;
+	}
+
+	IntSet(const IntSet&) = delete;
+	IntSet(IntSet&&) = delete;
+	IntSet& operator=(const IntSet&) = delete;
+	IntSet& operator=(IntSet&&) = delete;
 
 	void grow()
 	{
-		IntSet res(std::max(data.size() * 2, size_t(16)));
+		IntSet res(std::max(capacity * 2, size_t(16)));
 
-		for (size_t i = 0; i < data.size(); ++i)
+		for (size_t i = 0; i < capacity; ++i)
 			if (data[i])
 				res.insert(data[i]);
 
-		data.swap(res.data);
+		std::swap(data, res.data);
+		std::swap(capacity, res.capacity);
 		assert(size == res.size);
 	}
 
@@ -368,10 +383,10 @@ struct IntSet
 	{
 		assert(key != 0);
 
-		if (size >= data.size() / 2)
+		if (size >= capacity / 2)
 			grow();
 
-		unsigned int m = data.size() - 1;
+		unsigned int m = capacity - 1;
 		unsigned int h = bloomHash2(key) & m;
 		unsigned int i = 0;
 
@@ -434,8 +449,8 @@ static ChunkIndex prepareChunkIndex(const char* data, size_t size)
 
 	memset(index, 0, indexSize);
 
-	for (auto n: ngrams.data)
-		if (n != 0)
+	for (size_t i = 0; i < ngrams.capacity; ++i)
+		if (unsigned int n = ngrams.data[i])
 			bloomFilterUpdate(index, indexSize, n, iterations);
 
 	return result;
