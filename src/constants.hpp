@@ -20,7 +20,7 @@ const size_t kBufferedOutputFlushThreshold = 32 Kb;
 const int kFileListCompressionLevel = 1;
 
 // File data compression level, 0-9
-const int kFileDataCompressionLevel = 5;
+const int kFileDataCompressionLevel = 3;
 
 // Wait for several seconds before writing changes to amortize writes when many changes are done at once
 const int kWatchWriteDeadline = 1;
