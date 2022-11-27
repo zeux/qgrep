@@ -1,0 +1,70 @@
+_qgrep()
+{
+  local comps
+  local common_search_opts="i V C L l S CE fi fe H HD HM"
+  local files_filter_search_opts="fp ff fn fs"
+
+  case "${COMP_CWORD}" in
+    1)
+      comps='init update search watch interactive help
+             build change files filter info projects version'
+      ;;
+
+    2)
+      case "${COMP_WORDS[1]}" in
+        update|search|watch|interactive|build|change|files|info)
+          # <project-list>
+          comps=$(qgrep projects)
+        ;;
+
+        filter)
+          # <search-options>
+          comps="${common_search_opts} ${files_filter_search_opts}"
+        ;;
+      esac
+      ;;
+
+    3)
+      case "${COMP_WORDS[1]}" in
+        init)
+          # <path>
+          compopt -o dirnames
+        ;;
+
+        change)
+          # <file-list>
+          compopt -o default
+        ;;
+
+        search)
+          # <search-options>
+          comps="${common_search_opts}"
+        ;;
+
+        files|filter)
+          # <search-options>
+          comps="${common_search_opts} ${files_filter_search_opts}"
+        ;;
+      esac
+      ;;
+
+    *)
+      case "${COMP_WORDS[1]}" in
+        search)
+          # <search-options>
+          comps="${common_search_opts}"
+        ;;
+
+        files|filter)
+          # <search-options>
+          comps="${common_search_opts} ${files_filter_search_opts}"
+        ;;
+      esac
+      ;;
+
+  esac
+
+  COMPREPLY=( $( compgen -W "${comps}" -- "${COMP_WORDS[COMP_CWORD]}" ) )
+}
+
+complete -F _qgrep qgrep
