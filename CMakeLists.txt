@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.13)
 
 project(qgrep)
 
+include(GNUInstallDirs)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -166,3 +168,6 @@ if (NOT WIN32)
 endif()
 
 install(TARGETS qgrep DESTINATION bin)
+install(
+  FILES shell-completion/bash/qgrep
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions)
