@@ -325,6 +325,7 @@
   <ItemGroup>
     <ClCompile Include="extern\lz4\lib\lz4.c" />
     <ClCompile Include="extern\lz4\lib\lz4hc.c" />
+    <ClCompile Include="extern\re2\re2\bitmap256.cc" />
     <ClCompile Include="extern\re2\re2\bitstate.cc" />
     <ClCompile Include="extern\re2\re2\compile.cc" />
     <ClCompile Include="extern\re2\re2\dfa.cc" />

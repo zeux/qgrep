@@ -7,6 +7,9 @@
     <ClCompile Include="extern\lz4\lib\lz4hc.c">
       <Filter>extern\lz4</Filter>
     </ClCompile>
+    <ClCompile Include="extern\re2\re2\bitmap256.cc">
+      <Filter>extern\re2</Filter>
+    </ClCompile>
     <ClCompile Include="extern\re2\re2\bitstate.cc">
       <Filter>extern\re2</Filter>
     </ClCompile>

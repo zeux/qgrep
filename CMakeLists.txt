@@ -75,6 +75,7 @@ endif()
 
 # qgrep uses re2::Prefilter, which is not exposed by system re2
 add_library(re2 STATIC 
+    extern/re2/re2/bitmap256.cc
     extern/re2/re2/bitstate.cc
     extern/re2/re2/compile.cc
     extern/re2/re2/dfa.cc
