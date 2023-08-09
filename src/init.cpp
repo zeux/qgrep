@@ -11,6 +11,7 @@ static const char* kDefaultLanguages[] =
 {
 	"C/C++", "cpp|cxx|cc|c|hpp|hxx|hh|h|inl",
 	"C#, VB.NET", "cs|vb",
+	"CMake", "cmake",
 	"D", "d",
 	"Delphi, Pascal", "dpr|pas|pp|inc|dfm|lfm|lpi|lpr|dpk|dproj|spp",
 	"F#, OCaml, Haskell", "fs|fsi|fsx|ml|mli|hs",
