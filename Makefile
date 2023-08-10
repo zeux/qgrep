@@ -22,7 +22,7 @@ endif
 
 SOURCES=
 
-SOURCES+=extern/re2/re2/bitstate.cc extern/re2/re2/compile.cc extern/re2/re2/dfa.cc extern/re2/re2/filtered_re2.cc extern/re2/re2/mimics_pcre.cc extern/re2/re2/nfa.cc extern/re2/re2/onepass.cc extern/re2/re2/parse.cc extern/re2/re2/perl_groups.cc extern/re2/re2/prefilter.cc extern/re2/re2/prefilter_tree.cc extern/re2/re2/prog.cc extern/re2/re2/re2.cc extern/re2/re2/regexp.cc extern/re2/re2/set.cc extern/re2/re2/simplify.cc extern/re2/re2/stringpiece.cc extern/re2/re2/tostring.cc extern/re2/re2/unicode_casefold.cc extern/re2/re2/unicode_groups.cc
+SOURCES+=extern/re2/re2/bitmap256.cc extern/re2/re2/bitstate.cc extern/re2/re2/compile.cc extern/re2/re2/dfa.cc extern/re2/re2/filtered_re2.cc extern/re2/re2/mimics_pcre.cc extern/re2/re2/nfa.cc extern/re2/re2/onepass.cc extern/re2/re2/parse.cc extern/re2/re2/perl_groups.cc extern/re2/re2/prefilter.cc extern/re2/re2/prefilter_tree.cc extern/re2/re2/prog.cc extern/re2/re2/re2.cc extern/re2/re2/regexp.cc extern/re2/re2/set.cc extern/re2/re2/simplify.cc extern/re2/re2/stringpiece.cc extern/re2/re2/tostring.cc extern/re2/re2/unicode_casefold.cc extern/re2/re2/unicode_groups.cc
 SOURCES+=extern/re2/util/pcre.cc extern/re2/util/rune.cc extern/re2/util/strutil.cc
 SOURCES+=extern/lz4/lib/lz4.c extern/lz4/lib/lz4hc.c
 
