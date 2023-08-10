@@ -28,7 +28,7 @@ if (WIN32)
         add_compile_options(/arch:SSE2)
     endif()
 else()
-    add_compile_options(-Wall -Werror -mtune=native)
+    add_compile_options(-Wall -Werror)
 
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
         add_compile_options(-msse2 -DUSE_SSE2)
