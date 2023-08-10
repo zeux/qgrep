@@ -1,6 +1,9 @@
+.SUFFIXES:
+MAKEFLAGS+=-r
+
 BUILD=build/make-$(CXX)
 
-CCFLAGS=-c -g -Wall -Werror -fPIC -O3 -mtune=native -Iextern/lz4/lib -Iextern/re2
+CCFLAGS=-c -g -Wall -Werror -fPIC -O2 -Iextern/lz4/lib -Iextern/re2
 CXXFLAGS=-std=c++11
 LDFLAGS=-lpthread -lstdc++
 

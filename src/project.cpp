@@ -220,7 +220,7 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 		else if (extractSuffix(line, "endgroup", suffix))
 		{
 			if (!parent) throw std::runtime_error("Mismatched endgroup");
-			return buildGroup(move(result), include, exclude, regexCache);
+			return buildGroup(std::move(result), include, exclude, regexCache);
 		}
 		else
 		{
@@ -235,7 +235,7 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 	}
 
 	if (parent) throw std::runtime_error("End of file while looking for endgroup");
-	return buildGroup(move(result), include, exclude, regexCache);
+	return buildGroup(std::move(result), include, exclude, regexCache);
 }
 
 std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file)

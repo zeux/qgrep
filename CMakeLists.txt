@@ -10,45 +10,35 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # for non-multi-config (not VS, Xcode, etc.), set up default build type
 if ((NOT GENERATOR_IS_MULTI_CONFIG) AND (NOT CMAKE_BUILD_TYPE))
-  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-# use O3 instead O2 for best performance https://stackoverflow.com/a/59349220/225692
-macro(use_O3_and_enable_NDEBUG profile)
-    string(REGEX REPLACE "([\\/\\-]D)NDEBUG" ""
-        ${profile} "${${profile}}"
-        )
-    string(REGEX REPLACE "([\\/\\-]O)2" "\\13"
-        ${profile} "${${profile}}"
-        )
-    message(STATUS "replacing profile: ${profile} with ${${profile}}")
+macro(enable_NDEBUG profile)
+    string(REGEX REPLACE "([\\/\\-]D)NDEBUG" "" ${profile} "${${profile}}")
 endmacro()
 
-use_O3_and_enable_NDEBUG(CMAKE_CXX_FLAGS_RELEASE)
-use_O3_and_enable_NDEBUG(CMAKE_CXX_FLAGS_MINSIZEREL)
-use_O3_and_enable_NDEBUG(CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+enable_NDEBUG(CMAKE_CXX_FLAGS_RELEASE)
+enable_NDEBUG(CMAKE_CXX_FLAGS_MINSIZEREL)
+enable_NDEBUG(CMAKE_CXX_FLAGS_RELWITHDEBINFO)
 
 if (WIN32)
-    add_compile_options(/DUSE_SSE2 /DNOMINMAX /wd"4996" /wd"4267" /wd"4244")
+    add_compile_options(/DUSE_SSE2 /DNOMINMAX /wd4996 /wd4267 /wd4244)
 
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)")
-        message(STATUS "use SSE2 of ${CMAKE_SYSTEM_PROCESSOR}")
         add_compile_options(/arch:SSE2)
-    else()
-        message(STATUS "MSVC on ${CMAKE_SYSTEM_PROCESSOR} has /arch:SSE2 by default")
-    endif ()
+    endif()
 else()
-    add_compile_options(-Wall -Werror -mtune=native)
+    add_compile_options(-Wall -Werror)
 
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
-        message(STATUS "use SSE2 of ${CMAKE_SYSTEM_PROCESSOR}")
         add_compile_options(-msse2 -DUSE_SSE2)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)")
+        add_compile_options(-DUSE_NEON)
     else()
-        message(STATUS "disable SSE2 due to ${CMAKE_SYSTEM_PROCESSOR}")
-    endif ()
+        message(WARNING "SIMD acceleration is disabled on ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        message(STATUS "turn on compile flags for ${CMAKE_SYSTEM_NAME}")
         add_compile_options(
             -force_cpusubtype_ALL
             -mmacosx-version-min=10.7
@@ -62,19 +52,19 @@ else()
             "SHELL:-framework CoreServices"
         )
     else()
-        message(STATUS "turn on compile flags for *nix")
         add_link_options(-Wl,--dynamic-list=${CMAKE_SOURCE_DIR}/src/qgrep.dynlist)
     endif()
 endif()
 
-option(WITH_SUBMODULE_LZ4 "Use lz4 library from submodules" ON)
+if(NOT (EXISTS ${CMAKE_SOURCE_DIR}/extern/lz4/lib/lz4.c))
+    message(FATAL_ERROR "run git submodule update --init to fetch lz4")
+endif()
 
 if(NOT (EXISTS ${CMAKE_SOURCE_DIR}/extern/re2/re2/re2.cc))
     message(FATAL_ERROR "run git submodule update --init to fetch re2")
 endif()
 
-# qgrep uses re2::Prefilter, which is not exposed by system re2
-add_library(re2 STATIC 
+add_library(re2 STATIC
     extern/re2/re2/bitmap256.cc
     extern/re2/re2/bitstate.cc
     extern/re2/re2/compile.cc
@@ -101,9 +91,16 @@ add_library(re2 STATIC
     extern/re2/util/strutil.cc
 )
 
-target_include_directories(re2 PUBLIC ${CMAKE_SOURCE_DIR}/extern/re2/)
+target_include_directories(re2 PUBLIC ${CMAKE_SOURCE_DIR}/extern/re2)
 
-set(SRC 
+add_library(lz4 STATIC
+    extern/lz4/lib/lz4.c
+    extern/lz4/lib/lz4hc.c
+)
+
+target_include_directories(lz4 PUBLIC ${CMAKE_SOURCE_DIR}/extern/lz4/lib)
+
+add_executable(qgrep
     src/blockpool.cpp
     src/build.cpp
     src/changes.cpp
@@ -132,37 +129,7 @@ set(SRC
     src/workqueue.cpp
 )
 
-if (WITH_SUBMODULE_LZ4)
-    if(NOT (EXISTS ${CMAKE_SOURCE_DIR}/extern/lz4/lib/lz4.c))
-        message(FATAL_ERROR "run git submodule update --init to fetch lz4")
-    endif()
-
-    add_library(lz4 STATIC 
-        extern/lz4/lib/lz4.c
-        extern/lz4/lib/lz4hc.c
-    )
-
-    target_include_directories(lz4 PUBLIC ${CMAKE_SOURCE_DIR}/extern/lz4/lib)
-else()
-    if (WIN32)
-        message(FATAL_ERROR "qgrep on Windows requires lz4 as submodule")
-    endif()
-    find_package(PkgConfig REQUIRED) 
-
-    pkg_check_modules(ext_lz4 REQUIRED IMPORTED_TARGET liblz4)
-endif()
-
-add_executable(qgrep ${SRC})
-
-if (WITH_SUBMODULE_LZ4)
-    message(STATUS "use lz4 from submodule")
-    target_link_libraries(qgrep PUBLIC lz4)
-else()
-    message(STATUS "use lz4 from system pkg-config")
-    target_link_libraries(qgrep PUBLIC PkgConfig::ext_lz4)
-endif()
-
-target_link_libraries(qgrep PUBLIC re2)
+target_link_libraries(qgrep PUBLIC re2 lz4)
 
 if (NOT WIN32)
     target_link_libraries(qgrep PUBLIC pthread)
