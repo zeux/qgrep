@@ -64,7 +64,6 @@ if(NOT (EXISTS ${CMAKE_SOURCE_DIR}/extern/re2/re2/re2.cc))
     message(FATAL_ERROR "run git submodule update --init to fetch re2")
 endif()
 
-# qgrep uses re2::Prefilter, which is not exposed by system re2
 add_library(re2 STATIC
     extern/re2/re2/bitmap256.cc
     extern/re2/re2/bitstate.cc
@@ -101,7 +100,7 @@ add_library(lz4 STATIC
 
 target_include_directories(lz4 PUBLIC ${CMAKE_SOURCE_DIR}/extern/lz4/lib)
 
-add_executable(qgrep 
+add_executable(qgrep
     src/blockpool.cpp
     src/build.cpp
     src/changes.cpp
