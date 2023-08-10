@@ -1,3 +1,6 @@
+.SUFFIXES:
+MAKEFLAGS+=-r
+
 BUILD=build/make-$(CXX)
 
 CCFLAGS=-c -g -Wall -Werror -fPIC -O2 -Iextern/lz4/lib -Iextern/re2
