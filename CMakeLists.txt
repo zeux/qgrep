@@ -34,6 +34,8 @@ else()
         add_compile_options(-msse2 -DUSE_SSE2)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)")
         add_compile_options(-DUSE_NEON)
+    else()
+        message(WARNING "SIMD acceleration is disabled on ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
