@@ -44,7 +44,6 @@ else()
     endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        message(STATUS "turn on compile flags for ${CMAKE_SYSTEM_NAME}")
         add_compile_options(
             -force_cpusubtype_ALL
             -mmacosx-version-min=10.7
@@ -58,19 +57,20 @@ else()
             "SHELL:-framework CoreServices"
         )
     else()
-        message(STATUS "turn on compile flags for *nix")
         add_link_options(-Wl,--dynamic-list=${CMAKE_SOURCE_DIR}/src/qgrep.dynlist)
     endif()
 endif()
 
-option(WITH_SUBMODULE_LZ4 "Use lz4 library from submodules" ON)
+if(NOT (EXISTS ${CMAKE_SOURCE_DIR}/extern/lz4/lib/lz4.c))
+    message(FATAL_ERROR "run git submodule update --init to fetch lz4")
+endif()
 
 if(NOT (EXISTS ${CMAKE_SOURCE_DIR}/extern/re2/re2/re2.cc))
     message(FATAL_ERROR "run git submodule update --init to fetch re2")
 endif()
 
 # qgrep uses re2::Prefilter, which is not exposed by system re2
-add_library(re2 STATIC 
+add_library(re2 STATIC
     extern/re2/re2/bitmap256.cc
     extern/re2/re2/bitstate.cc
     extern/re2/re2/compile.cc
@@ -97,9 +97,16 @@ add_library(re2 STATIC
     extern/re2/util/strutil.cc
 )
 
-target_include_directories(re2 PUBLIC ${CMAKE_SOURCE_DIR}/extern/re2/)
+target_include_directories(re2 PUBLIC ${CMAKE_SOURCE_DIR}/extern/re2)
 
-set(SRC 
+add_library(lz4 STATIC
+    extern/lz4/lib/lz4.c
+    extern/lz4/lib/lz4hc.c
+)
+
+target_include_directories(lz4 PUBLIC ${CMAKE_SOURCE_DIR}/extern/lz4/lib)
+
+add_executable(qgrep 
     src/blockpool.cpp
     src/build.cpp
     src/changes.cpp
@@ -128,37 +135,7 @@ set(SRC
     src/workqueue.cpp
 )
 
-if (WITH_SUBMODULE_LZ4)
-    if(NOT (EXISTS ${CMAKE_SOURCE_DIR}/extern/lz4/lib/lz4.c))
-        message(FATAL_ERROR "run git submodule update --init to fetch lz4")
-    endif()
-
-    add_library(lz4 STATIC 
-        extern/lz4/lib/lz4.c
-        extern/lz4/lib/lz4hc.c
-    )
-
-    target_include_directories(lz4 PUBLIC ${CMAKE_SOURCE_DIR}/extern/lz4/lib)
-else()
-    if (WIN32)
-        message(FATAL_ERROR "qgrep on Windows requires lz4 as submodule")
-    endif()
-    find_package(PkgConfig REQUIRED) 
-
-    pkg_check_modules(ext_lz4 REQUIRED IMPORTED_TARGET liblz4)
-endif()
-
-add_executable(qgrep ${SRC})
-
-if (WITH_SUBMODULE_LZ4)
-    message(STATUS "use lz4 from submodule")
-    target_link_libraries(qgrep PUBLIC lz4)
-else()
-    message(STATUS "use lz4 from system pkg-config")
-    target_link_libraries(qgrep PUBLIC PkgConfig::ext_lz4)
-endif()
-
-target_link_libraries(qgrep PUBLIC re2)
+target_link_libraries(qgrep PUBLIC re2 lz4)
 
 if (NOT WIN32)
     target_link_libraries(qgrep PUBLIC pthread)
