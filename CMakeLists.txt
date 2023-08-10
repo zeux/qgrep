@@ -10,23 +10,16 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # for non-multi-config (not VS, Xcode, etc.), set up default build type
 if ((NOT GENERATOR_IS_MULTI_CONFIG) AND (NOT CMAKE_BUILD_TYPE))
-  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-# use O3 instead O2 for best performance https://stackoverflow.com/a/59349220/225692
-macro(use_O3_and_enable_NDEBUG profile)
-    string(REGEX REPLACE "([\\/\\-]D)NDEBUG" ""
-        ${profile} "${${profile}}"
-        )
-    string(REGEX REPLACE "([\\/\\-]O)2" "\\13"
-        ${profile} "${${profile}}"
-        )
-    message(STATUS "replacing profile: ${profile} with ${${profile}}")
+macro(enable_NDEBUG profile)
+    string(REGEX REPLACE "([\\/\\-]D)NDEBUG" "" ${profile} "${${profile}}")
 endmacro()
 
-use_O3_and_enable_NDEBUG(CMAKE_CXX_FLAGS_RELEASE)
-use_O3_and_enable_NDEBUG(CMAKE_CXX_FLAGS_MINSIZEREL)
-use_O3_and_enable_NDEBUG(CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+enable_NDEBUG(CMAKE_CXX_FLAGS_RELEASE)
+enable_NDEBUG(CMAKE_CXX_FLAGS_MINSIZEREL)
+enable_NDEBUG(CMAKE_CXX_FLAGS_RELWITHDEBINFO)
 
 if (WIN32)
     add_compile_options(/DUSE_SSE2 /DNOMINMAX /wd4996 /wd4267 /wd4244)
