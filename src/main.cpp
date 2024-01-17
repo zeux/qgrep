@@ -35,6 +35,7 @@
 
 #include <mutex>
 #include <chrono>
+#include <stdexcept>
 
 const char* kVersion = "1.3";
 
