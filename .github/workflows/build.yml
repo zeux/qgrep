@@ -10,7 +10,7 @@ jobs:
     name: ${{matrix.os}}
     runs-on: ${{matrix.os}}-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: make
@@ -23,7 +23,7 @@ jobs:
         cp qgrep upload/vim/
         cp README.md upload/
         cp qgrep upload/
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v4
       with:
         name: qgrep-${{matrix.os}}
         path: upload
@@ -34,7 +34,7 @@ jobs:
       matrix:
         arch: [Win32, x64]
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: msbuild exe
@@ -55,7 +55,7 @@ jobs:
         cp build/ReleaseDLL_${{matrix.arch}}/qgrep.dll upload/vim/
         cp README.md upload/
         cp build/Release_${{matrix.arch}}/qgrep.exe upload/
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v4
       with:
         name: qgrep-windows-${{matrix.arch}}
         path: upload
