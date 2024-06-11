@@ -6,8 +6,6 @@ grepping (i.e. full-text searches using regular expressions) over a large set
 of files. Searches use the database which is a compressed and indexed copy
 of the source data, thus they are much faster compared to vanilla grep -R.
 
-qgrep runs on Windows (Vista+, XP is not supported), Linux and MacOS X.
-
 Basic setup
 -----------
 
