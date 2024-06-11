@@ -40,14 +40,10 @@ else()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         add_compile_options(
-            -force_cpusubtype_ALL
             -mmacosx-version-min=10.7
-            -stdlib=libc++
         )
         add_link_options(
-            -force_cpusubtype_ALL
             -mmacosx-version-min=10.7
-            -stdlib=libc++
             "SHELL:-framework CoreFoundation"
             "SHELL:-framework CoreServices"
         )

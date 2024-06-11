@@ -16,8 +16,7 @@ CCFLAGS+=-DUSE_NEON
 endif
 
 ifeq ($(shell uname),Darwin)
-CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7
-CXXFLAGS+=-stdlib=libc++
+CCFLAGS+=-mmacosx-version-min=10.7
 LDFLAGS+=-mmacosx-version-min=10.7
 LDFLAGS+=-framework CoreFoundation -framework CoreServices
 else
