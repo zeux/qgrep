@@ -46,7 +46,7 @@ static bool traverseDirectoryRec(const wchar_t* path, const char* relpath, const
 	std::wstring query = path + std::wstring(L"/*");
 
 	WIN32_FIND_DATAW data;
-	HANDLE h = FindFirstFileW(query.c_str(), &data);
+	HANDLE h = FindFirstFileExW(query.c_str(), FindExInfoBasic, &data, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
 
 	if (h == INVALID_HANDLE_VALUE)
 		return false;
