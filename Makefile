@@ -5,7 +5,7 @@ BUILD=build/make-$(CXX)
 
 CCFLAGS=-c -g -Wall -Werror -fPIC -O2 -Iextern/lz4/lib -Iextern/re2
 CXXFLAGS=-std=c++11
-LDFLAGS=-lpthread -lstdc++
+LDFLAGS=-lpthread
 
 ifeq ($(shell uname -p),x86_64)
 CCFLAGS+=-msse2 -DUSE_SSE2
@@ -16,8 +16,9 @@ CCFLAGS+=-DUSE_NEON
 endif
 
 ifeq ($(shell uname),Darwin)
-CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -stdlib=libc++
-LDFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7 -stdlib=libc++
+CCFLAGS+=-force_cpusubtype_ALL -mmacosx-version-min=10.7
+CXXFLAGS+=-stdlib=libc++
+LDFLAGS+=-mmacosx-version-min=10.7
 LDFLAGS+=-framework CoreFoundation -framework CoreServices
 else
 LDFLAGS+=-pie -Wl,--dynamic-list=src/qgrep.dynlist
