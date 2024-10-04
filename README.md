@@ -6,6 +6,26 @@ grepping (i.e. full-text searches using regular expressions) over a large set
 of files. Searches use the database which is a compressed and indexed copy
 of the source data, thus they are much faster compared to vanilla grep -R.
 
+Installation
+-----------
+
+You can download a qgrep binary for Windows, macOS (Apple Silicon) or Linux (x86_64)
+from the release page:
+
+   https://github.com/zeux/qgrep/releases
+
+Note that due to the limitations of the packaging process, the executable needs to
+be chmod'ed on macOS/Linux to run.
+
+Alternatively, you can build qgrep from source using make (macOS/Linux):
+
+    git clone --recursive https://github.com/zeux/qgrep
+    cd qgrep
+    make
+
+On Windows, you can use Visual Studio to build using `qgrep.sln`. CMake is also
+supported on all platforms.
+
 Basic setup
 -----------
 
@@ -228,18 +248,6 @@ large enough to maintain query performance.
 
 Note that currently `change`/`watch` do not track new files, only changes to
 existing files.
-
-Feedback
---------
-
-You can report bugs, feature requests, submit patches and download new versions
-from qgrep site:
-
-    http://github.com/zeux/qgrep
-
-Alternatively, you can contact the author using the e-mail:
-
-    Arseny Kapoulkine <arseny.kapoulkine@gmail.com>
 
 License
 -------
