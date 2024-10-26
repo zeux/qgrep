@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-bool traverseDirectory(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, const std::function<bool (const char* name)>& directory_filter_callback);
+bool traverseDirectory(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, const std::function<bool (const char* name)>& directoryFilter);
 bool traverseFileNeeded(const char* name);
 bool passthroughDirectoryFilter(const char* name);
 
