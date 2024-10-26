@@ -86,7 +86,7 @@ static std::vector<std::string> getProjectsByPrefix(const char* prefix)
 			{
 				result.push_back(pprefix + std::string(path, dot));
 			}
-		});
+		}, passthroughDirectoryFilter);
 	}
 
 	return result;
@@ -280,6 +280,23 @@ bool isFileAcceptable(ProjectGroup* group, const char* path)
 	return true;
 }
 
+// It can help enumeration times massively to be able to stop traversing
+// entire subtrees instead of enumerating them entirely only to reject
+// every single file inside them, so run exclusion rules on directory
+// names during traversal.
+bool isDirectoryAcceptable(ProjectGroup* group, const char* path)
+{
+	size_t length = strlen(path);
+
+	for (; group; group = group->parent)
+	{
+		if (group->exclude && group->exclude->search(path, length))
+			return false;
+	}
+
+	return true;
+}
+
 static void getProjectGroupFilesRec(Output* output, ProjectGroup* group, std::vector<FileInfo>& files)
 {
 	for (auto& path: group->files)
@@ -296,13 +313,15 @@ static void getProjectGroupFilesRec(Output* output, ProjectGroup* group, std::ve
 	{
 		std::string buf;
 
-		bool result = traverseDirectory(folder.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) { 
+		bool result = traverseDirectory(folder.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) {
 			if (isFileAcceptable(group, path))
 			{
 				joinPaths(buf, folder.c_str(), path);
 				files.push_back({ buf, mtime, size });
 			}
-		});
+			}, [&](const char* path) {
+				return isDirectoryAcceptable(group, path);
+			});
 
 		if (!result) output->error("Error reading folder %s\n", folder.c_str());
 	}
