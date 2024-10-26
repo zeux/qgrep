@@ -21,7 +21,7 @@
 #include <CoreServices/CoreServices.h>
 #endif
 
-static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
+static bool traverseDirectoryRec(const char* path, const char* relpath, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, const std::function<bool (const char* name)>& directoryFilter)
 {
 	int fd = open(path, O_DIRECTORY);
 	DIR* dir = fdopendir(fd);
@@ -65,7 +65,8 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 
 			if (type == DT_DIR)
 			{
-				traverseDirectoryRec(buf.c_str(), relbuf.c_str(), callback);
+				if (directoryFilter(relbuf.c_str()))
+					traverseDirectoryRec(buf.c_str(), relbuf.c_str(), callback, directoryFilter);
 			}
 			else if (type == DT_REG)
 			{
@@ -83,9 +84,9 @@ static bool traverseDirectoryRec(const char* path, const char* relpath, const st
 	return true;
 }
 
-bool traverseDirectory(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback)
+bool traverseDirectory(const char* path, const std::function<void (const char* name, uint64_t mtime, uint64_t size)>& callback, const std::function<bool(const char* name)>& directoryFilter)
 {
-	return traverseDirectoryRec(path, "", callback);
+	return traverseDirectoryRec(path, "", callback, directoryFilter);
 }
 
 bool renameFile(const char* oldpath, const char* newpath)
