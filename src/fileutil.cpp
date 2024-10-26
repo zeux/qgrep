@@ -63,6 +63,11 @@ bool traverseFileNeeded(const char* name)
 	return true;
 }
 
+bool passthroughDirectoryFilter(const char* name)
+{
+    return true;
+}
+
 void joinPaths(std::string& buf, const char* lhs, const char* rhs)
 {
 	buf = lhs;
