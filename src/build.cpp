@@ -191,12 +191,16 @@ static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t data
 {
 	auto result = std::make_pair(0, 0);
 
-	for (size_t i = 0; i < dataSize; ++i)
-		if (data[i] == '\n')
-		{
-			result.first = i + 1;
-			result.second++;
-		}
+	while (const char* next = static_cast<const char*>(memchr(data, '\n', dataSize)))
+	{
+		next++; // skip \n
+
+		result.first += next - data;
+		result.second++;
+
+		dataSize -= next - data;
+		data = next;
+	}
 
 	return result;
 }
