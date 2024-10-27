@@ -186,7 +186,10 @@ static bool processFile(Output* output, BuildContext* builder, UpdateFileIterato
 	{
 		std::unique_ptr<char[]> extra(new (std::nothrow) char[chunk.extraSize]);
 		std::unique_ptr<char[]> index(new (std::nothrow) char[chunk.indexSize]);
-		std::unique_ptr<char[]> data(new (std::nothrow) char[chunk.compressedSize + chunk.uncompressedSize]);
+
+		size_t uncompressedOffset = (chunk.compressedSize + 7) & ~7; // make sure uncompressed data is aligned
+
+		std::unique_ptr<char[]> data(new (std::nothrow) char[uncompressedOffset + chunk.uncompressedSize]);
 
 		if (!extra || !index || !data || !read(in, extra.get(), chunk.extraSize) || !read(in, index.get(), chunk.indexSize) || !read(in, data.get(), chunk.compressedSize))
 		{
@@ -194,7 +197,7 @@ static bool processFile(Output* output, BuildContext* builder, UpdateFileIterato
 			return false;
 		}
 
-		char* uncompressed = data.get() + chunk.compressedSize;
+		char* uncompressed = data.get() + uncompressedOffset;
 
 		processChunkData(output, builder, fileit, stats, chunk, uncompressed, data, index, extra);
 	}
