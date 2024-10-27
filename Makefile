@@ -1,7 +1,9 @@
 .SUFFIXES:
 MAKEFLAGS+=-r
 
-BUILD=build/make-$(CXX)
+config?=release
+
+BUILD=build/make-$(CXX)-$(config)
 
 CCFLAGS=-c -g -Wall -Werror -fPIC -O2 -Iextern/lz4/lib -Iextern/re2
 CXXFLAGS=-std=c++11
@@ -21,6 +23,11 @@ LDFLAGS+=-mmacosx-version-min=10.7
 LDFLAGS+=-framework CoreFoundation -framework CoreServices
 else
 LDFLAGS+=-pie -Wl,--dynamic-list=src/qgrep.dynlist
+endif
+
+ifeq ($(config),sanitize)
+CCFLAGS+=-fsanitize=address,undefined
+LDFLAGS+=-fsanitize=address,undefined
 endif
 
 SOURCES=
