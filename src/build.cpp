@@ -298,7 +298,8 @@ static ChunkData prepareChunkData(const Chunk& chunk)
 		const File& f = chunk.files[i];
 
 		memcpy(result.data.get() + nameOffset, f.name.c_str(), f.name.length());
-		memcpy(result.data.get() + dataOffset, f.contents.data(), f.contents.size());
+		if (f.contents.size())
+			memcpy(result.data.get() + dataOffset, f.contents.data(), f.contents.size());
 
 		DataChunkFileHeader& h = reinterpret_cast<DataChunkFileHeader*>(result.data.get())[i];
 
