@@ -191,12 +191,16 @@ static std::pair<size_t, unsigned int> skipByLines(const char* data, size_t data
 {
 	auto result = std::make_pair(0, 0);
 
-	for (size_t i = 0; i < dataSize; ++i)
-		if (data[i] == '\n')
-		{
-			result.first = i + 1;
-			result.second++;
-		}
+	while (const char* next = static_cast<const char*>(memchr(data, '\n', dataSize)))
+	{
+		next++; // skip \n
+
+		result.first += next - data;
+		result.second++;
+
+		dataSize -= next - data;
+		data = next;
+	}
 
 	return result;
 }
@@ -597,7 +601,7 @@ BuildContext* buildStart(Output* output, const char* path, unsigned int fileCoun
 	return context.release();
 }
 
-void buildAppendFilePart(BuildContext* context, const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t timeStamp, uint64_t fileSize)
+static void appendFilePart(BuildContext* context, const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t timeStamp, uint64_t fileSize, std::vector<char>* dataSource)
 {
 	if (!context->pendingFiles.empty() && context->pendingFiles.back().name == path)
 	{
@@ -620,7 +624,7 @@ void buildAppendFilePart(BuildContext* context, const char* path, unsigned int s
 		file.startLine = startLine;
 		file.timeStamp = timeStamp;
 		file.fileSize = fileSize;
-		file.contents = std::vector<char>(data, data + dataSize);
+		file.contents = dataSource ? std::move(*dataSource) : std::vector<char>(data, data + dataSize);
 
 		context->pendingFiles.emplace_back(file);
 		context->pendingSize += dataSize;
@@ -636,6 +640,11 @@ void buildAppendFilePart(BuildContext* context, const char* path, unsigned int s
 	}
 }
 
+void buildAppendFilePart(BuildContext* context, const char* path, unsigned int startLine, const char* data, size_t dataSize, uint64_t timeStamp, uint64_t fileSize)
+{
+	appendFilePart(context, path, startLine, data, dataSize, timeStamp, fileSize, nullptr);
+}
+
 bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp, uint64_t fileSize)
 {
 	FileStream in(path, "rb");
@@ -649,7 +658,7 @@ bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp
 	{
 		std::vector<char> contents = convertToUTF8(readFile(in));
 
-		buildAppendFilePart(context, path, 0, contents.empty() ? 0 : &contents[0], contents.size(), timeStamp, fileSize);
+		appendFilePart(context, path, 0, contents.empty() ? 0 : &contents[0], contents.size(), timeStamp, fileSize, &contents);
 
 		return true;
 	}
