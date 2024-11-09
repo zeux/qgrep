@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.13)
 # add_link_options requires 3.13 https://cmake.org/cmake/help/v3.13/command/add_link_options.html
 
+# CMake docs specifically say that the deployment target must be set
+# before first call to project() and it must be a cache variable:
+# https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_DEPLOYMENT_TARGET.html
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.7 CACHE STRING "")
+
 project(qgrep)
 
 include(GNUInstallDirs)
@@ -32,7 +37,7 @@ if (WIN32)
         message(WARNING "SIMD acceleration is disabled on ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 else()
-    add_compile_options(-Wall -Werror)
+    add_compile_options(-Wall -Werror -Wno-error=shorten-64-to-32)
 
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
         add_compile_options(-msse2 -DUSE_SSE2)
@@ -43,11 +48,7 @@ else()
     endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        add_compile_options(
-            -mmacosx-version-min=10.7
-        )
         add_link_options(
-            -mmacosx-version-min=10.7
             "SHELL:-framework CoreFoundation"
             "SHELL:-framework CoreServices"
         )
