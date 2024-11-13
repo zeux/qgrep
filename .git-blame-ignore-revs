@@ -1,0 +1,14 @@
+# This file contains a list of Git commit hashes that should be hidden from the
+# regular Git history. Typically, this includes commits involving mass auto-formatting
+# or other normalizations. Commit hashes *must* use the full 40-character notation.
+# To apply the ignore list in your local Git client, you must run:
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# This file is automatically used by GitHub.com's blame view.
+
+# Convert CRLF to LF everywhere
+c2b23f532e69a1c7fe33eb8604ce81a1e98a6dc8
+
+# Add a single-line license blurb to all sources
+4a702c985d53868f3561bcf12c761026c1e9d646
