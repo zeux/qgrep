@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <vector>
 #include <list>
-#include <numeric>
 #include <string>
 #include <memory>
 #include <map>
@@ -338,7 +337,7 @@ static size_t getChunkIndexSize(size_t dataSize)
 	return indexSize < 1024 ? 0 : indexSize;
 }
 
-// http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html 
+// http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html
 static unsigned int getIndexHashIterations(unsigned int indexSize, unsigned int itemCount)
 {
 	unsigned int m = indexSize * 8;
@@ -758,7 +757,7 @@ void buildProject(Output* output, const char* path)
 
 	if (!buildFiles(output, path, files))
 		return;
-	
+
 	std::string targetPath = replaceExtension(path, ".qgd");
 	std::string tempPath = targetPath + "_";
 
@@ -775,7 +774,7 @@ void buildProject(Output* output, const char* path)
 	}
 
 	output->print("\n");
-	
+
 	if (!renameFile(tempPath.c_str(), targetPath.c_str()))
 	{
 		output->error("Error saving data file %s\n", targetPath.c_str());
