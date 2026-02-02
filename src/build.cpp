@@ -762,6 +762,102 @@ unsigned int buildFinish(BuildContext* context)
 	return result;
 }
 
+// Parallel file reader for overlapping I/O with processing
+struct ReadAheadBuffer
+{
+	struct ReadFile
+	{
+		std::string path;
+		std::vector<char> contents;
+		uint64_t timeStamp;
+		uint64_t fileSize;
+		bool ready;
+		bool error;
+
+		ReadFile() : timeStamp(0), fileSize(0), ready(false), error(false) {}
+	};
+
+	std::vector<ReadFile> files;
+	std::atomic<size_t> nextToRead;
+	std::atomic<size_t> nextToConsume;
+	std::mutex mutex;
+	std::condition_variable cv;
+	std::atomic<bool> done;
+	size_t windowSize;
+
+	ReadAheadBuffer(size_t fileCount, size_t window = 64)
+		: files(fileCount), nextToRead(0), nextToConsume(0), done(false), windowSize(window)
+	{
+	}
+
+	void readerThread()
+	{
+		while (!done)
+		{
+			size_t idx = nextToRead.fetch_add(1);
+			if (idx >= files.size())
+				break;
+
+			// Wait if we're too far ahead of consumer
+			while (idx >= nextToConsume + windowSize && !done)
+				std::this_thread::yield();
+
+			if (done) break;
+
+			ReadFile& rf = files[idx];
+
+			// Read file
+			std::vector<char> contents = readFileOptimized(rf.path.c_str());
+			if (contents.empty() && rf.fileSize > 0)
+			{
+				// Fallback
+				FileStream in(rf.path.c_str(), "rb");
+				if (in)
+					contents = readFile(in, static_cast<size_t>(rf.fileSize));
+			}
+
+			// Normalize EOL
+			if (!contents.empty())
+			{
+				size_t size = normalizeEOL(&contents[0], contents.size());
+				contents.resize(size);
+			}
+
+			// Convert to UTF8
+			contents = convertToUTF8(std::move(contents));
+
+			{
+				std::lock_guard<std::mutex> lock(mutex);
+				rf.contents = std::move(contents);
+				rf.ready = true;
+			}
+			cv.notify_all();
+		}
+	}
+
+	bool getFile(size_t idx, std::vector<char>& contents)
+	{
+		if (idx >= files.size()) return false;
+
+		ReadFile& rf = files[idx];
+
+		std::unique_lock<std::mutex> lock(mutex);
+		cv.wait(lock, [&] { return rf.ready || done; });
+
+		if (!rf.ready) return false;
+
+		contents = std::move(rf.contents);
+		nextToConsume = idx + 1;
+		return !rf.error;
+	}
+
+	void stop()
+	{
+		done = true;
+		cv.notify_all();
+	}
+};
+
 void buildProject(Output* output, const char* path)
 {
 	output->print("Building %s:\n", path);
@@ -788,10 +884,38 @@ void buildProject(Output* output, const char* path)
 		BuildContext* builder = buildStart(output, tempPath.c_str(), files.size());
 		if (!builder) return;
 
-		for (auto& f: files)
+		// Use parallel read-ahead for better I/O throughput
+		unsigned int numReaders = std::max(2u, std::thread::hardware_concurrency() / 2);
+		ReadAheadBuffer readAhead(files.size(), numReaders * 8);
+
+		// Initialize file info
+		for (size_t i = 0; i < files.size(); ++i)
 		{
-			buildAppendFile(builder, f.path.c_str(), f.timeStamp, f.fileSize);
+			readAhead.files[i].path = files[i].path;
+			readAhead.files[i].timeStamp = files[i].timeStamp;
+			readAhead.files[i].fileSize = files[i].fileSize;
 		}
+
+		// Start reader threads
+		std::vector<std::thread> readers;
+		for (unsigned int i = 0; i < numReaders; ++i)
+			readers.emplace_back(&ReadAheadBuffer::readerThread, &readAhead);
+
+		// Consume files in order
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			std::vector<char> contents;
+			if (readAhead.getFile(i, contents))
+			{
+				appendFilePart(builder, files[i].path.c_str(), 0,
+					contents.empty() ? nullptr : &contents[0], contents.size(),
+					files[i].timeStamp, files[i].fileSize, &contents);
+			}
+		}
+
+		readAhead.stop();
+		for (auto& t : readers)
+			t.join();
 
 		buildFinish(builder);
 	}
