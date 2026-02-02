@@ -26,11 +26,8 @@ inline const char* findLineStart(const char* begin, const char* pos)
 
 inline const char* findLineEnd(const char* pos, const char* end)
 {
-	for (const char* s = pos; s != end; ++s)
-		if (*s == '\n')
-			return s;
-
-	return end;
+	const char* nl = static_cast<const char*>(memchr(pos, '\n', end - pos));
+	return nl ? nl : end;
 }
 
 inline unsigned int countLines(const char* begin, const char* end)
