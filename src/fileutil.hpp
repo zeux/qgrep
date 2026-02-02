@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <functional>
 
 #include <stdio.h>
@@ -28,3 +29,7 @@ bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size);
 FILE* openFile(const char* path, const char* mode);
 
 bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback);
+
+// Read file directly into vector using optimized Windows API (FILE_FLAG_SEQUENTIAL_SCAN)
+// Returns empty vector on failure
+std::vector<char> readFileOptimized(const char* path);
