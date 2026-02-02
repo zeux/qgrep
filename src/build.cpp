@@ -22,6 +22,10 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 
 #include <string.h>
 
@@ -162,9 +166,13 @@ static size_t normalizeEOL(char* data, size_t size)
 	return result;
 }
 
-static std::vector<char> readFile(FileStream& in)
+static std::vector<char> readFile(FileStream& in, size_t sizeHint = 0)
 {
 	std::vector<char> result;
+
+	// pre-allocate if size hint is available to avoid O(n^2) reallocation
+	if (sizeHint > 0)
+		result.reserve(sizeHint);
 
 	// read file as is
 	char buffer[65536];
@@ -646,18 +654,33 @@ void buildAppendFilePart(BuildContext* context, const char* path, unsigned int s
 
 bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp, uint64_t fileSize)
 {
-	FileStream in(path, "rb");
-	if (!in)
-	{
-		context->output->error("Error reading file %s\n", path);
-		return false;
-	}
-
 	try
 	{
-		std::vector<char> contents = convertToUTF8(readFile(in));
+		// Try optimized Windows read first (uses FILE_FLAG_SEQUENTIAL_SCAN for better prefetching)
+		std::vector<char> contents = readFileOptimized(path);
 
-		appendFilePart(context, path, 0, contents.empty() ? 0 : &contents[0], contents.size(), timeStamp, fileSize, &contents);
+		// Fallback to FileStream if optimized read failed (e.g., on non-Windows or special files)
+		if (contents.empty() && fileSize > 0)
+		{
+			FileStream in(path, "rb");
+			if (!in)
+			{
+				context->output->error("Error reading file %s\n", path);
+				return false;
+			}
+			contents = readFile(in, static_cast<size_t>(fileSize));
+		}
+
+		// Normalize EOL and convert to UTF8
+		if (!contents.empty())
+		{
+			size_t size = normalizeEOL(&contents[0], contents.size());
+			contents.resize(size);
+		}
+
+		contents = convertToUTF8(std::move(contents));
+
+		appendFilePart(context, path, 0, contents.empty() ? nullptr : &contents[0], contents.size(), timeStamp, fileSize, &contents);
 
 		return true;
 	}
