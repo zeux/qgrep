@@ -11,7 +11,7 @@
 #include <memory>
 #include <algorithm>
 #include <stdexcept>
-#include <map>
+#include <unordered_map>
 #include <string>
 
 static std::string getHomePath()
@@ -147,7 +147,7 @@ static bool extractSuffix(const std::string& str, const char* prefix, std::strin
 	return false;
 }
 
-static std::shared_ptr<Regex> createRegexCached(const std::string& query, std::map<std::string, std::shared_ptr<Regex>>& regexCache)
+static std::shared_ptr<Regex> createRegexCached(const std::string& query, std::unordered_map<std::string, std::shared_ptr<Regex>>& regexCache)
 {
 	auto p = regexCache.insert(std::make_pair(query, std::shared_ptr<Regex>()));
 
@@ -157,7 +157,7 @@ static std::shared_ptr<Regex> createRegexCached(const std::string& query, std::m
 	return p.first->second;
 }
 
-static std::shared_ptr<Regex> createOrRegexCached(const std::vector<std::string>& list, std::map<std::string, std::shared_ptr<Regex>>& regexCache)
+static std::shared_ptr<Regex> createOrRegexCached(const std::vector<std::string>& list, std::unordered_map<std::string, std::shared_ptr<Regex>>& regexCache)
 {
 	if (list.empty()) return std::shared_ptr<Regex>();
 	
@@ -170,7 +170,7 @@ static std::shared_ptr<Regex> createOrRegexCached(const std::vector<std::string>
 }
 
 static std::unique_ptr<ProjectGroup> buildGroup(std::unique_ptr<ProjectGroup> group, const std::vector<std::string>& include, const std::vector<std::string>& exclude,
-	std::map<std::string, std::shared_ptr<Regex>>& regexCache)
+	std::unordered_map<std::string, std::shared_ptr<Regex>>& regexCache)
 {
 	group->include = createOrRegexCached(include, regexCache);
 	group->exclude = createOrRegexCached(exclude, regexCache);
@@ -179,7 +179,7 @@ static std::unique_ptr<ProjectGroup> buildGroup(std::unique_ptr<ProjectGroup> gr
 }
 
 static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* file, unsigned int& lineId, ProjectGroup* parent,
-	std::map<std::string, std::shared_ptr<Regex>>& regexCache, const char* pathBase)
+	std::unordered_map<std::string, std::shared_ptr<Regex>>& regexCache, const char* pathBase)
 {
 	std::string line, suffix;
 	std::vector<std::string> include, exclude;
@@ -251,7 +251,7 @@ std::unique_ptr<ProjectGroup> parseProject(Output* output, const char* file)
 	std::string pathBase = normalizePath(getCurrentDirectory().c_str(), (std::string(file) + "/..").c_str());
 
 	unsigned int line = 0;
-	std::map<std::string, std::shared_ptr<Regex>> regexCache;
+	std::unordered_map<std::string, std::shared_ptr<Regex>> regexCache;
 
 	try
 	{
