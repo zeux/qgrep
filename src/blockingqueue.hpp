@@ -47,7 +47,7 @@ public:
 			totalSize -= item.size;
 
 			lock.unlock();
-			itemsNotFull.notify_all();
+			itemsNotFull.notify_one();
 		}
 
 		return std::move(item.value);

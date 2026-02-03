@@ -162,6 +162,55 @@ FILE* openFile(const char* path, const char* mode)
 	return _wfopen(wpath.c_str(), wmode);
 }
 
+// Read file directly into vector using Windows API with FILE_FLAG_SEQUENTIAL_SCAN
+std::vector<char> readFileOptimized(const char* path)
+{
+	std::vector<char> result;
+
+	// Get full path with long path prefix
+	std::wstring wpath = fromUtf8(isFullPath(path) ? path : normalizePath(getCurrentDirectory().c_str(), path).c_str());
+	wpath.insert(0, L"\\\\?\\");
+	std::replace(wpath.begin(), wpath.end(), '/', '\\');
+
+	// Open file with sequential scan hint for better prefetching
+	HANDLE hFile = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+
+	if (hFile == INVALID_HANDLE_VALUE)
+		return result;
+
+	// Get file size
+	LARGE_INTEGER fileSize;
+	if (!GetFileSizeEx(hFile, &fileSize))
+	{
+		CloseHandle(hFile);
+		return result;
+	}
+
+	// Handle empty files
+	if (fileSize.QuadPart == 0)
+	{
+		CloseHandle(hFile);
+		return result;
+	}
+
+	// Pre-allocate and read directly into vector
+	size_t totalSize = static_cast<size_t>(fileSize.QuadPart);
+	result.resize(totalSize);
+
+	DWORD bytesRead = 0;
+	BOOL success = ReadFile(hFile, &result[0], static_cast<DWORD>(totalSize), &bytesRead, NULL);
+	CloseHandle(hFile);
+
+	if (!success || bytesRead != totalSize)
+	{
+		result.clear();
+		return result;
+	}
+
+	return result;
+}
+
 bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback)
 {
 	HANDLE h = CreateFileW(fromUtf8(path).c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);

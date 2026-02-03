@@ -281,6 +281,13 @@ static bool watchDirectoryFSEvent(const char* path, const std::function<void (co
 
 #endif
 
+// POSIX stub - returns empty to trigger fallback to standard file reading
+std::vector<char> readFileOptimized(const char* path)
+{
+	(void)path;
+	return std::vector<char>();
+}
+
 bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback)
 {
 #if defined(__linux__)
