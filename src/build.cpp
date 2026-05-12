@@ -162,9 +162,10 @@ static size_t normalizeEOL(char* data, size_t size)
 	return result;
 }
 
-static std::vector<char> readFile(FileStream& in)
+static std::vector<char> readFile(FileStream& in, size_t sizeHint = 0)
 {
 	std::vector<char> result;
+	result.reserve(sizeHint);
 
 	// read file as is
 	char buffer[65536];
@@ -173,14 +174,6 @@ static std::vector<char> readFile(FileStream& in)
 	while ((readsize = in.read(buffer, sizeof(buffer))) > 0)
 	{
 		result.insert(result.end(), buffer, buffer + readsize);
-	}
-
-	// normalize new lines in a cross-platform way (don't rely on text-mode file I/O)
-	if (!result.empty())
-	{
-		size_t size = normalizeEOL(&result[0], result.size());
-		assert(size <= result.size());
-		result.resize(size);
 	}
 
 	return result;
@@ -625,7 +618,7 @@ static void appendFilePart(BuildContext* context, const char* path, unsigned int
 		file.fileSize = fileSize;
 		file.contents = dataSource ? std::move(*dataSource) : std::vector<char>(data, data + dataSize);
 
-		context->pendingFiles.emplace_back(file);
+		context->pendingFiles.emplace_back(std::move(file));
 		context->pendingSize += dataSize;
 	}
 
@@ -655,9 +648,13 @@ bool buildAppendFile(BuildContext* context, const char* path, uint64_t timeStamp
 
 	try
 	{
-		std::vector<char> contents = convertToUTF8(readFile(in));
+		std::vector<char> contents = convertToUTF8(readFile(in, fileSize));
 
-		appendFilePart(context, path, 0, contents.empty() ? 0 : &contents[0], contents.size(), timeStamp, fileSize, &contents);
+		// normalize new lines in a cross-platform way (we don't rely on text-mode file I/O)
+		if (!contents.empty())
+			contents.resize(normalizeEOL(contents.data(), contents.size()));
+
+		appendFilePart(context, path, 0, contents.data(), contents.size(), timeStamp, fileSize, &contents);
 
 		return true;
 	}

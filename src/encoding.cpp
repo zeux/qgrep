@@ -160,11 +160,14 @@ std::vector<char> convertToUTF8(std::vector<char> data)
 	const char* contents = data.empty() ? 0 : &data[0];
 	size_t size = data.size();
 
+	// slow paths: convert from UTFn to UTF8
 	if (size >= 4 && *reinterpret_cast<const uint32_t*>(contents) == 0x0000feff) return convertToUTF8Impl<UTF32Decoder<false>>(contents + 4, size - 4);
 	if (size >= 4 && *reinterpret_cast<const uint32_t*>(contents) == 0xfffe0000) return convertToUTF8Impl<UTF32Decoder<true>>(contents + 4, size - 4);
 	if (size >= 2 && *reinterpret_cast<const uint16_t*>(contents) == 0xfeff) return convertToUTF8Impl<UTF16Decoder<false>>(contents + 2, size - 2);
 	if (size >= 2 && *reinterpret_cast<const uint16_t*>(contents) == 0xfffe) return convertToUTF8Impl<UTF16Decoder<true>>(contents + 2, size - 2);
-	if (size >= 3 && memcmp(contents, "\xef\xbb\xbf", 3) == 0) return std::vector<char>(contents + 3, contents + size);
+
+	// fast(ish) path: remove BOM prefix in-place to avoid reallocation
+	if (size >= 3 && memcmp(contents, "\xef\xbb\xbf", 3) == 0) data.erase(data.begin(), data.begin() + 3);
 
 	return data;
 }

@@ -85,7 +85,7 @@ static std::pair<std::vector<char>, std::pair<BufferOffsetLength, BufferOffsetLe
 
 	assert(nameOffset == entrySize + nameSize && pathOffset == totalSize);
 
-	return std::make_pair(data, std::make_pair(BufferOffsetLength(entrySize, nameSize), BufferOffsetLength(entrySize + nameSize, pathSize)));
+	return std::make_pair(std::move(data), std::make_pair(BufferOffsetLength(entrySize, nameSize), BufferOffsetLength(entrySize + nameSize, pathSize)));
 }
 
 bool buildFiles(Output* output, const char* path, const std::vector<FileInfo>& files)
