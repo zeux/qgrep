@@ -9,6 +9,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -137,6 +138,19 @@ std::string getCurrentDirectory()
 FILE* openFile(const char* path, const char* mode)
 {
 	return fopen(path, mode);
+}
+
+void prefetchFile(const char* path)
+{
+#ifdef __linux__
+	int fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return;
+	posix_fadvise(fd, 0, 0, POSIX_FADV_WILLNEED);
+	close(fd);
+#else
+	(void)path;
+#endif
 }
 
 #ifdef __linux__

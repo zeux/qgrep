@@ -27,4 +27,6 @@ bool getFileAttributes(const char* path, uint64_t* mtime, uint64_t* size);
 
 FILE* openFile(const char* path, const char* mode);
 
+void prefetchFile(const char* path);
+
 bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback);

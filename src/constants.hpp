@@ -31,5 +31,8 @@ const int kWatchUpdateTimeout = 60;
 // When we're above a certain threshold of changed files, automatically update
 const int kWatchUpdateThresholdFiles = 100;
 
+// When building, prefetch files ahead of the current build position up to a size threshold
+const size_t kMaxPrefetchLookahead = 32 Mb;
+
 #undef Mb
 #undef Kb

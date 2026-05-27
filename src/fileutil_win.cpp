@@ -162,6 +162,11 @@ FILE* openFile(const char* path, const char* mode)
 	return _wfopen(wpath.c_str(), wmode);
 }
 
+void prefetchFile(const char* path)
+{
+	(void)path;
+}
+
 bool watchDirectory(const char* path, const std::function<void (const char* name)>& callback)
 {
 	HANDLE h = CreateFileW(fromUtf8(path).c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);

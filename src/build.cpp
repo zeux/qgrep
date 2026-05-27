@@ -22,6 +22,9 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <atomic>
+#include <functional>
+#include <thread>
 
 #include <string.h>
 
@@ -131,6 +134,57 @@ struct BuildContext
 	{
 	}
 };
+
+struct PrefetchContext
+{
+	const std::vector<FileInfo>& files;
+	std::atomic<uint64_t> buildSize;
+	std::thread thread;
+
+	PrefetchContext(const std::vector<FileInfo>& files)
+		: files(files), buildSize(0)
+	{
+	}
+};
+
+static void prefetchThreadFun(PrefetchContext* context)
+{
+	uint64_t prefetchSize = 0;
+
+	for (const FileInfo& file: context->files)
+	{
+		prefetchSize += file.fileSize;
+
+		uint64_t buildSize = context->buildSize.load(std::memory_order_acquire);
+
+		while (buildSize != uint64_t(-1) && prefetchSize > buildSize + kMaxPrefetchLookahead)
+		{
+			std::this_thread::yield(); // note: we could use cvar/mutex here but yield ends up being a little faster due to tight synchronization
+			buildSize = context->buildSize.load(std::memory_order_acquire);
+		}
+
+		if (buildSize == uint64_t(-1))
+			break;
+
+		prefetchFile(file.path.c_str());
+	}
+}
+
+static void prefetchStart(PrefetchContext* context)
+{
+	std::thread(std::bind(prefetchThreadFun, context)).swap(context->thread);
+}
+
+static void prefetchAdvance(PrefetchContext* context, const FileInfo& file)
+{
+	context->buildSize.fetch_add(file.fileSize, std::memory_order_release);
+}
+
+static void prefetchFinish(PrefetchContext* context)
+{
+	context->buildSize.store(uint64_t(-1), std::memory_order_release);
+	context->thread.join();
+}
 
 static void printStatistics(Output* output, const BuildStatistics& stats, unsigned int totalFileCount)
 {
@@ -762,10 +816,16 @@ void buildProject(Output* output, const char* path)
 		BuildContext* builder = buildStart(output, tempPath.c_str(), files.size());
 		if (!builder) return;
 
-		for (auto& f: files)
+		PrefetchContext prefetch(files);
+		prefetchStart(&prefetch);
+
+		for (const FileInfo& f: files)
 		{
+			prefetchAdvance(&prefetch, f);
 			buildAppendFile(builder, f.path.c_str(), f.timeStamp, f.fileSize);
 		}
+
+		prefetchFinish(&prefetch);
 
 		buildFinish(builder);
 	}
