@@ -142,15 +142,22 @@ FILE* openFile(const char* path, const char* mode)
 
 void prefetchFile(const char* path)
 {
-#ifdef __linux__
 	int fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return;
-	posix_fadvise(fd, 0, 0, POSIX_FADV_WILLNEED);
-	close(fd);
+
+#ifdef __APPLE__
+	struct stat st;
+	if (fstat(fd, &st) == 0 && st.st_size <= INT_MAX)
+	{
+		struct radvisory ra = {0, int(st.st_size)};
+		fcntl(fd, F_RDADVISE, &ra);
+	}
 #else
-	(void)path;
+	posix_fadvise(fd, 0, 0, POSIX_FADV_WILLNEED);
 #endif
+
+	close(fd);
 }
 
 #ifdef __linux__
