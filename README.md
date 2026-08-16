@@ -110,6 +110,8 @@ complete example with all available syntax:
         include \.hlsl$
     endgroup
 
+    maxsize 16M
+
     file D:\MyGame\designdoc.txt
 
     # note how you can omit 'file'
@@ -122,6 +124,13 @@ specified in the current group or one of its ancestors) with the exception of
 the entire boost/ folder; the second group contains all files from Sources
 folder that have one of cpp, c, hpp, h, hlsl extensions. Also the root group
 contains two more files, designdoc.txt and technicaldesigndoc.txt.
+
+`maxsize` skips files larger than the given size when scanning; it accepts a
+plain byte count or a K/M/G suffix (`16M`, `512K`, `1073741824`). It applies to
+the group it appears in and is inherited by nested groups unless they set their
+own; omitting it (or `0`) means no limit. This is useful when a tree mixes
+source with large binary artifacts that would otherwise be indexed byte-for-byte,
+since the database has no notion of text vs binary files.
 
 Since you can omit 'file' prefix for single file names, a file list works as a
 valid project configuration file.

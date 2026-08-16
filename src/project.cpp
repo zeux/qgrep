@@ -14,6 +14,8 @@
 #include <unordered_map>
 #include <string>
 
+#include <stdlib.h>
+
 static std::string getHomePath()
 {
     char* qghome = getenv("QGREP_HOME");
@@ -178,6 +180,33 @@ static std::unique_ptr<ProjectGroup> buildGroup(std::unique_ptr<ProjectGroup> gr
 	return group;
 }
 
+// Parse a size with an optional K/M/G suffix (e.g. "16M", "512K", "1073741824").
+static uint64_t parseSize(const std::string& text)
+{
+	const char* str = text.c_str();
+	char* end = nullptr;
+	unsigned long long value = strtoull(str, &end, 10);
+
+	if (end == str) throw std::runtime_error("Invalid size");
+
+	while (*end == ' ' || *end == '\t') end++;
+
+	uint64_t mult = 1;
+	switch (*end)
+	{
+	case 'k': case 'K': mult = 1024ull; end++; break;
+	case 'm': case 'M': mult = 1024ull * 1024; end++; break;
+	case 'g': case 'G': mult = 1024ull * 1024 * 1024; end++; break;
+	case 0: break;
+	default: throw std::runtime_error("Invalid size suffix");
+	}
+
+	if (*end == 'b' || *end == 'B') end++;
+	if (*end != 0) throw std::runtime_error("Invalid size suffix");
+
+	return static_cast<uint64_t>(value) * mult;
+}
+
 static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* file, unsigned int& lineId, ProjectGroup* parent,
 	std::unordered_map<std::string, std::shared_ptr<Regex>>& regexCache, const char* pathBase)
 {
@@ -186,6 +215,7 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 
 	std::unique_ptr<ProjectGroup> result(new ProjectGroup);
 	result->parent = parent;
+	result->maxFileSize = parent ? parent->maxFileSize : 0;
 
 	while (std::getline(in, line))
 	{
@@ -214,6 +244,11 @@ static std::unique_ptr<ProjectGroup> parseGroup(std::ifstream& in, const char* f
 		{
 			createRegexCached(suffix, regexCache);
 			exclude.push_back(suffix);
+		}
+		else if (extractSuffix(line, "maxsize", suffix))
+		{
+			if (suffix.empty()) throw std::runtime_error("No size specified");
+			result->maxFileSize = parseSize(suffix);
 		}
 		else if (extractSuffix(line, "group", suffix))
 			result->groups.push_back(parseGroup(in, file, lineId, result.get(), regexCache, pathBase));
@@ -304,7 +339,10 @@ static void getProjectGroupFilesRec(Output* output, ProjectGroup* group, std::ve
 		uint64_t mtime, size;
 
 		if (getFileAttributes(path.c_str(), &mtime, &size))
-			files.push_back({ path, mtime, size });
+		{
+			if (group->maxFileSize == 0 || size <= group->maxFileSize)
+				files.push_back({ path, mtime, size });
+		}
 		else
 			output->error("Error reading metadata for file %s\n", path.c_str());
 	}
@@ -314,7 +352,7 @@ static void getProjectGroupFilesRec(Output* output, ProjectGroup* group, std::ve
 		std::string buf;
 
 		bool result = traverseDirectory(folder.c_str(), [&](const char* path, uint64_t mtime, uint64_t size) {
-			if (isFileAcceptable(group, path))
+			if ((group->maxFileSize == 0 || size <= group->maxFileSize) && isFileAcceptable(group, path))
 			{
 				joinPaths(buf, folder.c_str(), path);
 				files.push_back({ buf, mtime, size });

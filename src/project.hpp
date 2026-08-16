@@ -1,6 +1,7 @@
 // This file is part of qgrep and is distributed under the MIT license, see LICENSE.md
 #pragma once
 
+#include <stdint.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -22,6 +23,10 @@ struct ProjectGroup
 	std::vector<std::string> files;
 	std::shared_ptr<Regex> include;
 	std::shared_ptr<Regex> exclude;
+
+	// 0 = unlimited. Files larger than this are skipped during scanning.
+	// Inherited from the parent group unless the group sets its own.
+	uint64_t maxFileSize;
 
 	std::vector<std::unique_ptr<ProjectGroup>> groups;
 };
